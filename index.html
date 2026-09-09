@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexAcesso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* paleta base (tema escuro) */
+    --sage:#6eb401;
+    --amber:#b0c628;
+    --rust:#c0392b;
+    --gold:#239b4e;
+    --olive:#235e9b;
+    /* derivadas */
+    --olive-deep:#1a1c21;
+    --olive-soft:#3a7bc4;
+    --paper:#22242a;
+    --surface:#2a2d34;
+    --ink:#e3e2e0;
+    --ink-soft:#a3a89a;
+    --line:#3a3d44;
+    --line-strong:#4a4e56;
+    --amber-deep:#c9d94a;
+    --rust-soft:#3a2422;
+    --sage-soft:#1f3a12;
+    --amber-soft:#333a14;
+    --font-display:'Archivo',system-ui,sans-serif;
+    --font-body:'Inter',system-ui,sans-serif;
+    --font-mono:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--font-body); font-size:15px; line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:var(--font-display); font-weight:700; letter-spacing:-0.02em; margin:0;}
+  button{font-family:inherit;}
+
+  /* ---------- marca ---------- */
+  .mark{display:inline-flex; align-items:center; gap:10px;}
+  .mark-badge{
+    width:38px; height:38px; border-radius:9px; flex-shrink:0;
+    background:var(--amber); color:#1a1c05;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-weight:700; font-size:15px; letter-spacing:-0.03em;
+    box-shadow:inset 0 0 0 2px rgba(0,0,0,0.16);
+  }
+  .mark-name{font-family:var(--font-display); font-weight:700; font-size:17px; letter-spacing:-0.02em; line-height:1.1; color:var(--ink);}
+  .mark-name small{display:block; font-family:var(--font-body); font-weight:400; font-size:11.5px; letter-spacing:0.01em; color:var(--ink-soft); margin-top:2px;}
+
+  /* ---------- login ---------- */
+  .entrada{display:grid; grid-template-columns:minmax(0,44%) minmax(0,56%); min-height:100vh;}
+  .entrada-arte{
+    background:var(--olive-deep); color:#F2F0E4; padding:44px 46px; position:relative; overflow:hidden;
+    display:flex; flex-direction:column; justify-content:space-between;
+  }
+  .entrada-arte::after{
+    content:""; position:absolute; inset:0;
+    background:repeating-linear-gradient(115deg, rgba(110,180,1,0.10) 0 2px, transparent 2px 22px);
+    pointer-events:none;
+  }
+  .arte-topo, .arte-base{position:relative; z-index:1;}
+  .arte-titulo{font-family:var(--font-display); font-weight:700; font-size:clamp(38px,4.4vw,60px); line-height:0.98; letter-spacing:-0.035em; margin:0 0 18px; color:#F2F0E4;}
+  .arte-titulo span{display:block; color:var(--sage);}
+  .arte-texto{max-width:34ch; color:#B9BDAA; font-size:15px;}
+  .arte-base{font-size:12.5px; color:#7C8170; border-top:1px solid rgba(242,240,228,0.16); padding-top:14px;}
+  .entrada-arte .mark-name{color:#F2F0E4;}
+  .entrada-arte .mark-name small{color:#8C917C;}
+
+  .entrada-form{display:flex; align-items:center; justify-content:center; padding:40px 28px; background:var(--paper);}
+  .form-bloco{width:100%; max-width:390px;}
+  .form-bloco h1{font-size:27px; margin-bottom:6px; color:var(--ink);}
+  .form-bloco .apoio{color:var(--ink-soft); font-size:14px; margin:0 0 26px;}
+
+  @media (max-width:860px){
+    .entrada{grid-template-columns:1fr;}
+    .entrada-arte{padding:26px 22px 30px; gap:22px;}
+    .arte-titulo{font-size:34px; margin-bottom:10px;}
+    .arte-texto{font-size:14px;}
+    .arte-base{display:none;}
+  }
+
+  /* ---------- formulário ---------- */
+  .campo{margin-bottom:16px;}
+  .campo label{display:block; font-size:13px; font-weight:500; color:var(--ink-soft); margin-bottom:6px;}
+  .campo-linha{position:relative;}
+  input[type="text"], input[type="password"], input[type="email"], select, textarea{
+    width:100%; padding:11px 13px; border-radius:8px; border:1px solid var(--line-strong);
+    background:var(--surface); color:var(--ink); font-family:var(--font-body); font-size:14.5px;
+    outline:none; transition:border-color .14s, box-shadow .14s;
+  }
+  input::placeholder{color:#6D7264;}
+  input:focus, select:focus, textarea:focus{border-color:var(--olive); box-shadow:0 0 0 3px rgba(35,94,155,0.22);}
+  select{
+    appearance:none; padding-right:34px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a3a89a' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat:no-repeat; background-position:right 12px center;
+  }
+  .olho{
+    position:absolute; right:8px; top:50%; transform:translateY(-50%);
+    background:none; border:none; cursor:pointer; padding:6px; color:var(--ink-soft);
+    display:flex; align-items:center; border-radius:6px;
+  }
+  .olho:hover{color:var(--olive);}
+  :focus-visible{outline:2px solid var(--olive); outline-offset:2px;}
+
+  .btn{
+    border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:14.5px;
+    padding:11px 18px; transition:background .14s, border-color .14s, color .14s;
+  }
+  .btn-principal{background:var(--amber); color:#1a1c05; width:100%;}
+  .btn-principal:hover{background:var(--amber-deep); color:#0f1003;}
+  .btn-principal:disabled{opacity:.55; cursor:not-allowed;}
+  .btn-neutro{background:var(--surface); border:1px solid var(--line-strong); color:var(--ink);}
+  .btn-neutro:hover{border-color:var(--olive); color:var(--olive-soft);}
+  .btn-risco{background:var(--surface); border:1px solid var(--rust); color:#e77362;}
+  .btn-risco:hover{background:var(--rust-soft);}
+  .btn-sage{background:var(--sage-soft); border:1px solid var(--sage); color:#8fe23d;}
+  .btn-sage:hover{background:var(--sage); color:#0f1a00;}
+  .btn-mini{padding:6px 11px; font-size:12.5px; border-radius:7px;}
+  .btn-largo{width:100%;}
+
+  .link{
+    background:none; border:none; color:var(--olive-soft); font-size:13.5px; font-weight:500;
+    cursor:pointer; padding:6px 2px; text-decoration:underline; text-underline-offset:3px;
+  }
+  .link:hover{color:var(--amber);}
+  .rodape-form{margin-top:20px; padding-top:16px; border-top:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;}
+  .rodape-form span{font-size:12.5px; color:var(--ink-soft);}
+
+  .aviso{border-radius:8px; padding:11px 13px; font-size:13.5px; margin-bottom:16px;}
+  .aviso-erro{background:var(--rust-soft); border:1px solid #6b3129; color:#f2a99b;}
+  .aviso-ok{background:var(--sage-soft); border:1px solid var(--sage); color:#a3e666;}
+
+  /* ---------- modal ---------- */
+  .veu{
+    position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:60;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .modal{
+    background:var(--surface); border-radius:14px; width:100%; max-width:380px;
+    padding:26px 26px 22px; box-shadow:0 24px 60px rgba(0,0,0,0.5); border:1px solid var(--line);
+  }
+  .modal h2{font-size:20px; margin-bottom:4px; color:var(--ink);}
+  .modal .apoio{color:var(--ink-soft); font-size:13.5px; margin:0 0 20px;}
+
+  /* ---------- shell interno ---------- */
+  .shell{display:grid; grid-template-columns:236px minmax(0,1fr); min-height:100vh;}
+  .trilho{
+    background:var(--olive-deep); color:#EDEBDC; padding:22px 16px;
+    display:flex; flex-direction:column; gap:26px; position:sticky; top:0; height:100vh;
+  }
+  .trilho .mark-name{color:#F2F0E4; font-size:15.5px;}
+  .trilho .mark-name small{color:#8C917C;}
+  .trilho-nav{display:flex; flex-direction:column; gap:3px;}
+  .trilho-nav button{
+    display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+    background:none; border:none; color:#B7BBA6; padding:10px 12px; border-radius:8px;
+    font-size:14px; font-weight:500; cursor:pointer;
+  }
+  .trilho-nav button:hover{background:rgba(242,240,228,0.09); color:#F2F0E4;}
+  .trilho-nav button.on{background:var(--amber); color:#1a1c05; font-weight:600;}
+  .trilho-nav svg{width:17px; height:17px; flex-shrink:0;}
+  .trilho-pe{margin-top:auto; font-size:12px; color:#767b68; line-height:1.5;}
+
+  .principal{display:flex; flex-direction:column; min-width:0;}
+  .cabecalho{
+    display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+    padding:16px 30px; background:var(--surface); border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:12;
+  }
+  .cabecalho h1{font-size:19px; color:var(--ink);}
+  .cabecalho .sub{font-size:13px; color:var(--ink-soft);}
+  .usuario-chip{display:flex; align-items:center; gap:10px; font-size:13.5px;}
+  .usuario-nome{font-weight:600; color:var(--ink);}
+  .conteudo{padding:26px 30px 70px; max-width:1080px; width:100%;}
+  @media (max-width:820px){
+    .shell{grid-template-columns:1fr;}
+    .trilho{position:static; height:auto; flex-direction:row; align-items:center; gap:16px; overflow-x:auto; padding:14px 16px;}
+    .trilho-nav{flex-direction:row; gap:6px;}
+    .trilho-pe{display:none;}
+    .cabecalho, .conteudo{padding-left:18px; padding-right:18px;}
+  }
+
+  .cartao{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:22px 24px; margin-bottom:22px;}
+  .cartao h2{font-size:17px; margin-bottom:3px; color:var(--ink);}
+  .cartao .apoio{color:var(--ink-soft); font-size:13.5px; margin:0 0 18px;}
+  .grade-3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px;}
+  .grade-2{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px;}
+  @media (max-width:700px){ .grade-3,.grade-2{grid-template-columns:1fr;} }
+
+  /* ---------- credencial gerada ---------- */
+  .credencial{
+    border:1px solid var(--gold); background:var(--amber-soft); border-radius:11px;
+    padding:16px 18px; margin-top:18px;
+  }
+  .credencial h3{font-family:var(--font-display); font-size:15px; margin-bottom:10px; color:var(--ink);}
+  .cred-linha{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:5px 0; font-size:13.5px; color:var(--ink-soft);}
+  .cred-linha b{font-family:var(--font-mono); font-weight:600; font-size:14.5px; color:var(--amber-deep);}
+  .cred-nota{font-size:12.5px; color:var(--ink-soft); margin-top:10px;}
+
+  /* ---------- tabela ---------- */
+  .rolagem{overflow-x:auto;}
+  table{width:100%; border-collapse:collapse; min-width:640px;}
+  th{
+    text-align:left; font-size:12.5px; font-weight:600; color:var(--ink-soft);
+    padding:0 10px 10px; border-bottom:1px solid var(--line-strong);
+  }
+  td{padding:13px 10px; border-bottom:1px solid var(--line); font-size:13.5px; vertical-align:middle; color:var(--ink);}
+  tr:last-child td{border-bottom:none;}
+  .mono{font-family:var(--font-mono); font-size:13px; color:var(--ink-soft);}
+  .acoes{display:flex; gap:7px; flex-wrap:wrap;}
+
+  .selo{display:inline-flex; align-items:center; gap:5px; border-radius:100px; padding:3px 10px; font-size:12px; font-weight:500; white-space:nowrap;}
+  .selo-ativo{background:var(--sage-soft); color:#a3e666; border:1px solid var(--sage);}
+  .selo-inativo{background:var(--rust-soft); color:#f2a99b; border:1px solid #6b3129;}
+  .selo-temp{background:var(--amber-soft); color:var(--amber-deep); border:1px solid var(--gold); margin-left:6px;}
+  .selo-edicao{background:#2a3020; color:#c3d19a; border:1px solid var(--olive-soft);}
+  .selo-leitura{background:var(--paper); color:var(--ink-soft); border:1px solid var(--line-strong);}
+
+  .vazio{padding:34px 12px; text-align:center; color:var(--ink-soft); font-size:13.5px;}
+  .dica{font-size:12.5px; color:var(--ink-soft); margin-top:6px;}
+
+  .linha-dado{display:flex; justify-content:space-between; gap:14px; padding:11px 0; border-bottom:1px solid var(--line); font-size:14px; color:var(--ink);}
+  .linha-dado:last-child{border-bottom:none;}
+  .linha-dado span:first-child{color:var(--ink-soft);}
+
+  .registro{list-style:none; margin:0; padding:0;}
+  .registro li{padding:12px 0; border-bottom:1px solid var(--line);}
+  .registro li:last-child{border-bottom:none;}
+  .registro-topo{font-size:14px; font-weight:500; color:var(--ink);}
+  .registro-meta{font-size:12.5px; color:var(--ink-soft); margin-top:2px;}
+
+  .carregando{display:flex; align-items:center; justify-content:center; gap:10px; min-height:100vh; color:var(--ink-soft); font-size:14px;}
+  .giro{width:16px; height:16px; border-radius:50%; border:2px solid var(--line-strong); border-top-color:var(--olive); animation:gira .8s linear infinite;}
+  @keyframes gira{to{transform:rotate(360deg);}}
+  @media (prefers-reduced-motion: reduce){ .giro{animation:none;} }
+
+  .aviso-flutuante{
+    position:fixed; left:50%; bottom:22px; transform:translateX(-50%);
+    background:var(--surface); border:1px solid var(--line-strong); color:var(--ink); padding:11px 18px; border-radius:9px;
+    font-size:13.5px; z-index:100; box-shadow:0 12px 28px rgba(0,0,0,0.5);
+  }
+</style>
+</head>
+<body>
+<div id="app"><div class="carregando"><span class="giro"></span>Carregando…</div></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* =====================================================================
+     CONFIGURAÇÃO
+     ===================================================================== */
+
+  // Deixe vazio para rodar em localStorage (teste local).
+  // Preencha com a URL do Realtime Database para sincronizar entre máquinas.
+  var FIREBASE_URL = "";
+
+  var ADMIN_CODE = "SACDETRAN";   // código do acesso administrativo
+  var ADMIN_PASS = "ADMINSAC";    // senha do acesso administrativo
+
+  var LS_USERS = "nexacesso-users";
+  var LS_LOGS  = "nexacesso-logs";
+
+  var db = null;
+  if(FIREBASE_URL && typeof firebase !== "undefined"){
+    firebase.initializeApp({ databaseURL: FIREBASE_URL });
+    db = firebase.database();
+  }
+
+  /* =====================================================================
+     ESTADO
+     ===================================================================== */
+
+  var state = {
+    booted:false,
+    users:[],
+    logs:[],
+    screen:"login",        // login | portaoAdmin | trocaSenha | painel | admin
+    adminAba:"usuarios",   // usuarios | registro
+    painelAba:"inicio",    // inicio | conta
+    currentUser:null,
+    isAdmin:false,
+    error:"",
+    ok:"",
+    ultimaCredencial:null
+  };
+
+  var app = document.getElementById("app");
+
+  /* =====================================================================
+     ÍCONES
+     ===================================================================== */
+
+  var IC_PESSOAS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3.4"/><path d="M22 20v-2a4 4 0 0 0-3-3.87"/><path d="M16.5 3.6a4 4 0 0 1 0 6.8"/></svg>';
+  var IC_REGISTRO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><line x1="9" y1="13" x2="16" y2="13"/><line x1="9" y1="17" x2="14" y2="17"/></svg>';
+  var IC_INICIO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.4 12 4l9 7.4"/><path d="M5 10v9.5a.5.5 0 0 0 .5.5H10v-6h4v6h4.5a.5.5 0 0 0 .5-.5V10"/></svg>';
+  var IC_CONTA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>';
+
+  function olhoSVG(aberto){
+    return aberto
+      ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5.5 5.5 12 5.5 22.5 12 22.5 12 18.5 18.5 12 18.5 1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>'
+      : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17.9 17.9A10.7 10.7 0 0 1 12 19.5c-6.5 0-10.5-6.5-10.5-6.5a20 20 0 0 1 4.9-5.6M9.9 4.8A10.4 10.4 0 0 1 12 4.5c6.5 0 10.5 6.5 10.5 6.5a20 20 0 0 1-3.1 4.2M14.1 14.1A3 3 0 1 1 9.9 9.9"/><line x1="2" y1="2" x2="22" y2="22"/></svg>';
+  }
+
+  function marca(escuro){
+    return '<div class="mark"><div class="mark-badge">NX</div>' +
+      '<div class="mark-name">NexAcesso<small>Acesso interno</small></div></div>';
+  }
+
+  /* =====================================================================
+     UTILITÁRIOS
+     ===================================================================== */
+
+  function esc(s){
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  function digitos(v){ return (v||"").replace(/\D/g,""); }
+
+  function formatCPF(v){
+    var d = digitos(v).slice(0,11);
+    if(d.length > 9) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, "$1.$2.$3-$4");
+    if(d.length > 6) return d.replace(/(\d{3})(\d{3})(\d{1,3})/, "$1.$2.$3");
+    if(d.length > 3) return d.replace(/(\d{3})(\d{1,3})/, "$1.$2");
+    return d;
+  }
+
+  function gerarSenha(){
+    var chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    var out = "";
+    for(var i=0;i<8;i++) out += chars[Math.floor(Math.random()*chars.length)];
+    return out;
+  }
+
+  function dataHora(iso){
+    if(!iso) return "";
+    var d = new Date(iso);
+    if(isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString("pt-BR") + " " + d.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"});
+  }
+
+  function autor(){
+    if(state.isAdmin) return "Administração";
+    return (state.currentUser && state.currentUser.username) || "Sistema";
+  }
+
+  function toArray(val){
+    if(!val) return [];
+    return Array.isArray(val) ? val.filter(Boolean) : Object.keys(val).map(function(k){ return val[k]; });
+  }
+
+  function toast(msg){
+    var t = document.createElement("div");
+    t.className = "aviso-flutuante";
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function(){ t.remove(); }, 2600);
+  }
+
+  function copiar(texto, msg){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(texto).then(function(){ toast(msg); }, function(){ copiaManual(texto, msg); });
+    } else copiaManual(texto, msg);
+  }
+
+  function copiaManual(texto, msg){
+    var ta = document.createElement("textarea");
+    ta.value = texto; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); toast(msg); }
+    catch(e){ toast("Copie manualmente: " + texto); }
+    ta.remove();
+  }
+
+  /* =====================================================================
+     PERSISTÊNCIA
+     ===================================================================== */
+
+  function sincronizarUsuarios(){
+    if(db){
+      db.ref("usuarios").on("value", function(snap){
+        state.users = toArray(snap.val());
+        if(state.currentUser){
+          var atual = acharUsuario(state.currentUser.username);
+          if(atual) state.currentUser = atual;
+        }
+        state.booted = true;
+        if(digitandoNoFormulario()) return;
+        render();
+      });
+    } else {
+      try { state.users = JSON.parse(localStorage.getItem(LS_USERS) || "[]"); }
+      catch(e){ state.users = []; }
+      state.booted = true;
+      render();
+    }
+  }
+
+  async function salvarUsuarios(){
+    if(db){
+      try { await db.ref("usuarios").set(state.users); return true; }
+      catch(e){ toast("Não foi possível salvar no servidor."); return false; }
+    }
+    try { localStorage.setItem(LS_USERS, JSON.stringify(state.users)); return true; }
+    catch(e){ toast("Não foi possível salvar localmente."); return false; }
+  }
+
+  function sincronizarLogs(){
+    if(db){
+      db.ref("registro").on("value", function(snap){
+        state.logs = toArray(snap.val());
+        if(state.screen === "admin" && state.adminAba === "registro") render();
+      });
+    } else {
+      try { state.logs = JSON.parse(localStorage.getItem(LS_LOGS) || "[]"); }
+      catch(e){ state.logs = []; }
+    }
+  }
+
+  async function salvarLogs(){
+    if(db){
+      try { await db.ref("registro").set(state.logs); return true; }
+      catch(e){ return false; }
+    }
+    try { localStorage.setItem(LS_LOGS, JSON.stringify(state.logs)); return true; }
+    catch(e){ return false; }
+  }
+
+  function registrar(evento, alvo){
+    state.logs.push({ evento: evento, alvo: alvo || "", por: autor(), em: new Date().toISOString() });
+    if(state.logs.length > 200) state.logs = state.logs.slice(-200);
+    salvarLogs();
+  }
+
+  function digitandoNoFormulario(){
+    var campo = document.getElementById("novo-usuario");
+    return !!(campo && campo.value);
+  }
+
+  function acharUsuario(username){
+    var u = (username||"").trim().toLowerCase();
+    for(var i=0;i<state.users.length;i++){
+      if((state.users[i].username||"").toLowerCase() === u) return state.users[i];
+    }
+    return null;
+  }
+
+  function podeEditar(){
+    if(state.isAdmin) return true;
+    return !!(state.currentUser && state.currentUser.canEdit !== false);
+  }
+
+  /* =====================================================================
+     RENDER
+     ===================================================================== */
+
+  function render(){
+    if(!state.booted){
+      app.innerHTML = '<div class="carregando"><span class="giro"></span>Carregando…</div>';
+      return;
+    }
+
+    var html;
+    if(state.screen === "trocaSenha") html = telaTrocaSenha();
+    else if(state.screen === "painel") html = telaPainel();
+    else if(state.screen === "admin") html = telaAdmin();
+    else html = telaLogin();
+
+    if(state.screen === "portaoAdmin") html = telaLogin() + modalPortaoAdmin();
+
+    app.innerHTML = html;
+    ligarEventos();
+  }
+
+  function telaLogin(){
+    return '' +
+    '<div class="entrada">' +
+      '<div class="entrada-arte">' +
+        '<div class="arte-topo">' + marca(true) + '</div>' +
+        '<div class="arte-topo">' +
+          '<h2 class="arte-titulo">Ambiente<span>restrito</span></h2>' +
+          '<p class="arte-texto">Ambiente restrito da equipe. Cada acesso é criado pela administração e vale para uma pessoa.</p>' +
+        '</div>' +
+        '<div class="arte-base">NexAcesso · uso interno</div>' +
+      '</div>' +
+      '<div class="entrada-form">' +
+        '<div class="form-bloco">' +
+          '<h1>Entrar</h1>' +
+          '<p class="apoio">Use o usuário e a senha que você recebeu da administração.</p>' +
+          (state.error && state.screen === "login" ? '<div class="aviso aviso-erro">' + esc(state.error) + '</div>' : '') +
+          '<form id="form-login">' +
+            '<div class="campo">' +
+              '<label for="login-usuario">Usuário</label>' +
+              '<input type="text" id="login-usuario" autocomplete="username" autocapitalize="none" placeholder="nome.sobrenome">' +
+            '</div>' +
+            '<div class="campo">' +
+              '<label for="login-senha">Senha</label>' +
+              '<div class="campo-linha">' +
+                '<input type="password" id="login-senha" autocomplete="current-password" placeholder="Sua senha">' +
+                '<button type="button" class="olho" id="ver-login" aria-label="Mostrar senha">' + olhoSVG(false) + '</button>' +
+              '</div>' +
+            '</div>' +
+            '<button type="submit" class="btn btn-principal">Entrar</button>' +
+          '</form>' +
+          '<div class="rodape-form">' +
+            '<span>Esqueceu a senha? Peça um novo acesso à administração.</span>' +
+            '<button class="link" id="abrir-admin">Acesso administrativo</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function modalPortaoAdmin(){
+    return '' +
+    '<div class="veu" id="veu-admin">' +
+      '<div class="modal">' +
+        '<h2>Área administrativa</h2>' +
+        '<p class="apoio">Informe o código e a senha da administração.</p>' +
+        (state.error ? '<div class="aviso aviso-erro">' + esc(state.error) + '</div>' : '') +
+        '<form id="form-admin">' +
+          '<div class="campo">' +
+            '<label for="admin-codigo">Código</label>' +
+            '<input type="text" id="admin-codigo" autocomplete="off" autocapitalize="characters" placeholder="Código de acesso">' +
+          '</div>' +
+          '<div class="campo">' +
+            '<label for="admin-senha">Senha</label>' +
+            '<div class="campo-linha">' +
+              '<input type="password" id="admin-senha" autocomplete="off" placeholder="Senha administrativa">' +
+              '<button type="button" class="olho" id="ver-admin" aria-label="Mostrar senha">' + olhoSVG(false) + '</button>' +
+            '</div>' +
+          '</div>' +
+          '<button type="submit" class="btn btn-principal">Entrar</button>' +
+          '<button type="button" class="btn btn-neutro btn-largo" id="cancelar-admin" style="margin-top:10px;">Voltar</button>' +
+        '</form>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function telaTrocaSenha(){
+    return '' +
+    '<div class="entrada">' +
+      '<div class="entrada-arte">' +
+        '<div class="arte-topo">' + marca(true) + '</div>' +
+        '<div class="arte-topo">' +
+          '<h2 class="arte-titulo">Primeiro<span>acesso</span></h2>' +
+          '<p class="arte-texto">A senha que você recebeu é temporária e só serve para esta primeira entrada.</p>' +
+        '</div>' +
+        '<div class="arte-base">NexAcesso · uso interno</div>' +
+      '</div>' +
+      '<div class="entrada-form">' +
+        '<div class="form-bloco">' +
+          '<h1>Defina sua senha</h1>' +
+          '<p class="apoio">Você está entrando como <strong>' + esc(state.currentUser ? state.currentUser.username : "") + '</strong>.</p>' +
+          (state.error ? '<div class="aviso aviso-erro">' + esc(state.error) + '</div>' : '') +
+          '<form id="form-troca">' +
+            '<div class="campo">' +
+              '<label for="senha-nova">Nova senha</label>' +
+              '<input type="password" id="senha-nova" autocomplete="new-password" placeholder="Mínimo de 6 caracteres">' +
+            '</div>' +
+            '<div class="campo">' +
+              '<label for="senha-confirma">Repita a nova senha</label>' +
+              '<input type="password" id="senha-confirma" autocomplete="new-password" placeholder="Digite novamente">' +
+            '</div>' +
+            '<button type="submit" class="btn btn-principal">Salvar e continuar</button>' +
+          '</form>' +
+          '<div class="rodape-form"><button class="link" id="sair-troca">Sair sem salvar</button></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function shell(nav, cabecalho, conteudo){
+    return '' +
+    '<div class="shell">' +
+      '<aside class="trilho">' +
+        marca(true) +
+        '<nav class="trilho-nav">' + nav + '</nav>' +
+        '<div class="trilho-pe">NexAcesso<br>' + (db ? "Conectado ao servidor" : "Modo local (sem servidor)") + '</div>' +
+      '</aside>' +
+      '<div class="principal">' +
+        '<header class="cabecalho">' + cabecalho + '</header>' +
+        '<div class="conteudo">' + conteudo + '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function itemNav(id, rotulo, icone, atributo, ativo){
+    return '<button ' + atributo + '="' + id + '" class="' + (ativo ? "on" : "") + '">' + icone + rotulo + '</button>';
+  }
+
+  /* ---------- painel do usuário ---------- */
+
+  function telaPainel(){
+    var u = state.currentUser || {};
+    var nav =
+      itemNav("inicio", "Início", IC_INICIO, "data-painel", state.painelAba === "inicio") +
+      itemNav("conta", "Minha conta", IC_CONTA, "data-painel", state.painelAba === "conta");
+
+    var cabecalho =
+      '<div><h1>' + (state.painelAba === "inicio" ? "Início" : "Minha conta") + '</h1>' +
+      '<div class="sub">' + (state.painelAba === "inicio" ? "Área de trabalho do NexAcesso" : "Seus dados de acesso") + '</div></div>' +
+      '<div class="usuario-chip">' +
+        '<span class="usuario-nome">' + esc(u.username || "") + '</span>' +
+        (podeEditar() ? '<span class="selo selo-edicao">Edição</span>' : '<span class="selo selo-leitura">Leitura</span>') +
+        '<button class="btn btn-neutro btn-mini" id="sair">Sair</button>' +
+      '</div>';
+
+    var conteudo;
+    if(state.painelAba === "conta"){
+      conteudo =
+        '<div class="cartao">' +
+          '<h2>Dados de acesso</h2>' +
+          '<p class="apoio">Para alterar usuário, CPF ou nível de acesso, fale com a administração.</p>' +
+          '<div class="linha-dado"><span>Usuário</span><span>' + esc(u.username || "") + '</span></div>' +
+          '<div class="linha-dado"><span>CPF</span><span class="mono">' + esc(formatCPF(u.cpf)) + '</span></div>' +
+          '<div class="linha-dado"><span>Nível de acesso</span><span>' + (podeEditar() ? "Edição completa" : "Somente leitura") + '</span></div>' +
+          '<div class="linha-dado"><span>Acesso anterior</span><span>' + esc(u.previousLogin ? dataHora(u.previousLogin) : "Este é o primeiro") + '</span></div>' +
+          '<div class="linha-dado"><span>Criado em</span><span>' + esc(dataHora(u.createdAt)) + '</span></div>' +
+        '</div>' +
+        '<div class="cartao">' +
+          '<h2>Trocar senha</h2>' +
+          '<p class="apoio">A nova senha passa a valer no próximo acesso.</p>' +
+          '<div id="troca-feedback"></div>' +
+          '<div class="grade-2">' +
+            '<div class="campo"><label for="conta-senha1">Nova senha</label><input type="password" id="conta-senha1" placeholder="Mínimo de 6 caracteres"></div>' +
+            '<div class="campo"><label for="conta-senha2">Repita a nova senha</label><input type="password" id="conta-senha2" placeholder="Digite novamente"></div>' +
+          '</div>' +
+          '<button class="btn btn-principal" style="width:auto;" id="conta-salvar-senha">Salvar nova senha</button>' +
+        '</div>';
+    } else {
+      conteudo =
+        '<div class="cartao">' +
+          '<h2>Bem-vindo, ' + esc(u.username || "") + '</h2>' +
+          '<p class="apoio">Este é o espaço de trabalho do app. Os módulos entram aqui.</p>' +
+          '<div class="vazio">Nada publicado ainda nesta área.</div>' +
+        '</div>';
+    }
+
+    return shell(nav, cabecalho, conteudo);
+  }
+
+  /* ---------- administração ---------- */
+
+  function telaAdmin(){
+    var nav =
+      itemNav("usuarios", "Usuários", IC_PESSOAS, "data-admin", state.adminAba === "usuarios") +
+      itemNav("registro", "Registro", IC_REGISTRO, "data-admin", state.adminAba === "registro");
+
+    var cabecalho =
+      '<div><h1>' + (state.adminAba === "usuarios" ? "Usuários e acessos" : "Registro de atividade") + '</h1>' +
+      '<div class="sub">' + (state.adminAba === "usuarios"
+        ? state.users.length + " acesso(s) cadastrado(s)"
+        : "O que a administração fez no sistema") + '</div></div>' +
+      '<div class="usuario-chip"><span class="usuario-nome">Administração</span>' +
+        '<button class="btn btn-neutro btn-mini" id="sair">Sair</button></div>';
+
+    return shell(nav, cabecalho, state.adminAba === "registro" ? blocoRegistro() : blocoUsuarios());
+  }
+
+  function blocoUsuarios(){
+    var linhas = state.users.map(function(u){
+      var status = u.active
+        ? '<span class="selo selo-ativo">Ativo</span>'
+        : '<span class="selo selo-inativo">Inativo</span>';
+      if(u.tempPassword) status += '<span class="selo selo-temp">Senha temporária</span>';
+      var nivel = (u.canEdit !== false)
+        ? '<span class="selo selo-edicao">Edição</span>'
+        : '<span class="selo selo-leitura">Leitura</span>';
+      return '<tr>' +
+        '<td><strong>' + esc(u.username) + '</strong><div class="mono">' + esc(formatCPF(u.cpf)) + '</div></td>' +
+        '<td>' + nivel + '</td>' +
+        '<td>' + status + '</td>' +
+        '<td class="mono">' + esc(u.lastLogin ? dataHora(u.lastLogin) : "nunca entrou") + '</td>' +
+        '<td><div class="acoes">' +
+          '<button class="btn btn-neutro btn-mini" data-acao="nivel" data-alvo="' + esc(u.username) + '">' +
+            ((u.canEdit !== false) ? "Passar para leitura" : "Dar edição") + '</button>' +
+          '<button class="btn btn-sage btn-mini" data-acao="resetar" data-alvo="' + esc(u.username) + '">Nova senha</button>' +
+          '<button class="btn ' + (u.active ? "btn-risco" : "btn-sage") + ' btn-mini" data-acao="status" data-alvo="' + esc(u.username) + '">' +
+            (u.active ? "Inativar" : "Ativar") + '</button>' +
+        '</div></td>' +
+      '</tr>';
+    }).join("");
+
+    return '' +
+    '<div class="cartao">' +
+      '<h2>Criar acesso</h2>' +
+      '<p class="apoio">Você define o usuário; a senha é gerada aqui e trocada pela pessoa no primeiro acesso.</p>' +
+      (state.error ? '<div class="aviso aviso-erro">' + esc(state.error) + '</div>' : '') +
+      '<form id="form-novo">' +
+        '<div class="grade-3">' +
+          '<div class="campo"><label for="novo-usuario">Usuário</label>' +
+            '<input type="text" id="novo-usuario" autocapitalize="none" placeholder="nome.sobrenome"></div>' +
+          '<div class="campo"><label for="novo-cpf">CPF</label>' +
+            '<input type="text" id="novo-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>' +
+          '<div class="campo"><label for="novo-nivel">Nível de acesso</label>' +
+            '<select id="novo-nivel"><option value="edit">Edição completa</option><option value="read">Somente leitura</option></select></div>' +
+        '</div>' +
+        '<button type="submit" class="btn btn-principal" style="width:auto;">Criar acesso</button>' +
+      '</form>' +
+      (state.ultimaCredencial ? blocoCredencial() : '') +
+    '</div>' +
+    '<div class="cartao">' +
+      '<h2>Acessos cadastrados</h2>' +
+      '<p class="apoio">Inativar bloqueia a entrada sem apagar o cadastro.</p>' +
+      (state.users.length === 0
+        ? '<div class="vazio">Nenhum acesso criado ainda. Comece pelo formulário acima.</div>'
+        : '<div class="rolagem"><table><thead><tr>' +
+            '<th>Usuário</th><th>Nível</th><th>Situação</th><th>Último acesso</th><th>Ações</th>' +
+          '</tr></thead><tbody>' + linhas + '</tbody></table></div>') +
+    '</div>';
+  }
+
+  function blocoCredencial(){
+    var c = state.ultimaCredencial;
+    return '' +
+    '<div class="credencial">' +
+      '<h3>Dados para entregar à pessoa</h3>' +
+      '<div class="cred-linha"><span>Usuário</span><b>' + esc(c.username) + '</b></div>' +
+      '<div class="cred-linha"><span>CPF</span><b>' + esc(formatCPF(c.cpf)) + '</b></div>' +
+      '<div class="cred-linha"><span>Nível</span><b>' + esc(c.nivel) + '</b></div>' +
+      '<div class="cred-linha"><span>Senha temporária</span>' +
+        '<span style="display:flex; align-items:center; gap:10px;"><b>' + esc(c.password) + '</b>' +
+        '<button class="btn btn-neutro btn-mini" id="copiar-credencial">Copiar tudo</button></span></div>' +
+      '<div class="cred-nota">Esta senha aparece só agora. Se ela se perder, gere uma nova pelo botão da tabela.</div>' +
+    '</div>';
+  }
+
+  function blocoRegistro(){
+    if(state.logs.length === 0){
+      return '<div class="cartao"><h2>Registro de atividade</h2>' +
+        '<p class="apoio">Cada criação, reset e mudança de acesso fica anotada aqui.</p>' +
+        '<div class="vazio">Nenhuma atividade registrada ainda.</div></div>';
+    }
+    var itens = state.logs.slice().reverse().map(function(l){
+      return '<li>' +
+        '<div class="registro-topo">' + esc(l.evento) + (l.alvo ? ' — ' + esc(l.alvo) : '') + '</div>' +
+        '<div class="registro-meta">' + esc(dataHora(l.em)) + ' · ' + esc(l.por || "—") + '</div>' +
+      '</li>';
+    }).join("");
+    return '<div class="cartao"><h2>Registro de atividade</h2>' +
+      '<p class="apoio">Últimas ' + state.logs.length + ' ações, da mais recente para a mais antiga.</p>' +
+      '<ul class="registro">' + itens + '</ul></div>';
+  }
+
+  /* =====================================================================
+     EVENTOS
+     ===================================================================== */
+
+  function ligarEventos(){
+    liga("form-login", "submit", entrar);
+    liga("ver-login", "click", function(){ verSenha("login-senha", this); });
+    liga("abrir-admin", "click", function(){ state.screen = "portaoAdmin"; state.error = ""; render(); });
+
+    liga("form-admin", "submit", entrarAdmin);
+    liga("ver-admin", "click", function(){ verSenha("admin-senha", this); });
+    liga("cancelar-admin", "click", function(){ state.screen = "login"; state.error = ""; render(); });
+
+    liga("form-troca", "submit", salvarSenhaInicial);
+    liga("sair-troca", "click", sair);
+    liga("sair", "click", sair);
+
+    liga("form-novo", "submit", criarAcesso);
+    liga("novo-cpf", "input", function(){ this.value = formatCPF(this.value); });
+    liga("copiar-credencial", "click", copiarCredencial);
+    liga("conta-salvar-senha", "click", trocarMinhaSenha);
+
+    cada("[data-painel]", function(b){
+      b.addEventListener("click", function(){ state.painelAba = b.getAttribute("data-painel"); render(); });
+    });
+    cada("[data-admin]", function(b){
+      b.addEventListener("click", function(){ state.adminAba = b.getAttribute("data-admin"); state.error = ""; render(); });
+    });
+    cada("[data-acao]", function(b){
+      b.addEventListener("click", function(){
+        var acao = b.getAttribute("data-acao");
+        var alvo = b.getAttribute("data-alvo");
+        if(acao === "nivel") mudarNivel(alvo);
+        else if(acao === "resetar") resetarSenha(alvo);
+        else if(acao === "status") mudarStatus(alvo);
+      });
+    });
+
+    var veu = document.getElementById("veu-admin");
+    if(veu) veu.addEventListener("click", function(e){
+      if(e.target === veu){ state.screen = "login"; state.error = ""; render(); }
+    });
+  }
+
+  function liga(id, evento, fn){
+    var el = document.getElementById(id);
+    if(el) el.addEventListener(evento, fn);
+  }
+  function cada(seletor, fn){
+    Array.prototype.forEach.call(document.querySelectorAll(seletor), fn);
+  }
+
+  function verSenha(id, btn){
+    var inp = document.getElementById(id);
+    if(!inp) return;
+    var mostrar = inp.type === "password";
+    inp.type = mostrar ? "text" : "password";
+    btn.innerHTML = olhoSVG(mostrar);
+    btn.setAttribute("aria-label", mostrar ? "Ocultar senha" : "Mostrar senha");
+  }
+
+  async function entrar(e){
+    e.preventDefault();
+    state.error = "";
+    var nome = (document.getElementById("login-usuario").value || "").trim();
+    var senha = document.getElementById("login-senha").value || "";
+
+    if(!nome || !senha){ state.error = "Preencha usuário e senha."; render(); return; }
+
+    var user = acharUsuario(nome);
+    if(!user || user.password !== senha){ state.error = "Usuário ou senha não conferem."; render(); return; }
+    if(!user.active){ state.error = "Este acesso está inativo. Fale com a administração."; render(); return; }
+
+    state.currentUser = user;
+    state.isAdmin = false;
+    state.painelAba = "inicio";
+
+    if(user.tempPassword){
+      state.screen = "trocaSenha";
+      render();
+      return;
+    }
+
+    user.previousLogin = user.lastLogin || "";
+    user.lastLogin = new Date().toISOString();
+    await salvarUsuarios();
+
+    state.screen = "painel";
+    render();
+  }
+
+  function entrarAdmin(e){
+    e.preventDefault();
+    var codigo = (document.getElementById("admin-codigo").value || "").trim();
+    var senha = document.getElementById("admin-senha").value || "";
+    if(codigo === ADMIN_CODE && senha === ADMIN_PASS){
+      state.isAdmin = true;
+      state.currentUser = null;
+      state.screen = "admin";
+      state.adminAba = "usuarios";
+      state.error = "";
+    } else {
+      state.error = "Código ou senha não conferem.";
+    }
+    render();
+  }
+
+  async function salvarSenhaInicial(e){
+    e.preventDefault();
+    state.error = "";
+    var s1 = document.getElementById("senha-nova").value || "";
+    var s2 = document.getElementById("senha-confirma").value || "";
+
+    if(s1.length < 6){ state.error = "A senha precisa de pelo menos 6 caracteres."; render(); return; }
+    if(s1 !== s2){ state.error = "As duas senhas estão diferentes."; render(); return; }
+
+    var user = acharUsuario(state.currentUser.username) || state.currentUser;
+    user.password = s1;
+    user.tempPassword = false;
+    user.previousLogin = "";
+    user.lastLogin = new Date().toISOString();
+    state.currentUser = user;
+
+    var ok = await salvarUsuarios();
+    if(!ok) return;
+    toast("Senha definida.");
+    state.painelAba = "inicio";
+    state.screen = "painel";
+    render();
+  }
+
+  async function trocarMinhaSenha(){
+    var feedback = document.getElementById("troca-feedback");
+    var s1 = document.getElementById("conta-senha1").value || "";
+    var s2 = document.getElementById("conta-senha2").value || "";
+
+    if(s1.length < 6){ feedback.innerHTML = '<div class="aviso aviso-erro">A senha precisa de pelo menos 6 caracteres.</div>'; return; }
+    if(s1 !== s2){ feedback.innerHTML = '<div class="aviso aviso-erro">As duas senhas estão diferentes.</div>'; return; }
+
+    var user = acharUsuario(state.currentUser.username);
+    if(!user){ feedback.innerHTML = '<div class="aviso aviso-erro">Este acesso não está mais disponível.</div>'; return; }
+    var anterior = user.password;
+    user.password = s1;
+    user.tempPassword = false;
+
+    var ok = await salvarUsuarios();
+    if(!ok){ user.password = anterior; return; }
+    toast("Senha alterada.");
+    render();
+  }
+
+  async function criarAcesso(e){
+    e.preventDefault();
+    state.error = "";
+    var nome = (document.getElementById("novo-usuario").value || "").trim();
+    var cpf = digitos(document.getElementById("novo-cpf").value || "");
+    var nivel = document.getElementById("novo-nivel").value;
+
+    if(!nome){ state.error = "Informe o nome de usuário."; render(); return; }
+    if(cpf.length !== 11){ state.error = "O CPF precisa ter 11 dígitos."; render(); return; }
+    if(acharUsuario(nome)){ state.error = "Já existe um acesso com esse usuário."; render(); return; }
+
+    var senha = gerarSenha();
+    state.users.push({
+      username:nome, cpf:cpf, password:senha,
+      tempPassword:true, active:true, canEdit: nivel === "edit",
+      createdAt:new Date().toISOString(), lastLogin:"", previousLogin:""
+    });
+
+    var ok = await salvarUsuarios();
+    if(!ok){ state.users.pop(); return; }
+
+    state.ultimaCredencial = {
+      username:nome, cpf:cpf, password:senha,
+      nivel: nivel === "edit" ? "Edição completa" : "Somente leitura"
+    };
+    registrar("Acesso criado", nome);
+    toast("Acesso criado.");
+    render();
+  }
+
+  function copiarCredencial(){
+    var c = state.ultimaCredencial;
+    if(!c) return;
+    copiar(
+      "NexAcesso\nUsuário: " + c.username +
+      "\nCPF: " + formatCPF(c.cpf) +
+      "\nNível: " + c.nivel +
+      "\nSenha temporária: " + c.password,
+      "Dados copiados."
+    );
+  }
+
+  async function resetarSenha(username){
+    var user = acharUsuario(username);
+    if(!user) return;
+    var senha = gerarSenha();
+    var anterior = { password:user.password, tempPassword:user.tempPassword };
+    user.password = senha;
+    user.tempPassword = true;
+
+    var ok = await salvarUsuarios();
+    if(!ok){ user.password = anterior.password; user.tempPassword = anterior.tempPassword; return; }
+
+    state.ultimaCredencial = {
+      username:user.username, cpf:user.cpf, password:senha,
+      nivel: (user.canEdit !== false) ? "Edição completa" : "Somente leitura"
+    };
+    registrar("Senha redefinida", user.username);
+    toast("Nova senha gerada.");
+    render();
+  }
+
+  async function mudarStatus(username){
+    var user = acharUsuario(username);
+    if(!user) return;
+    user.active = !user.active;
+    var ok = await salvarUsuarios();
+    if(!ok){ user.active = !user.active; return; }
+    registrar(user.active ? "Acesso ativado" : "Acesso inativado", user.username);
+    toast(user.active ? "Acesso ativado." : "Acesso inativado.");
+    render();
+  }
+
+  async function mudarNivel(username){
+    var user = acharUsuario(username);
+    if(!user) return;
+    user.canEdit = (user.canEdit === false);
+    var ok = await salvarUsuarios();
+    if(!ok){ user.canEdit = !user.canEdit; return; }
+    registrar(user.canEdit ? "Nível alterado para edição" : "Nível alterado para leitura", user.username);
+    toast(user.canEdit ? "Agora tem edição." : "Agora é só leitura.");
+    render();
+  }
+
+  function sair(){
+    state.currentUser = null;
+    state.isAdmin = false;
+    state.screen = "login";
+    state.painelAba = "inicio";
+    state.adminAba = "usuarios";
+    state.error = "";
+    state.ultimaCredencial = null;
+    render();
+  }
+
+  /* =====================================================================
+     INÍCIO
+     ===================================================================== */
+
+  sincronizarUsuarios();
+  sincronizarLogs();
+
+})();
+</script>
+</body>
+</html>
