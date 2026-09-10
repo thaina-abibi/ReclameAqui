@@ -252,6 +252,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script>
 (function(){
   "use strict";
@@ -836,16 +837,37 @@
   }
 
   async function entrar(e){
-    e.preventDefault();
-    state.error = "";
-    var nome = (document.getElementById("login-usuario").value || "").trim();
-    var senha = document.getElementById("login-senha").value || "";
+  if(e) e.preventDefault();
+  state.error = "";
+  
+  var nome = (document.getElementById("login-usuario").value || "").trim();
+  var senha = document.getElementById("login-senha").value || "";
 
-    if(!nome || !senha){ state.error = "Preencha usuário e senha."; render(); return; }
+  if(!nome || !senha){ 
+    state.error = "Preencha usuário e senha."; 
+    render(); 
+    return; 
+  }
+
+  // Define o e-mail para autenticação no Firebase Auth
+  var email = nome.includes("@") ? nome : nome + "@detran.sp.gov.br";
+
+  try {
+    // Autentica via Firebase Auth
+    await firebase.auth().signInWithEmailAndPassword(email, senha);
 
     var user = acharUsuario(nome);
-    if(!user || user.password !== senha){ state.error = "Usuário ou senha não conferem."; render(); return; }
-    if(!user.active){ state.error = "Este acesso está inativo. Fale com o perfil administrativo."; render(); return; }
+    if(!user){
+      state.error = "Acesso não encontrado na base local.";
+      render();
+      return;
+    }
+
+    if(!user.active){ 
+      state.error = "Este acesso está inativo. Fale com o perfil administrativo."; 
+      render(); 
+      return; 
+    }
 
     state.currentUser = user;
     state.painelAba = "inicio";
@@ -862,7 +884,12 @@
 
     state.screen = "painel";
     render();
+
+  } catch(error) {
+    state.error = "Usuário ou senha não conferem.";
+    render();
   }
+}
 
   async function criarPrimeiroAcesso(e){
     e.preventDefault();
