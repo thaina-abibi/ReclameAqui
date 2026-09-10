@@ -849,46 +849,65 @@
     return; 
   }
 
-  // Define o e-mail para autenticação no Firebase Auth
-  var email = nome.includes("@") ? nome : nome + "@detran.sp.gov.br";
+  // Se o usuário digitou o e-mail completo, usa direto.
+  // Se digitou só o nome, cria as duas opções de e-mail.
+  var listaEmails = [];
+  if(nome.includes("@")){
+    listaEmails.push(nome);
+  } else {
+    listaEmails.push(nome + "@apoiodetran.sp.gov.br");
+    listaEmails.push(nome + "@detran.sp.gov.br");
+  }
 
+  // Tenta autenticar com a primeira opção
   try {
-    // Autentica via Firebase Auth
-    await firebase.auth().signInWithEmailAndPassword(email, senha);
-
-    var user = acharUsuario(nome);
-    if(!user){
-      state.error = "Acesso não encontrado na base local.";
-      render();
-      return;
-    }
-
-    if(!user.active){ 
-      state.error = "Este acesso está inativo. Fale com o perfil administrativo."; 
-      render(); 
-      return; 
-    }
-
-    state.currentUser = user;
-    state.painelAba = "inicio";
-
-    if(user.tempPassword){
-      state.screen = "trocaSenha";
-      render();
-      return;
-    }
-
-    user.previousLogin = user.lastLogin || "";
-    user.lastLogin = new Date().toISOString();
-    await salvarUsuarios();
-
-    state.screen = "painel";
-    render();
-
+    await firebase.auth().signInWithEmailAndPassword(listaEmails[0], senha);
+    concluirLogin(nome);
   } catch(error) {
+    // Se digitou só o nome e a primeira falhou, tenta a segunda opção
+    if(listaEmails.length > 1){
+      try {
+        await firebase.auth().signInWithEmailAndPassword(listaEmails[1], senha);
+        concluirLogin(nome);
+        return;
+      } catch(err2){
+        // Falhou nas duas tentativas
+      }
+    }
     state.error = "Usuário ou senha não conferem.";
     render();
   }
+}
+
+async function concluirLogin(nome){
+  var user = acharUsuario(nome);
+  if(!user){
+    state.error = "Acesso não encontrado na base local.";
+    render();
+    return;
+  }
+
+  if(!user.active){ 
+    state.error = "Este acesso está inativo. Fale com o perfil administrativo."; 
+    render(); 
+    return; 
+  }
+
+  state.currentUser = user;
+  state.painelAba = "inicio";
+
+  if(user.tempPassword){
+    state.screen = "trocaSenha";
+    render();
+    return;
+  }
+
+  user.previousLogin = user.lastLogin || "";
+  user.lastLogin = new Date().toISOString();
+  await salvarUsuarios();
+
+  state.screen = "painel";
+  render();
 }
 
   async function criarPrimeiroAcesso(e){
