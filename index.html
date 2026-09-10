@@ -82,6 +82,8 @@
     .arte-texto{font-size:14px;}
     .arte-base{display:none;}
   }
+
+  /* ---------- formulário ---------- */
   .campo{margin-bottom:16px;}
   .campo label{display:block; font-size:13px; font-weight:500; color:var(--ink-soft); margin-bottom:6px;}
   .campo-linha{position:relative;}
@@ -133,6 +135,7 @@
   .aviso-erro{background:var(--rust-soft); border:1px solid #6b3129; color:#f2a99b;}
   .aviso-ok{background:var(--sage-soft); border:1px solid var(--sage); color:#a3e666;}
 
+  /* ---------- modal ---------- */
   .veu{
     position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:60;
     display:flex; align-items:center; justify-content:center; padding:20px;
@@ -144,6 +147,7 @@
   .modal h2{font-size:20px; margin-bottom:4px; color:var(--ink);}
   .modal .apoio{color:var(--ink-soft); font-size:13.5px; margin:0 0 20px;}
 
+  /* ---------- shell interno ---------- */
   .shell{display:grid; grid-template-columns:236px minmax(0,1fr); min-height:100vh;}
   .trilho{
     background:var(--olive-deep); color:#EDEBDC; padding:22px 16px;
@@ -187,6 +191,7 @@
   .grade-2{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px;}
   @media (max-width:700px){ .grade-3,.grade-2{grid-template-columns:1fr;} }
 
+  /* ---------- credencial gerada ---------- */
   .credencial{
     border:1px solid var(--gold); background:var(--amber-soft); border-radius:11px;
     padding:16px 18px; margin-top:18px;
@@ -196,6 +201,7 @@
   .cred-linha b{font-family:var(--font-mono); font-weight:600; font-size:14.5px; color:var(--amber-deep);}
   .cred-nota{font-size:12.5px; color:var(--ink-soft); margin-top:10px;}
 
+  /* ---------- tabela ---------- */
   .rolagem{overflow-x:auto;}
   table{width:100%; border-collapse:collapse; min-width:640px;}
   th{
@@ -358,6 +364,10 @@
     ta.remove();
   }
 
+  /* =====================================================================
+     PERSISTÊNCIA
+     ===================================================================== */
+
   function sincronizarUsuarios(){
     if(db){
       db.ref("usuarios").on("value", function(snap){
@@ -431,6 +441,10 @@
     if(state.isAdmin) return true;
     return !!(state.currentUser && state.currentUser.canEdit !== false);
   }
+
+  /* =====================================================================
+     RENDER
+     ===================================================================== */
 
   function render(){
     if(!state.booted){
@@ -566,6 +580,8 @@
   function itemNav(id, rotulo, icone, atributo, ativo){
     return '<button ' + atributo + '="' + id + '" class="' + (ativo ? "on" : "") + '">' + icone + rotulo + '</button>';
   }
+
+  /* ---------- painel do usuário ---------- */
 
   function telaPainel(){
     var u = state.currentUser || {};
@@ -718,6 +734,10 @@
       '<p class="apoio">Últimas ' + state.logs.length + ' ações, da mais recente para a mais antiga.</p>' +
       '<ul class="registro">' + itens + '</ul></div>';
   }
+
+  /* =====================================================================
+     EVENTOS
+     ===================================================================== */
 
   function ligarEventos(){
     liga("form-login", "submit", entrar);
@@ -960,6 +980,10 @@
     state.ultimaCredencial = null;
     render();
   }
+
+  /* =====================================================================
+     INÍCIO
+     ===================================================================== */
 
   sincronizarUsuarios();
   sincronizarLogs();
