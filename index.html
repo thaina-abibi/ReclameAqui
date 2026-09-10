@@ -138,18 +138,6 @@
   .aviso-erro{background:var(--rust-soft); border:1px solid #6b3129; color:#f2a99b;}
   .aviso-ok{background:var(--sage-soft); border:1px solid var(--sage); color:#a3e666;}
 
-  /* ---------- modal ---------- */
-  .veu{
-    position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:60;
-    display:flex; align-items:center; justify-content:center; padding:20px;
-  }
-  .modal{
-    background:var(--surface); border-radius:14px; width:100%; max-width:380px;
-    padding:26px 26px 22px; box-shadow:0 24px 60px rgba(0,0,0,0.5); border:1px solid var(--line);
-  }
-  .modal h2{font-size:20px; margin-bottom:4px; color:var(--ink);}
-  .modal .apoio{color:var(--ink-soft); font-size:13.5px; margin:0 0 20px;}
-
   /* ---------- shell interno ---------- */
   .shell{display:grid; grid-template-columns:236px minmax(0,1fr); min-height:100vh;}
   .trilho{
@@ -194,6 +182,16 @@
   .grade-2{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px;}
   @media (max-width:700px){ .grade-3,.grade-2{grid-template-columns:1fr;} }
 
+  /* ---------- manutenção ---------- */
+  .manutencao{
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    min-height:min(58vh,420px); padding:30px 18px;
+  }
+  .manutencao p{
+    font-family:var(--font-display); font-weight:600; letter-spacing:-0.02em;
+    font-size:clamp(20px,3.2vw,30px); line-height:1.3; color:var(--ink); margin:0;
+  }
+
   /* ---------- credencial gerada ---------- */
   .credencial{
     border:1px solid var(--gold); background:var(--amber-soft); border-radius:11px;
@@ -215,6 +213,7 @@
   tr:last-child td{border-bottom:none;}
   .mono{font-family:var(--font-mono); font-size:13px; color:var(--ink-soft);}
   .acoes{display:flex; gap:7px; flex-wrap:wrap;}
+  .voce{font-size:12.5px; color:var(--ink-soft);}
 
   .selo{display:inline-flex; align-items:center; gap:5px; border-radius:100px; padding:3px 10px; font-size:12px; font-weight:500; white-space:nowrap;}
   .selo-ativo{background:var(--sage-soft); color:#a3e666; border:1px solid var(--sage);}
@@ -258,9 +257,6 @@
   "use strict";
   var FIREBASE_URL = "https://reclameaqui-7cf38-default-rtdb.firebaseio.com/";
 
-  var ADMIN_CODE = "RADETRAN";
-  var ADMIN_PASS = "ADMINRA";
-
   /* Logo: arquivo Reclame.png na mesma pasta deste HTML.
      Se preferir carregar direto do GitHub, troque por:
      "https://raw.githubusercontent.com/SEU-USUARIO/SEU-REPO/main/Reclame.png" */
@@ -274,15 +270,14 @@
     firebase.initializeApp({ databaseURL: FIREBASE_URL });
     db = firebase.database();
   }
+
   var state = {
     booted:false,
     users:[],
     logs:[],
-    screen:"login",       
-    adminAba:"usuarios",  
-    painelAba:"inicio",    
+    screen:"login",      /* login | trocaSenha | painel */
+    painelAba:"inicio",  /* inicio | usuarios | registro | conta */
     currentUser:null,
-    isAdmin:false,
     error:"",
     ok:"",
     ultimaCredencial:null
@@ -301,7 +296,7 @@
       : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17.9 17.9A10.7 10.7 0 0 1 12 19.5c-6.5 0-10.5-6.5-10.5-6.5a20 20 0 0 1 4.9-5.6M9.9 4.8A10.4 10.4 0 0 1 12 4.5c6.5 0 10.5 6.5 10.5 6.5a20 20 0 0 1-3.1 4.2M14.1 14.1A3 3 0 1 1 9.9 9.9"/><line x1="2" y1="2" x2="22" y2="22"/></svg>';
   }
 
-  function marca(escuro){
+  function marca(){
     return '<div class="mark">' +
       '<img class="mark-logo" src="' + LOGO_URL + '" alt="Reclame Aqui Detran-SP" decoding="async">' +
     '</div>';
@@ -338,7 +333,6 @@
   }
 
   function autor(){
-    if(state.isAdmin) return "Administração";
     return (state.currentUser && state.currentUser.username) || "Sistema";
   }
 
@@ -371,6 +365,32 @@
   }
 
   /* =====================================================================
+     PERFIS
+     Administrativo = canEdit true  → gerencia acessos
+     Colaborativo   = canEdit false → somente leitura
+     ===================================================================== */
+
+  function ehAdministrativo(user){
+    var u = user || state.currentUser;
+    return !!(u && u.canEdit !== false);
+  }
+
+  function nomePerfil(user){
+    return ehAdministrativo(user) ? "Administrativo" : "Colaborativo";
+  }
+
+  function seloPerfil(user){
+    return ehAdministrativo(user)
+      ? '<span class="selo selo-edicao">Administrativo</span>'
+      : '<span class="selo selo-leitura">Colaborativo</span>';
+  }
+
+  function ehVoce(username){
+    return !!(state.currentUser &&
+      (state.currentUser.username||"").toLowerCase() === (username||"").toLowerCase());
+  }
+
+  /* =====================================================================
      PERSISTÊNCIA
      ===================================================================== */
 
@@ -378,11 +398,13 @@
     if(db){
       db.ref("usuarios").on("value", function(snap){
         state.users = toArray(snap.val());
+        state.booted = true;
         if(state.currentUser){
           var atual = acharUsuario(state.currentUser.username);
-          if(atual) state.currentUser = atual;
+          if(!atual){ sair(); return; }
+          if(!atual.active){ state.error = "Este acesso foi inativado."; sair(); return; }
+          state.currentUser = atual;
         }
-        state.booted = true;
         if(digitandoNoFormulario()) return;
         render();
       });
@@ -407,7 +429,7 @@
     if(db){
       db.ref("registro").on("value", function(snap){
         state.logs = toArray(snap.val());
-        if(state.screen === "admin" && state.adminAba === "registro") render();
+        if(state.screen === "painel" && state.painelAba === "registro") render();
       });
     } else {
       try { state.logs = JSON.parse(localStorage.getItem(LS_LOGS) || "[]"); }
@@ -431,8 +453,12 @@
   }
 
   function digitandoNoFormulario(){
-    var campo = document.getElementById("novo-usuario");
-    return !!(campo && campo.value);
+    var ids = ["novo-usuario","primeiro-usuario","login-usuario"];
+    for(var i=0;i<ids.length;i++){
+      var campo = document.getElementById(ids[i]);
+      if(campo && campo.value) return true;
+    }
+    return false;
   }
 
   function acharUsuario(username){
@@ -441,11 +467,6 @@
       if((state.users[i].username||"").toLowerCase() === u) return state.users[i];
     }
     return null;
-  }
-
-  function podeEditar(){
-    if(state.isAdmin) return true;
-    return !!(state.currentUser && state.currentUser.canEdit !== false);
   }
 
   /* =====================================================================
@@ -461,20 +482,41 @@
     var html;
     if(state.screen === "trocaSenha") html = telaTrocaSenha();
     else if(state.screen === "painel") html = telaPainel();
-    else if(state.screen === "admin") html = telaAdmin();
     else html = telaLogin();
-
-    if(state.screen === "portaoAdmin") html = telaLogin() + modalPortaoAdmin();
 
     app.innerHTML = html;
     ligarEventos();
   }
 
   function telaLogin(){
+    var semUsuarios = state.users.length === 0;
+
+    var formulario = semUsuarios ? blocoPrimeiroAcesso() :
+      '<h1>Entrar</h1>' +
+      '<p class="apoio">Use o usuário e a senha que você recebeu do perfil administrativo.</p>' +
+      (state.error ? '<div class="aviso aviso-erro">' + esc(state.error) + '</div>' : '') +
+      '<form id="form-login">' +
+        '<div class="campo">' +
+          '<label for="login-usuario">Usuário</label>' +
+          '<input type="text" id="login-usuario" autocomplete="username" autocapitalize="none" placeholder="nome.sobrenome">' +
+        '</div>' +
+        '<div class="campo">' +
+          '<label for="login-senha">Senha</label>' +
+          '<div class="campo-linha">' +
+            '<input type="password" id="login-senha" autocomplete="current-password" placeholder="Sua senha">' +
+            '<button type="button" class="olho" id="ver-login" aria-label="Mostrar senha">' + olhoSVG(false) + '</button>' +
+          '</div>' +
+        '</div>' +
+        '<button type="submit" class="btn btn-principal">Entrar</button>' +
+      '</form>' +
+      '<div class="rodape-form">' +
+        '<span>Esqueceu a senha? Peça uma nova a quem tem perfil administrativo.</span>' +
+      '</div>';
+
     return '' +
     '<div class="entrada">' +
       '<div class="entrada-arte">' +
-        '<div class="arte-topo">' + marca(true) + '</div>' +
+        '<div class="arte-topo">' + marca() + '</div>' +
         '<div class="arte-topo">' +
           '<h2 class="arte-titulo"><span>ReclameAqui</span>Detran-SP</h2>' +
           '<p class="arte-texto">Ambiente restrito da equipe do Reclame Aqui do Detran-SP.</p>' +
@@ -482,64 +524,47 @@
         '<div class="arte-base">BASE · uso interno</div>' +
       '</div>' +
       '<div class="entrada-form">' +
-        '<div class="form-bloco">' +
-          '<h1>Entrar</h1>' +
-          '<p class="apoio">Use o usuário e a senha que você recebeu da administração.</p>' +
-          (state.error && state.screen === "login" ? '<div class="aviso aviso-erro">' + esc(state.error) + '</div>' : '') +
-          '<form id="form-login">' +
-            '<div class="campo">' +
-              '<label for="login-usuario">Usuário</label>' +
-              '<input type="text" id="login-usuario" autocomplete="username" autocapitalize="none" placeholder="nome.sobrenome">' +
-            '</div>' +
-            '<div class="campo">' +
-              '<label for="login-senha">Senha</label>' +
-              '<div class="campo-linha">' +
-                '<input type="password" id="login-senha" autocomplete="current-password" placeholder="Sua senha">' +
-                '<button type="button" class="olho" id="ver-login" aria-label="Mostrar senha">' + olhoSVG(false) + '</button>' +
-              '</div>' +
-            '</div>' +
-            '<button type="submit" class="btn btn-principal">Entrar</button>' +
-          '</form>' +
-          '<div class="rodape-form">' +
-            '<span>Esqueceu a senha? Peça um novo acesso à administração.</span>' +
-            '<button class="link" id="abrir-admin">Acesso administrativo</button>' +
-          '</div>' +
-        '</div>' +
+        '<div class="form-bloco">' + formulario + '</div>' +
       '</div>' +
     '</div>';
   }
 
-  function modalPortaoAdmin(){
+  /* Aparece apenas enquanto não existe nenhum acesso cadastrado.
+     Serve para criar o primeiro perfil administrativo sem senha fixa no código. */
+  function blocoPrimeiroAcesso(){
     return '' +
-    '<div class="veu" id="veu-admin">' +
-      '<div class="modal">' +
-        '<h2>Área administrativa</h2>' +
-        '<p class="apoio">Informe o código e a senha da administração.</p>' +
-        (state.error ? '<div class="aviso aviso-erro">' + esc(state.error) + '</div>' : '') +
-        '<form id="form-admin">' +
-          '<div class="campo">' +
-            '<label for="admin-codigo">Código</label>' +
-            '<input type="text" id="admin-codigo" autocomplete="off" autocapitalize="characters" placeholder="Código de acesso">' +
+      '<h1>Criar o primeiro acesso</h1>' +
+      '<p class="apoio">Ainda não existe nenhum acesso cadastrado. O primeiro é criado com perfil administrativo e este formulário some depois disso.</p>' +
+      (state.error ? '<div class="aviso aviso-erro">' + esc(state.error) + '</div>' : '') +
+      '<form id="form-primeiro">' +
+        '<div class="campo">' +
+          '<label for="primeiro-usuario">Usuário</label>' +
+          '<input type="text" id="primeiro-usuario" autocapitalize="none" autocomplete="username" placeholder="nome.sobrenome">' +
+        '</div>' +
+        '<div class="campo">' +
+          '<label for="primeiro-cpf">CPF</label>' +
+          '<input type="text" id="primeiro-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00">' +
+        '</div>' +
+        '<div class="campo">' +
+          '<label for="primeiro-senha">Senha</label>' +
+          '<div class="campo-linha">' +
+            '<input type="password" id="primeiro-senha" autocomplete="new-password" placeholder="Mínimo de 6 caracteres">' +
+            '<button type="button" class="olho" id="ver-primeiro" aria-label="Mostrar senha">' + olhoSVG(false) + '</button>' +
           '</div>' +
-          '<div class="campo">' +
-            '<label for="admin-senha">Senha</label>' +
-            '<div class="campo-linha">' +
-              '<input type="password" id="admin-senha" autocomplete="off" placeholder="Senha administrativa">' +
-              '<button type="button" class="olho" id="ver-admin" aria-label="Mostrar senha">' + olhoSVG(false) + '</button>' +
-            '</div>' +
-          '</div>' +
-          '<button type="submit" class="btn btn-principal">Entrar</button>' +
-          '<button type="button" class="btn btn-neutro btn-largo" id="cancelar-admin" style="margin-top:10px;">Voltar</button>' +
-        '</form>' +
-      '</div>' +
-    '</div>';
+        '</div>' +
+        '<div class="campo">' +
+          '<label for="primeiro-senha2">Repita a senha</label>' +
+          '<input type="password" id="primeiro-senha2" autocomplete="new-password" placeholder="Digite novamente">' +
+        '</div>' +
+        '<button type="submit" class="btn btn-principal">Criar acesso administrativo</button>' +
+      '</form>';
   }
 
   function telaTrocaSenha(){
     return '' +
     '<div class="entrada">' +
       '<div class="entrada-arte">' +
-        '<div class="arte-topo">' + marca(true) + '</div>' +
+        '<div class="arte-topo">' + marca() + '</div>' +
         '<div class="arte-topo">' +
           '<h2 class="arte-titulo">Primeiro<span>acesso</span></h2>' +
           '<p class="arte-texto">A senha que você recebeu é temporária e só serve para esta primeira entrada.</p>' +
@@ -572,7 +597,7 @@
     return '' +
     '<div class="shell">' +
       '<aside class="trilho">' +
-        marca(true) +
+        marca() +
         '<nav class="trilho-nav">' + nav + '</nav>' +
         '<div class="trilho-pe">RA Detran-SP<br>' + (db ? "Conectado ao servidor" : "Modo local (sem servidor)") + '</div>' +
       '</aside>' +
@@ -583,78 +608,87 @@
     '</div>';
   }
 
-  function itemNav(id, rotulo, icone, atributo, ativo){
-    return '<button ' + atributo + '="' + id + '" class="' + (ativo ? "on" : "") + '">' + icone + rotulo + '</button>';
+  function itemNav(id, rotulo, icone, ativo){
+    return '<button data-painel="' + id + '" class="' + (ativo ? "on" : "") + '">' + icone + rotulo + '</button>';
   }
 
-  /* ---------- painel do usuário ---------- */
+  /* ---------- painel ---------- */
+
+  var TITULOS = {
+    inicio:   { titulo:"Início",              sub:"Área de trabalho do RA Detran-SP" },
+    usuarios: { titulo:"Usuários e acessos",  sub:"" },
+    registro: { titulo:"Registro de atividade", sub:"O que foi feito no sistema" },
+    conta:    { titulo:"Minha conta",         sub:"Seus dados de acesso" }
+  };
 
   function telaPainel(){
     var u = state.currentUser || {};
-    var nav =
-      itemNav("inicio", "Início", IC_INICIO, "data-painel", state.painelAba === "inicio") +
-      itemNav("conta", "Minha conta", IC_CONTA, "data-painel", state.painelAba === "conta");
+    var admin = ehAdministrativo(u);
+
+    if(!admin && (state.painelAba === "usuarios" || state.painelAba === "registro")){
+      state.painelAba = "inicio";
+    }
+
+    var nav = itemNav("inicio", "Início", IC_INICIO, state.painelAba === "inicio");
+    if(admin){
+      nav += itemNav("usuarios", "Usuários", IC_PESSOAS, state.painelAba === "usuarios");
+      nav += itemNav("registro", "Registro", IC_REGISTRO, state.painelAba === "registro");
+    }
+    nav += itemNav("conta", "Minha conta", IC_CONTA, state.painelAba === "conta");
+
+    var t = TITULOS[state.painelAba] || TITULOS.inicio;
+    var sub = state.painelAba === "usuarios"
+      ? state.users.length + " acesso(s) cadastrado(s)"
+      : t.sub;
 
     var cabecalho =
-      '<div><h1>' + (state.painelAba === "inicio" ? "Início" : "Minha conta") + '</h1>' +
-      '<div class="sub">' + (state.painelAba === "inicio" ? "Área de trabalho do RA Detran-SP" : "Seus dados de acesso") + '</div></div>' +
+      '<div><h1>' + esc(t.titulo) + '</h1><div class="sub">' + esc(sub) + '</div></div>' +
       '<div class="usuario-chip">' +
         '<span class="usuario-nome">' + esc(u.username || "") + '</span>' +
-        (podeEditar() ? '<span class="selo selo-edicao">Edição</span>' : '<span class="selo selo-leitura">Leitura</span>') +
+        seloPerfil(u) +
         '<button class="btn btn-neutro btn-mini" id="sair">Sair</button>' +
       '</div>';
 
     var conteudo;
-    if(state.painelAba === "conta"){
-      conteudo =
-        '<div class="cartao">' +
-          '<h2>Dados de acesso</h2>' +
-          '<p class="apoio">Para alterar usuário, CPF ou nível de acesso, fale com a administração.</p>' +
-          '<div class="linha-dado"><span>Usuário</span><span>' + esc(u.username || "") + '</span></div>' +
-          '<div class="linha-dado"><span>CPF</span><span class="mono">' + esc(formatCPF(u.cpf)) + '</span></div>' +
-          '<div class="linha-dado"><span>Nível de acesso</span><span>' + (podeEditar() ? "Edição completa" : "Somente leitura") + '</span></div>' +
-          '<div class="linha-dado"><span>Acesso anterior</span><span>' + esc(u.previousLogin ? dataHora(u.previousLogin) : "Este é o primeiro") + '</span></div>' +
-          '<div class="linha-dado"><span>Criado em</span><span>' + esc(dataHora(u.createdAt)) + '</span></div>' +
-        '</div>' +
-        '<div class="cartao">' +
-          '<h2>Trocar senha</h2>' +
-          '<p class="apoio">A nova senha passa a valer no próximo acesso.</p>' +
-          '<div id="troca-feedback"></div>' +
-          '<div class="grade-2">' +
-            '<div class="campo"><label for="conta-senha1">Nova senha</label><input type="password" id="conta-senha1" placeholder="Mínimo de 6 caracteres"></div>' +
-            '<div class="campo"><label for="conta-senha2">Repita a nova senha</label><input type="password" id="conta-senha2" placeholder="Digite novamente"></div>' +
-          '</div>' +
-          '<button class="btn btn-principal" style="width:auto;" id="conta-salvar-senha">Salvar nova senha</button>' +
-        '</div>';
-    } else {
-      conteudo =
-        '<div class="cartao">' +
-          '<h2>Bem-vindo, ' + esc(u.username || "") + '</h2>' +
-          '<p class="apoio">Este é o espaço de trabalho do app. Os módulos entram aqui.</p>' +
-          '<div class="vazio">Nada publicado ainda nesta área.</div>' +
-        '</div>';
-    }
+    if(state.painelAba === "conta") conteudo = blocoConta(u);
+    else if(state.painelAba === "usuarios" && admin) conteudo = blocoUsuarios();
+    else if(state.painelAba === "registro" && admin) conteudo = blocoRegistro();
+    else conteudo = blocoInicio();
 
     return shell(nav, cabecalho, conteudo);
   }
 
-  /* ---------- administração ---------- */
-
-  function telaAdmin(){
-    var nav =
-      itemNav("usuarios", "Usuários", IC_PESSOAS, "data-admin", state.adminAba === "usuarios") +
-      itemNav("registro", "Registro", IC_REGISTRO, "data-admin", state.adminAba === "registro");
-
-    var cabecalho =
-      '<div><h1>' + (state.adminAba === "usuarios" ? "Usuários e acessos" : "Registro de atividade") + '</h1>' +
-      '<div class="sub">' + (state.adminAba === "usuarios"
-        ? state.users.length + " acesso(s) cadastrado(s)"
-        : "O que a administração fez no sistema") + '</div></div>' +
-      '<div class="usuario-chip"><span class="usuario-nome">Administração</span>' +
-        '<button class="btn btn-neutro btn-mini" id="sair">Sair</button></div>';
-
-    return shell(nav, cabecalho, state.adminAba === "registro" ? blocoRegistro() : blocoUsuarios());
+  function blocoInicio(){
+    return '' +
+      '<div class="cartao">' +
+        '<div class="manutencao"><p>Pagina em manutenção 🛠️ - Aguarde ...</p></div>' +
+      '</div>';
   }
+
+  function blocoConta(u){
+    return '' +
+      '<div class="cartao">' +
+        '<h2>Dados de acesso</h2>' +
+        '<p class="apoio">Para alterar usuário, CPF ou perfil, fale com alguém do perfil administrativo.</p>' +
+        '<div class="linha-dado"><span>Usuário</span><span>' + esc(u.username || "") + '</span></div>' +
+        '<div class="linha-dado"><span>CPF</span><span class="mono">' + esc(formatCPF(u.cpf)) + '</span></div>' +
+        '<div class="linha-dado"><span>Perfil</span><span>' + esc(nomePerfil(u)) + '</span></div>' +
+        '<div class="linha-dado"><span>Acesso anterior</span><span>' + esc(u.previousLogin ? dataHora(u.previousLogin) : "Este é o primeiro") + '</span></div>' +
+        '<div class="linha-dado"><span>Criado em</span><span>' + esc(dataHora(u.createdAt)) + '</span></div>' +
+      '</div>' +
+      '<div class="cartao">' +
+        '<h2>Trocar senha</h2>' +
+        '<p class="apoio">A nova senha passa a valer no próximo acesso.</p>' +
+        '<div id="troca-feedback"></div>' +
+        '<div class="grade-2">' +
+          '<div class="campo"><label for="conta-senha1">Nova senha</label><input type="password" id="conta-senha1" placeholder="Mínimo de 6 caracteres"></div>' +
+          '<div class="campo"><label for="conta-senha2">Repita a nova senha</label><input type="password" id="conta-senha2" placeholder="Digite novamente"></div>' +
+        '</div>' +
+        '<button class="btn btn-principal" style="width:auto;" id="conta-salvar-senha">Salvar nova senha</button>' +
+      '</div>';
+  }
+
+  /* ---------- gestão de acessos (perfil administrativo) ---------- */
 
   function blocoUsuarios(){
     var linhas = state.users.map(function(u){
@@ -662,21 +696,22 @@
         ? '<span class="selo selo-ativo">Ativo</span>'
         : '<span class="selo selo-inativo">Inativo</span>';
       if(u.tempPassword) status += '<span class="selo selo-temp">Senha temporária</span>';
-      var nivel = (u.canEdit !== false)
-        ? '<span class="selo selo-edicao">Edição</span>'
-        : '<span class="selo selo-leitura">Leitura</span>';
-      return '<tr>' +
-        '<td><strong>' + esc(u.username) + '</strong><div class="mono">' + esc(formatCPF(u.cpf)) + '</div></td>' +
-        '<td>' + nivel + '</td>' +
-        '<td>' + status + '</td>' +
-        '<td class="mono">' + esc(u.lastLogin ? dataHora(u.lastLogin) : "nunca entrou") + '</td>' +
-        '<td><div class="acoes">' +
-          '<button class="btn btn-neutro btn-mini" data-acao="nivel" data-alvo="' + esc(u.username) + '">' +
-            ((u.canEdit !== false) ? "Passar para leitura" : "Dar edição") + '</button>' +
+
+      var acoes = ehVoce(u.username)
+        ? '<button class="btn btn-sage btn-mini" data-acao="resetar" data-alvo="' + esc(u.username) + '">Nova senha</button>' +
+          '<span class="voce">Seu próprio acesso</span>'
+        : '<button class="btn btn-neutro btn-mini" data-acao="perfil" data-alvo="' + esc(u.username) + '">' +
+            (ehAdministrativo(u) ? "Passar para colaborativo" : "Tornar administrativo") + '</button>' +
           '<button class="btn btn-sage btn-mini" data-acao="resetar" data-alvo="' + esc(u.username) + '">Nova senha</button>' +
           '<button class="btn ' + (u.active ? "btn-risco" : "btn-sage") + ' btn-mini" data-acao="status" data-alvo="' + esc(u.username) + '">' +
-            (u.active ? "Inativar" : "Ativar") + '</button>' +
-        '</div></td>' +
+            (u.active ? "Inativar" : "Ativar") + '</button>';
+
+      return '<tr>' +
+        '<td><strong>' + esc(u.username) + '</strong><div class="mono">' + esc(formatCPF(u.cpf)) + '</div></td>' +
+        '<td>' + seloPerfil(u) + '</td>' +
+        '<td>' + status + '</td>' +
+        '<td class="mono">' + esc(u.lastLogin ? dataHora(u.lastLogin) : "nunca entrou") + '</td>' +
+        '<td><div class="acoes">' + acoes + '</div></td>' +
       '</tr>';
     }).join("");
 
@@ -691,8 +726,11 @@
             '<input type="text" id="novo-usuario" autocapitalize="none" placeholder="nome.sobrenome"></div>' +
           '<div class="campo"><label for="novo-cpf">CPF</label>' +
             '<input type="text" id="novo-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>' +
-          '<div class="campo"><label for="novo-nivel">Nível de acesso</label>' +
-            '<select id="novo-nivel"><option value="edit">Edição completa</option><option value="read">Somente leitura</option></select></div>' +
+          '<div class="campo"><label for="novo-perfil">Perfil</label>' +
+            '<select id="novo-perfil">' +
+              '<option value="colaborativo">Colaborativo (somente leitura)</option>' +
+              '<option value="administrativo">Administrativo (gerencia acessos)</option>' +
+            '</select></div>' +
         '</div>' +
         '<button type="submit" class="btn btn-principal" style="width:auto;">Criar acesso</button>' +
       '</form>' +
@@ -700,11 +738,11 @@
     '</div>' +
     '<div class="cartao">' +
       '<h2>Acessos cadastrados</h2>' +
-      '<p class="apoio">Inativar bloqueia a entrada sem apagar o cadastro.</p>' +
+      '<p class="apoio">Inativar bloqueia a entrada sem apagar o cadastro. Só o perfil administrativo cria e gerencia acessos.</p>' +
       (state.users.length === 0
         ? '<div class="vazio">Nenhum acesso criado ainda. Comece pelo formulário acima.</div>'
         : '<div class="rolagem"><table><thead><tr>' +
-            '<th>Usuário</th><th>Nível</th><th>Situação</th><th>Último acesso</th><th>Ações</th>' +
+            '<th>Usuário</th><th>Perfil</th><th>Situação</th><th>Último acesso</th><th>Ações</th>' +
           '</tr></thead><tbody>' + linhas + '</tbody></table></div>') +
     '</div>';
   }
@@ -716,7 +754,7 @@
       '<h3>Dados para entregar à pessoa</h3>' +
       '<div class="cred-linha"><span>Usuário</span><b>' + esc(c.username) + '</b></div>' +
       '<div class="cred-linha"><span>CPF</span><b>' + esc(formatCPF(c.cpf)) + '</b></div>' +
-      '<div class="cred-linha"><span>Nível</span><b>' + esc(c.nivel) + '</b></div>' +
+      '<div class="cred-linha"><span>Perfil</span><b>' + esc(c.perfil) + '</b></div>' +
       '<div class="cred-linha"><span>Senha temporária</span>' +
         '<span style="display:flex; align-items:center; gap:10px;"><b>' + esc(c.password) + '</b>' +
         '<button class="btn btn-neutro btn-mini" id="copiar-credencial">Copiar tudo</button></span></div>' +
@@ -727,7 +765,7 @@
   function blocoRegistro(){
     if(state.logs.length === 0){
       return '<div class="cartao"><h2>Registro de atividade</h2>' +
-        '<p class="apoio">Cada criação, reset e mudança de acesso fica anotada aqui.</p>' +
+        '<p class="apoio">Cada criação, reset e mudança de perfil fica anotada aqui.</p>' +
         '<div class="vazio">Nenhuma atividade registrada ainda.</div></div>';
     }
     var itens = state.logs.slice().reverse().map(function(l){
@@ -748,11 +786,10 @@
   function ligarEventos(){
     liga("form-login", "submit", entrar);
     liga("ver-login", "click", function(){ verSenha("login-senha", this); });
-    liga("abrir-admin", "click", function(){ state.screen = "portaoAdmin"; state.error = ""; render(); });
 
-    liga("form-admin", "submit", entrarAdmin);
-    liga("ver-admin", "click", function(){ verSenha("admin-senha", this); });
-    liga("cancelar-admin", "click", function(){ state.screen = "login"; state.error = ""; render(); });
+    liga("form-primeiro", "submit", criarPrimeiroAcesso);
+    liga("ver-primeiro", "click", function(){ verSenha("primeiro-senha", this); });
+    liga("primeiro-cpf", "input", function(){ this.value = formatCPF(this.value); });
 
     liga("form-troca", "submit", salvarSenhaInicial);
     liga("sair-troca", "click", sair);
@@ -764,24 +801,20 @@
     liga("conta-salvar-senha", "click", trocarMinhaSenha);
 
     cada("[data-painel]", function(b){
-      b.addEventListener("click", function(){ state.painelAba = b.getAttribute("data-painel"); render(); });
-    });
-    cada("[data-admin]", function(b){
-      b.addEventListener("click", function(){ state.adminAba = b.getAttribute("data-admin"); state.error = ""; render(); });
+      b.addEventListener("click", function(){
+        state.painelAba = b.getAttribute("data-painel");
+        state.error = "";
+        render();
+      });
     });
     cada("[data-acao]", function(b){
       b.addEventListener("click", function(){
         var acao = b.getAttribute("data-acao");
         var alvo = b.getAttribute("data-alvo");
-        if(acao === "nivel") mudarNivel(alvo);
+        if(acao === "perfil") mudarPerfil(alvo);
         else if(acao === "resetar") resetarSenha(alvo);
         else if(acao === "status") mudarStatus(alvo);
       });
-    });
-
-    var veu = document.getElementById("veu-admin");
-    if(veu) veu.addEventListener("click", function(e){
-      if(e.target === veu){ state.screen = "login"; state.error = ""; render(); }
     });
   }
 
@@ -812,10 +845,9 @@
 
     var user = acharUsuario(nome);
     if(!user || user.password !== senha){ state.error = "Usuário ou senha não conferem."; render(); return; }
-    if(!user.active){ state.error = "Este acesso está inativo. Fale com a administração."; render(); return; }
+    if(!user.active){ state.error = "Este acesso está inativo. Fale com o perfil administrativo."; render(); return; }
 
     state.currentUser = user;
-    state.isAdmin = false;
     state.painelAba = "inicio";
 
     if(user.tempPassword){
@@ -832,19 +864,36 @@
     render();
   }
 
-  function entrarAdmin(e){
+  async function criarPrimeiroAcesso(e){
     e.preventDefault();
-    var codigo = (document.getElementById("admin-codigo").value || "").trim();
-    var senha = document.getElementById("admin-senha").value || "";
-    if(codigo === ADMIN_CODE && senha === ADMIN_PASS){
-      state.isAdmin = true;
-      state.currentUser = null;
-      state.screen = "admin";
-      state.adminAba = "usuarios";
-      state.error = "";
-    } else {
-      state.error = "Código ou senha não conferem.";
-    }
+    state.error = "";
+    if(state.users.length > 0){ render(); return; }
+
+    var nome = (document.getElementById("primeiro-usuario").value || "").trim();
+    var cpf = digitos(document.getElementById("primeiro-cpf").value || "");
+    var s1 = document.getElementById("primeiro-senha").value || "";
+    var s2 = document.getElementById("primeiro-senha2").value || "";
+
+    if(!nome){ state.error = "Informe o nome de usuário."; render(); return; }
+    if(cpf.length !== 11){ state.error = "O CPF precisa ter 11 dígitos."; render(); return; }
+    if(s1.length < 6){ state.error = "A senha precisa de pelo menos 6 caracteres."; render(); return; }
+    if(s1 !== s2){ state.error = "As duas senhas estão diferentes."; render(); return; }
+
+    var novo = {
+      username:nome, cpf:cpf, password:s1,
+      tempPassword:false, active:true, canEdit:true,
+      createdAt:new Date().toISOString(), lastLogin:new Date().toISOString(), previousLogin:""
+    };
+    state.users.push(novo);
+
+    var ok = await salvarUsuarios();
+    if(!ok){ state.users.pop(); return; }
+
+    state.currentUser = novo;
+    registrar("Primeiro acesso administrativo criado", nome);
+    toast("Acesso criado.");
+    state.painelAba = "inicio";
+    state.screen = "painel";
     render();
   }
 
@@ -895,9 +944,11 @@
   async function criarAcesso(e){
     e.preventDefault();
     state.error = "";
+    if(!ehAdministrativo()){ state.error = "Só o perfil administrativo pode criar acessos."; render(); return; }
+
     var nome = (document.getElementById("novo-usuario").value || "").trim();
     var cpf = digitos(document.getElementById("novo-cpf").value || "");
-    var nivel = document.getElementById("novo-nivel").value;
+    var perfil = document.getElementById("novo-perfil").value;
 
     if(!nome){ state.error = "Informe o nome de usuário."; render(); return; }
     if(cpf.length !== 11){ state.error = "O CPF precisa ter 11 dígitos."; render(); return; }
@@ -906,7 +957,7 @@
     var senha = gerarSenha();
     state.users.push({
       username:nome, cpf:cpf, password:senha,
-      tempPassword:true, active:true, canEdit: nivel === "edit",
+      tempPassword:true, active:true, canEdit: perfil === "administrativo",
       createdAt:new Date().toISOString(), lastLogin:"", previousLogin:""
     });
 
@@ -915,9 +966,9 @@
 
     state.ultimaCredencial = {
       username:nome, cpf:cpf, password:senha,
-      nivel: nivel === "edit" ? "Edição completa" : "Somente leitura"
+      perfil: perfil === "administrativo" ? "Administrativo" : "Colaborativo"
     };
-    registrar("Acesso criado", nome);
+    registrar("Acesso criado (" + state.ultimaCredencial.perfil + ")", nome);
     toast("Acesso criado.");
     render();
   }
@@ -928,13 +979,14 @@
     copiar(
       "RA Detran-SP\nUsuário: " + c.username +
       "\nCPF: " + formatCPF(c.cpf) +
-      "\nNível: " + c.nivel +
+      "\nPerfil: " + c.perfil +
       "\nSenha temporária: " + c.password,
       "Dados copiados."
     );
   }
 
   async function resetarSenha(username){
+    if(!ehAdministrativo()) return;
     var user = acharUsuario(username);
     if(!user) return;
     var senha = gerarSenha();
@@ -947,14 +999,18 @@
 
     state.ultimaCredencial = {
       username:user.username, cpf:user.cpf, password:senha,
-      nivel: (user.canEdit !== false) ? "Edição completa" : "Somente leitura"
+      perfil: nomePerfil(user)
     };
     registrar("Senha redefinida", user.username);
     toast("Nova senha gerada.");
+
+    if(ehVoce(username)){ sair(); return; }
     render();
   }
 
   async function mudarStatus(username){
+    if(!ehAdministrativo()) return;
+    if(ehVoce(username)){ toast("Você não pode inativar o próprio acesso."); return; }
     var user = acharUsuario(username);
     if(!user) return;
     user.active = !user.active;
@@ -965,28 +1021,26 @@
     render();
   }
 
-  async function mudarNivel(username){
+  async function mudarPerfil(username){
+    if(!ehAdministrativo()) return;
+    if(ehVoce(username)){ toast("Você não pode mudar o próprio perfil."); return; }
     var user = acharUsuario(username);
     if(!user) return;
     user.canEdit = (user.canEdit === false);
     var ok = await salvarUsuarios();
     if(!ok){ user.canEdit = !user.canEdit; return; }
-    registrar(user.canEdit ? "Nível alterado para edição" : "Nível alterado para leitura", user.username);
-    toast(user.canEdit ? "Agora tem edição." : "Agora é só leitura.");
+    registrar("Perfil alterado para " + (user.canEdit ? "administrativo" : "colaborativo"), user.username);
+    toast(user.canEdit ? "Agora é administrativo." : "Agora é colaborativo.");
     render();
   }
 
   function sair(){
     state.currentUser = null;
-    state.isAdmin = false;
     state.screen = "login";
     state.painelAba = "inicio";
-    state.adminAba = "usuarios";
-    state.error = "";
     state.ultimaCredencial = null;
     render();
   }
-
 
   sincronizarUsuarios();
   sincronizarLogs();
