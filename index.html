@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NexAcesso</title>
+<title>RA_DET</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -259,29 +259,24 @@
   "use strict";
   var FIREBASE_URL = "https://reclameaqui-7cf38-default-rtdb.firebaseio.com/";
 
-  var ADMIN_CODE = "RADETRAN";   // código do acesso administrativo
-  var ADMIN_PASS = "ADMINRA";    // senha do acesso administrativo
+  var ADMIN_CODE = "RADETRAN";
+  var ADMIN_PASS = "ADMINRA";
 
-  var LS_USERS = "nexacesso-users";
-  var LS_LOGS  = "nexacesso-logs";
+  var LS_USERS = "RA_DET-users";
+  var LS_LOGS  = "RA_DET-logs";
 
   var db = null;
   if(FIREBASE_URL && typeof firebase !== "undefined"){
     firebase.initializeApp({ databaseURL: FIREBASE_URL });
     db = firebase.database();
   }
-
-  /* =====================================================================
-     ESTADO
-     ===================================================================== */
-
   var state = {
     booted:false,
     users:[],
     logs:[],
-    screen:"login",        // login | portaoAdmin | trocaSenha | painel | admin
-    adminAba:"usuarios",   // usuarios | registro
-    painelAba:"inicio",    // inicio | conta
+    screen:"login",       
+    adminAba:"usuarios",  
+    painelAba:"inicio",    
     currentUser:null,
     isAdmin:false,
     error:"",
@@ -290,10 +285,6 @@
   };
 
   var app = document.getElementById("app");
-
-  /* =====================================================================
-     ÍCONES
-     ===================================================================== */
 
   var IC_PESSOAS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3.4"/><path d="M22 20v-2a4 4 0 0 0-3-3.87"/><path d="M16.5 3.6a4 4 0 0 1 0 6.8"/></svg>';
   var IC_REGISTRO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><line x1="9" y1="13" x2="16" y2="13"/><line x1="9" y1="17" x2="14" y2="17"/></svg>';
@@ -308,12 +299,8 @@
 
   function marca(escuro){
     return '<div class="mark"><div class="mark-badge">NX</div>' +
-      '<div class="mark-name">NexAcesso<small>Acesso interno</small></div></div>';
+      '<div class="mark-name">RA_DET<small>Acesso interno</small></div></div>';
   }
-
-  /* =====================================================================
-     UTILITÁRIOS
-     ===================================================================== */
 
   function esc(s){
     return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
@@ -552,7 +539,7 @@
           '<h2 class="arte-titulo">Primeiro<span>acesso</span></h2>' +
           '<p class="arte-texto">A senha que você recebeu é temporária e só serve para esta primeira entrada.</p>' +
         '</div>' +
-        '<div class="arte-base">NexAcesso · uso interno</div>' +
+        '<div class="arte-base">RA_DET · uso interno</div>' +
       '</div>' +
       '<div class="entrada-form">' +
         '<div class="form-bloco">' +
@@ -582,7 +569,7 @@
       '<aside class="trilho">' +
         marca(true) +
         '<nav class="trilho-nav">' + nav + '</nav>' +
-        '<div class="trilho-pe">NexAcesso<br>' + (db ? "Conectado ao servidor" : "Modo local (sem servidor)") + '</div>' +
+        '<div class="trilho-pe">RA_DET<br>' + (db ? "Conectado ao servidor" : "Modo local (sem servidor)") + '</div>' +
       '</aside>' +
       '<div class="principal">' +
         '<header class="cabecalho">' + cabecalho + '</header>' +
@@ -605,7 +592,7 @@
 
     var cabecalho =
       '<div><h1>' + (state.painelAba === "inicio" ? "Início" : "Minha conta") + '</h1>' +
-      '<div class="sub">' + (state.painelAba === "inicio" ? "Área de trabalho do NexAcesso" : "Seus dados de acesso") + '</div></div>' +
+      '<div class="sub">' + (state.painelAba === "inicio" ? "Área de trabalho do RA_DET" : "Seus dados de acesso") + '</div></div>' +
       '<div class="usuario-chip">' +
         '<span class="usuario-nome">' + esc(u.username || "") + '</span>' +
         (podeEditar() ? '<span class="selo selo-edicao">Edição</span>' : '<span class="selo selo-leitura">Leitura</span>') +
@@ -934,7 +921,7 @@
     var c = state.ultimaCredencial;
     if(!c) return;
     copiar(
-      "NexAcesso\nUsuário: " + c.username +
+      "RA_DET\nUsuário: " + c.username +
       "\nCPF: " + formatCPF(c.cpf) +
       "\nNível: " + c.nivel +
       "\nSenha temporária: " + c.password,
