@@ -862,13 +862,13 @@
   // Tenta autenticar com a primeira opção
   try {
     await firebase.auth().signInWithEmailAndPassword(listaEmails[0], senha);
-    concluirLogin(nome);
+    await concluirLogin(nome);
   } catch(error) {
     // Se digitou só o nome e a primeira falhou, tenta a segunda opção
     if(listaEmails.length > 1){
       try {
         await firebase.auth().signInWithEmailAndPassword(listaEmails[1], senha);
-        concluirLogin(nome);
+        await concluirLogin(nome);
         return;
       } catch(err2){
         // Falhou nas duas tentativas
@@ -878,7 +878,6 @@
     render();
   }
 }
-
 async function concluirLogin(nome){
   var user = acharUsuario(nome);
   if(!user){
