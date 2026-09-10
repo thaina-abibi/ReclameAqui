@@ -74,7 +74,7 @@
   .arte-base{font-size:12.5px; color:#7C8170; border-top:1px solid rgba(242,240,228,0.16); padding-top:14px;}
 
   .entrada-form{display:flex; align-items:center; justify-content:center; padding:40px 28px; background:var(--paper);}
-  .form-bloco{width:100%; max-width:390px;}
+  .form-bloco{width:100%; max-width:420px;}
   .form-bloco h1{font-size:27px; margin-bottom:6px; color:var(--ink);}
   .form-bloco .apoio{color:var(--ink-soft); font-size:14px; margin:0 0 26px;}
 
@@ -119,6 +119,7 @@
   .btn-principal:disabled{opacity:.55; cursor:not-allowed;}
   .btn-neutro{background:var(--surface); border:1px solid var(--line-strong); color:var(--ink);}
   .btn-neutro:hover{border-color:var(--olive); color:var(--olive-soft);}
+  .btn-neutro:disabled{opacity:.55; cursor:not-allowed;}
   .btn-risco{background:var(--surface); border:1px solid var(--rust); color:#e77362;}
   .btn-risco:hover{background:var(--rust-soft);}
   .btn-sage{background:var(--sage-soft); border:1px solid var(--sage); color:#8fe23d;}
@@ -137,6 +138,10 @@
   .aviso{border-radius:8px; padding:11px 13px; font-size:13.5px; margin-bottom:16px;}
   .aviso-erro{background:var(--rust-soft); border:1px solid #6b3129; color:#f2a99b;}
   .aviso-ok{background:var(--sage-soft); border:1px solid var(--sage); color:#a3e666;}
+
+  .passo-config{font-size:13.5px; color:var(--ink-soft); padding-left:18px; margin:0 0 18px;}
+  .passo-config li{margin-bottom:7px;}
+  .passo-config code{font-family:var(--font-mono); font-size:12.5px; color:var(--amber-deep);}
 
   /* ---------- shell interno ---------- */
   .shell{display:grid; grid-template-columns:236px minmax(0,1fr); min-height:100vh;}
@@ -199,12 +204,12 @@
   }
   .credencial h3{font-family:var(--font-display); font-size:15px; margin-bottom:10px; color:var(--ink);}
   .cred-linha{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:5px 0; font-size:13.5px; color:var(--ink-soft);}
-  .cred-linha b{font-family:var(--font-mono); font-weight:600; font-size:14.5px; color:var(--amber-deep);}
+  .cred-linha b{font-family:var(--font-mono); font-weight:600; font-size:14.5px; color:var(--amber-deep); word-break:break-all; text-align:right;}
   .cred-nota{font-size:12.5px; color:var(--ink-soft); margin-top:10px;}
 
   /* ---------- tabela ---------- */
   .rolagem{overflow-x:auto;}
-  table{width:100%; border-collapse:collapse; min-width:640px;}
+  table{width:100%; border-collapse:collapse; min-width:700px;}
   th{
     text-align:left; font-size:12.5px; font-weight:600; color:var(--ink-soft);
     padding:0 10px 10px; border-bottom:1px solid var(--line-strong);
@@ -243,35 +248,49 @@
   .aviso-flutuante{
     position:fixed; left:50%; bottom:22px; transform:translateX(-50%);
     background:var(--surface); border:1px solid var(--line-strong); color:var(--ink); padding:11px 18px; border-radius:9px;
-    font-size:13.5px; z-index:100; box-shadow:0 12px 28px rgba(0,0,0,0.5);
+    font-size:13.5px; z-index:100; box-shadow:0 12px 28px rgba(0,0,0,0.5); max-width:calc(100% - 32px); text-align:center;
   }
 </style>
 </head>
 <body>
 <div id="app"><div class="carregando"><span class="giro"></span>Carregando…</div></div>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<!-- Um SDK só. Nunca carregue duas versões do firebase-app-compat na mesma página. -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 <script>
 (function(){
   "use strict";
-  var FIREBASE_URL = "https://reclameaqui-7cf38-default-rtdb.firebaseio.com/";
 
-  /* Logo: arquivo Reclame.png na mesma pasta deste HTML.
-     Se preferir carregar direto do GitHub, troque por:
-     "https://raw.githubusercontent.com/SEU-USUARIO/SEU-REPO/main/Reclame.png" */
+  /* =====================================================================
+     CONFIGURAÇÃO
+     Pegue estes valores em: Firebase → Configurações do projeto →
+     Seus apps → App da Web → Configuração do SDK.
+     O apiKey não é segredo: ele apenas identifica o projeto. Quem protege
+     os dados são as regras do Realtime Database + o Authentication.
+     ===================================================================== */
+
+  var firebaseConfig = {
+    apiKey:      "COLE_AQUI_SUA_API_KEY",
+    authDomain:  "reclameaqui-7cf38.firebaseapp.com",
+    databaseURL: "https://reclameaqui-7cf38-default-rtdb.firebaseio.com",
+    projectId:   "reclameaqui-7cf38"
+  };
+
+  /* Domínios de e-mail aceitos. A pessoa digita só o usuário e o sistema
+     tenta os domínios abaixo, na ordem. */
+  var DOMINIOS = ["apoiodetran.sp.gov.br", "detran.sp.gov.br"];
+
+  /* Logo: arquivo Reclame.png na mesma pasta deste HTML. */
   var LOGO_URL = "Reclame.png";
 
-  var LS_USERS = "RA Detran-SP-users";
-  var LS_LOGS  = "RA Detran-SP-logs";
+  var configOk = !!firebaseConfig.apiKey && firebaseConfig.apiKey.indexOf("COLE_AQUI") === -1;
 
-  var db = null;
-  if(FIREBASE_URL && typeof firebase !== "undefined"){
-    firebase.initializeApp({ databaseURL: FIREBASE_URL });
+  var auth = null, db = null;
+  if(configOk){
+    firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
     db = firebase.database();
   }
 
@@ -279,12 +298,13 @@
     booted:false,
     users:[],
     logs:[],
-    screen:"login",      /* login | trocaSenha | painel */
+    screen:"login",      /* config | login | trocaSenha | painel */
     painelAba:"inicio",  /* inicio | usuarios | registro | conta */
-    currentUser:null,
+    currentUser:null,    /* cadastro vindo do banco */
     error:"",
-    ok:"",
-    ultimaCredencial:null
+    ultimaCredencial:null,
+    loginRegistrado:false,
+    criandoPrimeiro:false
   };
 
   var app = document.getElementById("app");
@@ -325,7 +345,7 @@
   function gerarSenha(){
     var chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     var out = "";
-    for(var i=0;i<8;i++) out += chars[Math.floor(Math.random()*chars.length)];
+    for(var i=0;i<10;i++) out += chars[Math.floor(Math.random()*chars.length)];
     return out;
   }
 
@@ -350,7 +370,7 @@
     t.className = "aviso-flutuante";
     t.textContent = msg;
     document.body.appendChild(t);
-    setTimeout(function(){ t.remove(); }, 2600);
+    setTimeout(function(){ t.remove(); }, 3200);
   }
 
   function copiar(texto, msg){
@@ -366,6 +386,56 @@
     try { document.execCommand("copy"); toast(msg); }
     catch(e){ toast("Copie manualmente: " + texto); }
     ta.remove();
+  }
+
+  function usuarioDoEmail(email){
+    return String(email||"").split("@")[0];
+  }
+
+  function emailsCandidatos(entrada){
+    var v = String(entrada||"").trim().toLowerCase();
+    if(!v) return [];
+    if(v.indexOf("@") !== -1) return [v];
+    return DOMINIOS.map(function(d){ return v + "@" + d; });
+  }
+
+  /* Traduz o código do Firebase em algo que ajude a entender o problema. */
+  function msgAuth(err){
+    var c = (err && err.code) || "";
+    switch(c){
+      case "auth/invalid-credential":
+      case "auth/wrong-password":
+      case "auth/user-not-found":
+      case "auth/invalid-email":
+        return "Usuário ou senha não conferem.";
+      case "auth/user-disabled":
+        return "Esta conta está desativada no Firebase Authentication.";
+      case "auth/too-many-requests":
+        return "Muitas tentativas seguidas. Espere alguns minutos e tente de novo.";
+      case "auth/network-request-failed":
+        return "Sem conexão com o Firebase. Verifique a rede.";
+      case "auth/email-already-in-use":
+        return "Já existe uma conta no Authentication com esse e-mail.";
+      case "auth/weak-password":
+        return "A senha precisa de pelo menos 6 caracteres.";
+      case "auth/requires-recent-login":
+        return "Por segurança, saia e entre de novo antes de trocar a senha.";
+      case "auth/operation-not-allowed":
+        return "Ative o método E-mail/senha em Authentication → Sign-in method.";
+      case "auth/invalid-api-key":
+      case "auth/configuration-not-found":
+        return "Configuração do Firebase incompleta (apiKey ou authDomain).";
+      default:
+        return "Não foi possível concluir. " + (c || (err && err.message) || "Erro desconhecido.");
+    }
+  }
+
+  function msgBanco(err){
+    var m = String((err && err.message) || err || "");
+    if(m.toUpperCase().indexOf("PERMISSION_DENIED") !== -1){
+      return "Sem permissão de gravação no banco. Verifique as regras do Realtime Database.";
+    }
+    return "Não foi possível salvar no servidor.";
   }
 
   /* =====================================================================
@@ -395,74 +465,38 @@
   }
 
   /* =====================================================================
-     PERSISTÊNCIA
+     BASE DE DADOS
+     O banco guarda perfil, situação e datas. Senha nenhuma: quem valida
+     senha é o Firebase Authentication.
      ===================================================================== */
 
-  function sincronizarUsuarios(){
-    if(db){
-      db.ref("usuarios").on("value", function(snap){
-        state.users = toArray(snap.val());
-        state.booted = true;
-        if(state.currentUser){
-          var atual = acharUsuario(state.currentUser.username);
-          if(!atual){ sair(); return; }
-          if(!atual.active){ state.error = "Este acesso foi inativado."; sair(); return; }
-          state.currentUser = atual;
-        }
-        if(digitandoNoFormulario()) return;
-        render();
-      });
-    } else {
-      try { state.users = JSON.parse(localStorage.getItem(LS_USERS) || "[]"); }
-      catch(e){ state.users = []; }
+  var refUsuarios = null, refLogs = null;
+
+  function ligarBase(){
+    if(refUsuarios) return;
+    refUsuarios = db.ref("usuarios");
+    refUsuarios.on("value", aoReceberUsuarios, function(){
       state.booted = true;
+      state.error = "Sem permissão de leitura no banco. Verifique as regras do Realtime Database.";
       render();
-    }
+    });
+    refLogs = db.ref("registro");
+    refLogs.on("value", function(snap){
+      state.logs = toArray(snap.val());
+      if(state.screen === "painel" && state.painelAba === "registro") render();
+    }, function(){ /* registro é secundário */ });
   }
 
-  async function salvarUsuarios(){
-    if(db){
-      try { await db.ref("usuarios").set(state.users); return true; }
-      catch(e){ toast("Não foi possível salvar no servidor."); return false; }
-    }
-    try { localStorage.setItem(LS_USERS, JSON.stringify(state.users)); return true; }
-    catch(e){ toast("Não foi possível salvar localmente."); return false; }
+  function desligarBase(){
+    if(refUsuarios){ refUsuarios.off(); refUsuarios = null; }
+    if(refLogs){ refLogs.off(); refLogs = null; }
   }
 
-  function sincronizarLogs(){
-    if(db){
-      db.ref("registro").on("value", function(snap){
-        state.logs = toArray(snap.val());
-        if(state.screen === "painel" && state.painelAba === "registro") render();
-      });
-    } else {
-      try { state.logs = JSON.parse(localStorage.getItem(LS_LOGS) || "[]"); }
-      catch(e){ state.logs = []; }
+  function acharPorUid(uid){
+    for(var i=0;i<state.users.length;i++){
+      if(state.users[i].uid && state.users[i].uid === uid) return state.users[i];
     }
-  }
-
-  async function salvarLogs(){
-    if(db){
-      try { await db.ref("registro").set(state.logs); return true; }
-      catch(e){ return false; }
-    }
-    try { localStorage.setItem(LS_LOGS, JSON.stringify(state.logs)); return true; }
-    catch(e){ return false; }
-  }
-
-  function registrar(evento, alvo){
-    state.logs.push({ evento: evento, alvo: alvo || "", por: autor(), em: new Date().toISOString() });
-    if(state.logs.length > 200) state.logs = state.logs.slice(-200);
-    salvarLogs();
-  }
-
-  function digitandoNoFormulario(){
-    var ids = ["novo-usuario","primeiro-usuario","login-usuario"];
-    for(var i=0;i<ids.length;i++){
-      var campo = document.getElementById(ids[i]);
-      if(campo && campo.value) return true;
-    }
-    return false;
+    return null;
   }
 
   function acharUsuario(username){
@@ -471,6 +505,147 @@
       if((state.users[i].username||"").toLowerCase() === u) return state.users[i];
     }
     return null;
+  }
+
+  function acharPorEmail(email){
+    var e = (email||"").toLowerCase();
+    if(!e) return null;
+    for(var i=0;i<state.users.length;i++){
+      if((state.users[i].email||"").toLowerCase() === e) return state.users[i];
+    }
+    return null;
+  }
+
+  /* Casa a conta autenticada com o cadastro: uid → e-mail → nome de usuário. */
+  function acharCadastro(authUser){
+    return acharPorUid(authUser.uid)
+        || acharPorEmail(authUser.email)
+        || acharUsuario(usuarioDoEmail(authUser.email));
+  }
+
+  async function salvarUsuarios(){
+    /* Remove qualquer campo password herdado da versão antiga. */
+    var limpos = state.users.map(function(u){
+      var copia = {};
+      for(var k in u){ if(k !== "password" && Object.prototype.hasOwnProperty.call(u,k)) copia[k] = u[k]; }
+      return copia;
+    });
+    try { await db.ref("usuarios").set(limpos); return true; }
+    catch(e){ toast(msgBanco(e)); return false; }
+  }
+
+  async function registrar(evento, alvo){
+    state.logs.push({ evento: evento, alvo: alvo || "", por: autor(), em: new Date().toISOString() });
+    if(state.logs.length > 200) state.logs = state.logs.slice(-200);
+    try { await db.ref("registro").set(state.logs); } catch(e){ /* registro é secundário */ }
+  }
+
+  function digitandoNoFormulario(){
+    var ids = ["novo-usuario","novo-cpf","login-usuario","conta-senha1","senha-nova"];
+    for(var i=0;i<ids.length;i++){
+      var campo = document.getElementById(ids[i]);
+      if(campo && campo.value) return true;
+    }
+    return false;
+  }
+
+  /* ---------- ciclo de autenticação ---------- */
+
+  function iniciar(){
+    if(!configOk){
+      state.booted = true;
+      state.screen = "config";
+      render();
+      return;
+    }
+    auth.onAuthStateChanged(function(authUser){
+      if(authUser){
+        state.loginRegistrado = false;
+        state.booted = false;
+        render();
+        ligarBase();
+      } else {
+        desligarBase();
+        state.users = [];
+        state.logs = [];
+        state.currentUser = null;
+        state.screen = "login";
+        state.painelAba = "inicio";
+        state.ultimaCredencial = null;
+        state.booted = true;
+        render();
+      }
+    });
+  }
+
+  async function aoReceberUsuarios(snap){
+    state.users = toArray(snap.val());
+    state.booted = true;
+
+    var authUser = auth.currentUser;
+    if(!authUser){ render(); return; }
+
+    var cadastro = acharCadastro(authUser);
+
+    if(!cadastro){
+      /* Base vazia: a primeira conta que entra vira o perfil administrativo. */
+      if(state.users.length === 0){
+        if(state.criandoPrimeiro) return;
+        state.criandoPrimeiro = true;
+        var novo = {
+          uid: authUser.uid,
+          email: (authUser.email||"").toLowerCase(),
+          username: usuarioDoEmail(authUser.email),
+          cpf: "",
+          active: true,
+          canEdit: true,
+          tempPassword: false,
+          createdAt: new Date().toISOString(),
+          lastLogin: "",
+          previousLogin: ""
+        };
+        state.users.push(novo);
+        var criou = await salvarUsuarios();
+        state.criandoPrimeiro = false;
+        if(!criou){ state.users.pop(); render(); return; }
+        registrar("Primeiro acesso administrativo criado", novo.username);
+        return; /* o próprio listener reprocessa já com o cadastro salvo */
+      }
+      state.error = "Sua conta foi autenticada, mas não há cadastro para ela neste sistema. Fale com o perfil administrativo.";
+      auth.signOut();
+      return;
+    }
+
+    if(cadastro.active === false){
+      state.error = "Este acesso está inativo. Fale com o perfil administrativo.";
+      auth.signOut();
+      return;
+    }
+
+    state.currentUser = cadastro;
+    state.error = "";
+
+    /* Cadastro antigo, sem uid: amarra à conta autenticada. */
+    if(!cadastro.uid || !cadastro.email){
+      cadastro.uid = authUser.uid;
+      cadastro.email = (authUser.email||"").toLowerCase();
+      salvarUsuarios();
+    }
+
+    if(cadastro.tempPassword){
+      state.screen = "trocaSenha";
+    } else {
+      if(!state.loginRegistrado){
+        state.loginRegistrado = true;
+        cadastro.previousLogin = cadastro.lastLogin || "";
+        cadastro.lastLogin = new Date().toISOString();
+        salvarUsuarios();
+      }
+      if(state.screen !== "painel") state.screen = "painel";
+    }
+
+    if(digitandoNoFormulario()) return;
+    render();
   }
 
   /* =====================================================================
@@ -484,7 +659,8 @@
     }
 
     var html;
-    if(state.screen === "trocaSenha") html = telaTrocaSenha();
+    if(state.screen === "config") html = telaConfig();
+    else if(state.screen === "trocaSenha") html = telaTrocaSenha();
     else if(state.screen === "painel") html = telaPainel();
     else html = telaLogin();
 
@@ -492,10 +668,40 @@
     ligarEventos();
   }
 
-  function telaLogin(){
-    var semUsuarios = state.users.length === 0;
+  function moldura(conteudo, titulo, subtitulo){
+    return '' +
+    '<div class="entrada">' +
+      '<div class="entrada-arte">' +
+        '<div class="arte-topo">' + marca() + '</div>' +
+        '<div class="arte-topo">' +
+          '<h2 class="arte-titulo">' + titulo + '</h2>' +
+          '<p class="arte-texto">' + subtitulo + '</p>' +
+        '</div>' +
+        '<div class="arte-base">BASE · uso interno</div>' +
+      '</div>' +
+      '<div class="entrada-form">' +
+        '<div class="form-bloco">' + conteudo + '</div>' +
+      '</div>' +
+    '</div>';
+  }
 
-    var formulario = semUsuarios ? blocoPrimeiroAcesso() :
+  function telaConfig(){
+    return moldura(
+      '<h1>Falta configurar o Firebase</h1>' +
+      '<p class="apoio">O login usa o Firebase Authentication, que precisa da configuração completa do app da Web.</p>' +
+      '<ol class="passo-config">' +
+        '<li>No Firebase, abra <code>Configurações do projeto → Seus apps</code> e copie o objeto <code>firebaseConfig</code>.</li>' +
+        '<li>Cole os valores no topo do script deste arquivo, no lugar de <code>COLE_AQUI_SUA_API_KEY</code>.</li>' +
+        '<li>Em <code>Authentication → Sign-in method</code>, ative <code>E-mail/senha</code>.</li>' +
+        '<li>Crie a primeira conta em <code>Authentication → Usuários</code> e entre com ela: o sistema cria o cadastro administrativo sozinho.</li>' +
+      '</ol>',
+      '<span>ReclameAqui</span>Detran-SP',
+      'Ambiente restrito da equipe do Reclame Aqui do Detran-SP.'
+    );
+  }
+
+  function telaLogin(){
+    return moldura(
       '<h1>Entrar</h1>' +
       '<p class="apoio">Use o usuário e a senha que você recebeu do perfil administrativo.</p>' +
       (state.error ? '<div class="aviso aviso-erro">' + esc(state.error) + '</div>' : '') +
@@ -511,90 +717,37 @@
             '<button type="button" class="olho" id="ver-login" aria-label="Mostrar senha">' + olhoSVG(false) + '</button>' +
           '</div>' +
         '</div>' +
-        '<button type="submit" class="btn btn-principal">Entrar</button>' +
+        '<button type="submit" class="btn btn-principal" id="btn-entrar">Entrar</button>' +
       '</form>' +
       '<div class="rodape-form">' +
-        '<span>Esqueceu a senha? Peça uma nova a quem tem perfil administrativo.</span>' +
-      '</div>';
-
-    return '' +
-    '<div class="entrada">' +
-      '<div class="entrada-arte">' +
-        '<div class="arte-topo">' + marca() + '</div>' +
-        '<div class="arte-topo">' +
-          '<h2 class="arte-titulo"><span>ReclameAqui</span>Detran-SP</h2>' +
-          '<p class="arte-texto">Ambiente restrito da equipe do Reclame Aqui do Detran-SP.</p>' +
-        '</div>' +
-        '<div class="arte-base">BASE · uso interno</div>' +
-      '</div>' +
-      '<div class="entrada-form">' +
-        '<div class="form-bloco">' + formulario + '</div>' +
-      '</div>' +
-    '</div>';
-  }
-
-  /* Aparece apenas enquanto não existe nenhum acesso cadastrado.
-     Serve para criar o primeiro perfil administrativo sem senha fixa no código. */
-  function blocoPrimeiroAcesso(){
-    return '' +
-      '<h1>Criar o primeiro acesso</h1>' +
-      '<p class="apoio">Ainda não existe nenhum acesso cadastrado. O primeiro é criado com perfil administrativo e este formulário some depois disso.</p>' +
-      (state.error ? '<div class="aviso aviso-erro">' + esc(state.error) + '</div>' : '') +
-      '<form id="form-primeiro">' +
-        '<div class="campo">' +
-          '<label for="primeiro-usuario">Usuário</label>' +
-          '<input type="text" id="primeiro-usuario" autocapitalize="none" autocomplete="username" placeholder="nome.sobrenome">' +
-        '</div>' +
-        '<div class="campo">' +
-          '<label for="primeiro-cpf">CPF</label>' +
-          '<input type="text" id="primeiro-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00">' +
-        '</div>' +
-        '<div class="campo">' +
-          '<label for="primeiro-senha">Senha</label>' +
-          '<div class="campo-linha">' +
-            '<input type="password" id="primeiro-senha" autocomplete="new-password" placeholder="Mínimo de 6 caracteres">' +
-            '<button type="button" class="olho" id="ver-primeiro" aria-label="Mostrar senha">' + olhoSVG(false) + '</button>' +
-          '</div>' +
-        '</div>' +
-        '<div class="campo">' +
-          '<label for="primeiro-senha2">Repita a senha</label>' +
-          '<input type="password" id="primeiro-senha2" autocomplete="new-password" placeholder="Digite novamente">' +
-        '</div>' +
-        '<button type="submit" class="btn btn-principal">Criar acesso administrativo</button>' +
-      '</form>';
+        '<span>Esqueceu a senha? Escreva seu usuário acima e peça o link.</span>' +
+        '<button class="link" id="abrir-reset">Receber link por e-mail</button>' +
+      '</div>',
+      '<span>ReclameAqui</span>Detran-SP',
+      'Ambiente restrito da equipe do Reclame Aqui do Detran-SP.'
+    );
   }
 
   function telaTrocaSenha(){
-    return '' +
-    '<div class="entrada">' +
-      '<div class="entrada-arte">' +
-        '<div class="arte-topo">' + marca() + '</div>' +
-        '<div class="arte-topo">' +
-          '<h2 class="arte-titulo">Primeiro<span>acesso</span></h2>' +
-          '<p class="arte-texto">A senha que você recebeu é temporária e só serve para esta primeira entrada.</p>' +
+    return moldura(
+      '<h1>Defina sua senha</h1>' +
+      '<p class="apoio">Você está entrando como <strong>' + esc(state.currentUser ? state.currentUser.username : "") + '</strong>. A senha que você recebeu é temporária.</p>' +
+      (state.error ? '<div class="aviso aviso-erro">' + esc(state.error) + '</div>' : '') +
+      '<form id="form-troca">' +
+        '<div class="campo">' +
+          '<label for="senha-nova">Nova senha</label>' +
+          '<input type="password" id="senha-nova" autocomplete="new-password" placeholder="Mínimo de 6 caracteres">' +
         '</div>' +
-        '<div class="arte-base">RA Detran-SP · uso interno</div>' +
-      '</div>' +
-      '<div class="entrada-form">' +
-        '<div class="form-bloco">' +
-          '<h1>Defina sua senha</h1>' +
-          '<p class="apoio">Você está entrando como <strong>' + esc(state.currentUser ? state.currentUser.username : "") + '</strong>.</p>' +
-          (state.error ? '<div class="aviso aviso-erro">' + esc(state.error) + '</div>' : '') +
-          '<form id="form-troca">' +
-            '<div class="campo">' +
-              '<label for="senha-nova">Nova senha</label>' +
-              '<input type="password" id="senha-nova" autocomplete="new-password" placeholder="Mínimo de 6 caracteres">' +
-            '</div>' +
-            '<div class="campo">' +
-              '<label for="senha-confirma">Repita a nova senha</label>' +
-              '<input type="password" id="senha-confirma" autocomplete="new-password" placeholder="Digite novamente">' +
-            '</div>' +
-            '<button type="submit" class="btn btn-principal">Salvar e continuar</button>' +
-          '</form>' +
-          '<div class="rodape-form"><button class="link" id="sair-troca">Sair sem salvar</button></div>' +
+        '<div class="campo">' +
+          '<label for="senha-confirma">Repita a nova senha</label>' +
+          '<input type="password" id="senha-confirma" autocomplete="new-password" placeholder="Digite novamente">' +
         '</div>' +
-      '</div>' +
-    '</div>';
+        '<button type="submit" class="btn btn-principal">Salvar e continuar</button>' +
+      '</form>' +
+      '<div class="rodape-form"><button class="link" id="sair-troca">Sair sem salvar</button></div>',
+      'Primeiro<span>acesso</span>',
+      'A senha que você recebeu é temporária e só serve para esta primeira entrada.'
+    );
   }
 
   function shell(nav, cabecalho, conteudo){
@@ -603,7 +756,7 @@
       '<aside class="trilho">' +
         marca() +
         '<nav class="trilho-nav">' + nav + '</nav>' +
-        '<div class="trilho-pe">RA Detran-SP<br>' + (db ? "Conectado ao servidor" : "Modo local (sem servidor)") + '</div>' +
+        '<div class="trilho-pe">RA Detran-SP<br>Sessão autenticada</div>' +
       '</aside>' +
       '<div class="principal">' +
         '<header class="cabecalho">' + cabecalho + '</header>' +
@@ -619,10 +772,10 @@
   /* ---------- painel ---------- */
 
   var TITULOS = {
-    inicio:   { titulo:"Início",              sub:"Área de trabalho do RA Detran-SP" },
-    usuarios: { titulo:"Usuários e acessos",  sub:"" },
+    inicio:   { titulo:"Início",                sub:"Área de trabalho do RA Detran-SP" },
+    usuarios: { titulo:"Usuários e acessos",    sub:"" },
     registro: { titulo:"Registro de atividade", sub:"O que foi feito no sistema" },
-    conta:    { titulo:"Minha conta",         sub:"Seus dados de acesso" }
+    conta:    { titulo:"Minha conta",           sub:"Seus dados de acesso" }
   };
 
   function telaPainel(){
@@ -670,23 +823,25 @@
   }
 
   function blocoConta(u){
+    var email = u.email || (auth.currentUser && auth.currentUser.email) || "";
     return '' +
       '<div class="cartao">' +
         '<h2>Dados de acesso</h2>' +
         '<p class="apoio">Para alterar usuário, CPF ou perfil, fale com alguém do perfil administrativo.</p>' +
         '<div class="linha-dado"><span>Usuário</span><span>' + esc(u.username || "") + '</span></div>' +
-        '<div class="linha-dado"><span>CPF</span><span class="mono">' + esc(formatCPF(u.cpf)) + '</span></div>' +
+        '<div class="linha-dado"><span>E-mail</span><span class="mono">' + esc(email) + '</span></div>' +
+        '<div class="linha-dado"><span>CPF</span><span class="mono">' + esc(u.cpf ? formatCPF(u.cpf) : "não informado") + '</span></div>' +
         '<div class="linha-dado"><span>Perfil</span><span>' + esc(nomePerfil(u)) + '</span></div>' +
         '<div class="linha-dado"><span>Acesso anterior</span><span>' + esc(u.previousLogin ? dataHora(u.previousLogin) : "Este é o primeiro") + '</span></div>' +
         '<div class="linha-dado"><span>Criado em</span><span>' + esc(dataHora(u.createdAt)) + '</span></div>' +
       '</div>' +
       '<div class="cartao">' +
         '<h2>Trocar senha</h2>' +
-        '<p class="apoio">A nova senha passa a valer no próximo acesso.</p>' +
+        '<p class="apoio">A troca vale para a sua conta de autenticação e passa a valer no próximo acesso.</p>' +
         '<div id="troca-feedback"></div>' +
         '<div class="grade-2">' +
-          '<div class="campo"><label for="conta-senha1">Nova senha</label><input type="password" id="conta-senha1" placeholder="Mínimo de 6 caracteres"></div>' +
-          '<div class="campo"><label for="conta-senha2">Repita a nova senha</label><input type="password" id="conta-senha2" placeholder="Digite novamente"></div>' +
+          '<div class="campo"><label for="conta-senha1">Nova senha</label><input type="password" id="conta-senha1" autocomplete="new-password" placeholder="Mínimo de 6 caracteres"></div>' +
+          '<div class="campo"><label for="conta-senha2">Repita a nova senha</label><input type="password" id="conta-senha2" autocomplete="new-password" placeholder="Digite novamente"></div>' +
         '</div>' +
         '<button class="btn btn-principal" style="width:auto;" id="conta-salvar-senha">Salvar nova senha</button>' +
       '</div>';
@@ -696,22 +851,23 @@
 
   function blocoUsuarios(){
     var linhas = state.users.map(function(u){
-      var status = u.active
-        ? '<span class="selo selo-ativo">Ativo</span>'
-        : '<span class="selo selo-inativo">Inativo</span>';
+      var status = (u.active === false)
+        ? '<span class="selo selo-inativo">Inativo</span>'
+        : '<span class="selo selo-ativo">Ativo</span>';
       if(u.tempPassword) status += '<span class="selo selo-temp">Senha temporária</span>';
 
       var acoes = ehVoce(u.username)
-        ? '<button class="btn btn-sage btn-mini" data-acao="resetar" data-alvo="' + esc(u.username) + '">Nova senha</button>' +
-          '<span class="voce">Seu próprio acesso</span>'
+        ? '<span class="voce">Seu próprio acesso</span>'
         : '<button class="btn btn-neutro btn-mini" data-acao="perfil" data-alvo="' + esc(u.username) + '">' +
             (ehAdministrativo(u) ? "Passar para colaborativo" : "Tornar administrativo") + '</button>' +
-          '<button class="btn btn-sage btn-mini" data-acao="resetar" data-alvo="' + esc(u.username) + '">Nova senha</button>' +
-          '<button class="btn ' + (u.active ? "btn-risco" : "btn-sage") + ' btn-mini" data-acao="status" data-alvo="' + esc(u.username) + '">' +
-            (u.active ? "Inativar" : "Ativar") + '</button>';
+          '<button class="btn btn-sage btn-mini" data-acao="resetar" data-alvo="' + esc(u.username) + '">Redefinir senha</button>' +
+          '<button class="btn ' + (u.active === false ? "btn-sage" : "btn-risco") + ' btn-mini" data-acao="status" data-alvo="' + esc(u.username) + '">' +
+            (u.active === false ? "Ativar" : "Inativar") + '</button>';
 
       return '<tr>' +
-        '<td><strong>' + esc(u.username) + '</strong><div class="mono">' + esc(formatCPF(u.cpf)) + '</div></td>' +
+        '<td><strong>' + esc(u.username) + '</strong>' +
+          '<div class="mono">' + esc(u.email || "sem e-mail") + '</div>' +
+          '<div class="mono">' + esc(u.cpf ? formatCPF(u.cpf) : "CPF não informado") + '</div></td>' +
         '<td>' + seloPerfil(u) + '</td>' +
         '<td>' + status + '</td>' +
         '<td class="mono">' + esc(u.lastLogin ? dataHora(u.lastLogin) : "nunca entrou") + '</td>' +
@@ -719,35 +875,44 @@
       '</tr>';
     }).join("");
 
+    var opcoesDominio = DOMINIOS.map(function(d){
+      return '<option value="' + esc(d) + '">@' + esc(d) + '</option>';
+    }).join("");
+
     return '' +
     '<div class="cartao">' +
       '<h2>Criar acesso</h2>' +
-      '<p class="apoio">Você define o usuário; a senha é gerada aqui e trocada pela pessoa no primeiro acesso.</p>' +
+      '<p class="apoio">Cria a conta no Firebase Authentication e o cadastro aqui. A senha é gerada agora e trocada pela pessoa no primeiro acesso.</p>' +
       (state.error ? '<div class="aviso aviso-erro">' + esc(state.error) + '</div>' : '') +
       '<form id="form-novo">' +
         '<div class="grade-3">' +
           '<div class="campo"><label for="novo-usuario">Usuário</label>' +
             '<input type="text" id="novo-usuario" autocapitalize="none" placeholder="nome.sobrenome"></div>' +
+          '<div class="campo"><label for="novo-dominio">Domínio do e-mail</label>' +
+            '<select id="novo-dominio">' + opcoesDominio + '</select></div>' +
           '<div class="campo"><label for="novo-cpf">CPF</label>' +
             '<input type="text" id="novo-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>' +
+        '</div>' +
+        '<div class="grade-3">' +
           '<div class="campo"><label for="novo-perfil">Perfil</label>' +
             '<select id="novo-perfil">' +
               '<option value="colaborativo">Colaborativo (somente leitura)</option>' +
               '<option value="administrativo">Administrativo (gerencia acessos)</option>' +
             '</select></div>' +
         '</div>' +
-        '<button type="submit" class="btn btn-principal" style="width:auto;">Criar acesso</button>' +
+        '<button type="submit" class="btn btn-principal" style="width:auto;" id="btn-criar">Criar acesso</button>' +
       '</form>' +
       (state.ultimaCredencial ? blocoCredencial() : '') +
     '</div>' +
     '<div class="cartao">' +
       '<h2>Acessos cadastrados</h2>' +
-      '<p class="apoio">Inativar bloqueia a entrada sem apagar o cadastro. Só o perfil administrativo cria e gerencia acessos.</p>' +
+      '<p class="apoio">Inativar bloqueia a entrada no sistema sem apagar o cadastro. Só o perfil administrativo gerencia acessos.</p>' +
       (state.users.length === 0
         ? '<div class="vazio">Nenhum acesso criado ainda. Comece pelo formulário acima.</div>'
         : '<div class="rolagem"><table><thead><tr>' +
             '<th>Usuário</th><th>Perfil</th><th>Situação</th><th>Último acesso</th><th>Ações</th>' +
           '</tr></thead><tbody>' + linhas + '</tbody></table></div>') +
+      '<p class="dica">Para apagar uma conta de vez, use Firebase → Authentication → Usuários. Aqui só é possível inativar.</p>' +
     '</div>';
   }
 
@@ -757,19 +922,19 @@
     '<div class="credencial">' +
       '<h3>Dados para entregar à pessoa</h3>' +
       '<div class="cred-linha"><span>Usuário</span><b>' + esc(c.username) + '</b></div>' +
-      '<div class="cred-linha"><span>CPF</span><b>' + esc(formatCPF(c.cpf)) + '</b></div>' +
+      '<div class="cred-linha"><span>E-mail</span><b>' + esc(c.email) + '</b></div>' +
       '<div class="cred-linha"><span>Perfil</span><b>' + esc(c.perfil) + '</b></div>' +
       '<div class="cred-linha"><span>Senha temporária</span>' +
         '<span style="display:flex; align-items:center; gap:10px;"><b>' + esc(c.password) + '</b>' +
         '<button class="btn btn-neutro btn-mini" id="copiar-credencial">Copiar tudo</button></span></div>' +
-      '<div class="cred-nota">Esta senha aparece só agora. Se ela se perder, gere uma nova pelo botão da tabela.</div>' +
+      '<div class="cred-nota">Esta senha aparece só agora e não fica guardada em lugar nenhum. Se ela se perder, use "Redefinir senha" na tabela.</div>' +
     '</div>';
   }
 
   function blocoRegistro(){
     if(state.logs.length === 0){
       return '<div class="cartao"><h2>Registro de atividade</h2>' +
-        '<p class="apoio">Cada criação, reset e mudança de perfil fica anotada aqui.</p>' +
+        '<p class="apoio">Cada criação, redefinição e mudança de perfil fica anotada aqui.</p>' +
         '<div class="vazio">Nenhuma atividade registrada ainda.</div></div>';
     }
     var itens = state.logs.slice().reverse().map(function(l){
@@ -790,10 +955,7 @@
   function ligarEventos(){
     liga("form-login", "submit", entrar);
     liga("ver-login", "click", function(){ verSenha("login-senha", this); });
-
-    liga("form-primeiro", "submit", criarPrimeiroAcesso);
-    liga("ver-primeiro", "click", function(){ verSenha("primeiro-senha", this); });
-    liga("primeiro-cpf", "input", function(){ this.value = formatCPF(this.value); });
+    liga("abrir-reset", "click", pedirRedefinicao);
 
     liga("form-troca", "submit", salvarSenhaInicial);
     liga("sair-troca", "click", sair);
@@ -839,111 +1001,81 @@
     btn.setAttribute("aria-label", mostrar ? "Ocultar senha" : "Mostrar senha");
   }
 
-  async function entrar(e){
-  if(e) e.preventDefault();
-  state.error = "";
-  
-  var nome = (document.getElementById("login-usuario").value || "").trim();
-  var senha = document.getElementById("login-senha").value || "";
-
-  if(!nome || !senha){ 
-    state.error = "Preencha usuário e senha."; 
-    render(); 
-    return; 
+  function ocupar(id, rotulo){
+    var b = document.getElementById(id);
+    if(b){ b.disabled = true; b.setAttribute("data-rotulo", b.textContent); b.textContent = rotulo; }
   }
-
-  // Se o usuário digitou o e-mail completo, usa direto.
-  // Se digitou só o nome, cria as duas opções de e-mail.
-  var listaEmails = [];
-  if(nome.includes("@")){
-    listaEmails.push(nome);
-  } else {
-    listaEmails.push(nome + "@apoiodetran.sp.gov.br");
-    listaEmails.push(nome + "@detran.sp.gov.br");
-  }
-
-  // Tenta autenticar com a primeira opção
-  try {
-    await firebase.auth().signInWithEmailAndPassword(listaEmails[0], senha);
-    await concluirLogin(nome);
-  } catch(error) {
-    // Se digitou só o nome e a primeira falhou, tenta a segunda opção
-    if(listaEmails.length > 1){
-      try {
-        await firebase.auth().signInWithEmailAndPassword(listaEmails[1], senha);
-        await concluirLogin(nome);
-        return;
-      } catch(err2){
-        // Falhou nas duas tentativas
-      }
+  function liberar(id){
+    var b = document.getElementById(id);
+    if(b){
+      b.disabled = false;
+      var r = b.getAttribute("data-rotulo");
+      if(r) b.textContent = r;
     }
-    state.error = "Usuário ou senha não conferem.";
-    render();
-  }
-}
-async function concluirLogin(nome){
-  var user = acharUsuario(nome);
-  if(!user){
-    state.error = "Acesso não encontrado na base local.";
-    render();
-    return;
   }
 
-  if(!user.active){ 
-    state.error = "Este acesso está inativo. Fale com o perfil administrativo."; 
-    render(); 
-    return; 
-  }
+  /* ---------- login ---------- */
 
-  state.currentUser = user;
-  state.painelAba = "inicio";
-
-  if(user.tempPassword){
-    state.screen = "trocaSenha";
-    render();
-    return;
-  }
-
-  user.previousLogin = user.lastLogin || "";
-  user.lastLogin = new Date().toISOString();
-  await salvarUsuarios();
-
-  state.screen = "painel";
-  render();
-}
-
-  async function criarPrimeiroAcesso(e){
+  async function entrar(e){
     e.preventDefault();
     state.error = "";
-    if(state.users.length > 0){ render(); return; }
 
-    var nome = (document.getElementById("primeiro-usuario").value || "").trim();
-    var cpf = digitos(document.getElementById("primeiro-cpf").value || "");
-    var s1 = document.getElementById("primeiro-senha").value || "";
-    var s2 = document.getElementById("primeiro-senha2").value || "";
+    var nome = (document.getElementById("login-usuario").value || "").trim();
+    var senha = document.getElementById("login-senha").value || "";
 
-    if(!nome){ state.error = "Informe o nome de usuário."; render(); return; }
-    if(cpf.length !== 11){ state.error = "O CPF precisa ter 11 dígitos."; render(); return; }
-    if(s1.length < 6){ state.error = "A senha precisa de pelo menos 6 caracteres."; render(); return; }
-    if(s1 !== s2){ state.error = "As duas senhas estão diferentes."; render(); return; }
+    if(!nome || !senha){ state.error = "Preencha usuário e senha."; render(); return; }
 
-    var novo = {
-      username:nome, cpf:cpf, password:s1,
-      tempPassword:false, active:true, canEdit:true,
-      createdAt:new Date().toISOString(), lastLogin:new Date().toISOString(), previousLogin:""
-    };
-    state.users.push(novo);
+    ocupar("btn-entrar", "Entrando…");
 
-    var ok = await salvarUsuarios();
-    if(!ok){ state.users.pop(); return; }
-
-    state.currentUser = novo;
-    registrar("Primeiro acesso administrativo criado", nome);
-    toast("Acesso criado.");
-    state.painelAba = "inicio";
-    state.screen = "painel";
-    render();
+    try {
+      await tentarEntrar(emailsCandidatos(nome), senha);
+      /* onAuthStateChanged assume daqui: carrega o cadastro e abre o painel. */
+    } catch(err){
+      state.error = msgAuth(err);
+      liberar("btn-entrar");
+      render();
+    }
   }
+
+  async function tentarEntrar(emails, senha){
+    var ultimo = null;
+    for(var i=0;i<emails.length;i++){
+      try {
+        await auth.signInWithEmailAndPassword(emails[i], senha);
+        return;
+      } catch(err){
+        ultimo = err;
+        var c = err && err.code;
+        var eDeCredencial =
+          c === "auth/invalid-credential" || c === "auth/user-not-found" ||
+          c === "auth/wrong-password"     || c === "auth/invalid-email";
+        /* Erro de configuração ou de rede: não adianta tentar o outro domínio. */
+        if(!eDeCredencial) throw err;
+      }
+    }
+    throw ultimo;
+  }
+
+  async function pedirRedefinicao(){
+    var campo = document.getElementById("login-usuario");
+    var nome = ((campo && campo.value) || "").trim();
+    if(!nome){
+      state.error = "Escreva seu usuário no campo acima para receber o link.";
+      render();
+      return;
+    }
+    var emails = emailsCandidatos(nome);
+    try {
+      await auth.sendPasswordResetEmail(emails[0]);
+      state.error = "";
+      toast("Se essa conta existir, o link foi enviado para " + emails[0] + ".");
+    } catch(err){
+      state.error = msgAuth(err);
+      render();
+    }
+  }
+
+  /* ---------- troca de senha ---------- */
 
   async function salvarSenhaInicial(e){
     e.preventDefault();
@@ -954,15 +1086,21 @@ async function concluirLogin(nome){
     if(s1.length < 6){ state.error = "A senha precisa de pelo menos 6 caracteres."; render(); return; }
     if(s1 !== s2){ state.error = "As duas senhas estão diferentes."; render(); return; }
 
-    var user = acharUsuario(state.currentUser.username) || state.currentUser;
-    user.password = s1;
-    user.tempPassword = false;
-    user.previousLogin = "";
-    user.lastLogin = new Date().toISOString();
-    state.currentUser = user;
+    try {
+      await auth.currentUser.updatePassword(s1);
+    } catch(err){
+      state.error = msgAuth(err);
+      render();
+      return;
+    }
 
-    var ok = await salvarUsuarios();
-    if(!ok) return;
+    var cadastro = state.currentUser;
+    cadastro.tempPassword = false;
+    cadastro.previousLogin = "";
+    cadastro.lastLogin = new Date().toISOString();
+    state.loginRegistrado = true;
+    await salvarUsuarios();
+
     toast("Senha definida.");
     state.painelAba = "inicio";
     state.screen = "painel";
@@ -977,16 +1115,29 @@ async function concluirLogin(nome){
     if(s1.length < 6){ feedback.innerHTML = '<div class="aviso aviso-erro">A senha precisa de pelo menos 6 caracteres.</div>'; return; }
     if(s1 !== s2){ feedback.innerHTML = '<div class="aviso aviso-erro">As duas senhas estão diferentes.</div>'; return; }
 
-    var user = acharUsuario(state.currentUser.username);
-    if(!user){ feedback.innerHTML = '<div class="aviso aviso-erro">Este acesso não está mais disponível.</div>'; return; }
-    var anterior = user.password;
-    user.password = s1;
-    user.tempPassword = false;
+    try {
+      await auth.currentUser.updatePassword(s1);
+    } catch(err){
+      feedback.innerHTML = '<div class="aviso aviso-erro">' + esc(msgAuth(err)) + '</div>';
+      return;
+    }
 
-    var ok = await salvarUsuarios();
-    if(!ok){ user.password = anterior; return; }
+    if(state.currentUser.tempPassword){
+      state.currentUser.tempPassword = false;
+      await salvarUsuarios();
+    }
+    document.getElementById("conta-senha1").value = "";
+    document.getElementById("conta-senha2").value = "";
+    feedback.innerHTML = '<div class="aviso aviso-ok">Senha alterada.</div>';
     toast("Senha alterada.");
-    render();
+  }
+
+  /* ---------- gestão de acessos ---------- */
+
+  /* App secundário: cria a conta sem derrubar a sessão de quem está criando. */
+  function appSecundario(){
+    try { return firebase.app("criacao"); }
+    catch(e){ return firebase.initializeApp(firebaseConfig, "criacao"); }
   }
 
   async function criarAcesso(e){
@@ -994,29 +1145,66 @@ async function concluirLogin(nome){
     state.error = "";
     if(!ehAdministrativo()){ state.error = "Só o perfil administrativo pode criar acessos."; render(); return; }
 
-    var nome = (document.getElementById("novo-usuario").value || "").trim();
+    var nome = (document.getElementById("novo-usuario").value || "").trim().toLowerCase();
+    var dominio = document.getElementById("novo-dominio").value;
     var cpf = digitos(document.getElementById("novo-cpf").value || "");
     var perfil = document.getElementById("novo-perfil").value;
 
     if(!nome){ state.error = "Informe o nome de usuário."; render(); return; }
     if(cpf.length !== 11){ state.error = "O CPF precisa ter 11 dígitos."; render(); return; }
-    if(acharUsuario(nome)){ state.error = "Já existe um acesso com esse usuário."; render(); return; }
+
+    var email = nome.indexOf("@") !== -1 ? nome : (nome + "@" + dominio);
+    if(acharUsuario(usuarioDoEmail(email)) || acharPorEmail(email)){
+      state.error = "Já existe um acesso com esse usuário."; render(); return;
+    }
 
     var senha = gerarSenha();
+    ocupar("btn-criar", "Criando…");
+
+    var secundario = appSecundario().auth();
+    var credencial;
+    try {
+      credencial = await secundario.createUserWithEmailAndPassword(email, senha);
+    } catch(err){
+      state.error = msgAuth(err);
+      liberar("btn-criar");
+      render();
+      return;
+    }
+
     state.users.push({
-      username:nome, cpf:cpf, password:senha,
-      tempPassword:true, active:true, canEdit: perfil === "administrativo",
-      createdAt:new Date().toISOString(), lastLogin:"", previousLogin:""
+      uid: credencial.user.uid,
+      email: email,
+      username: usuarioDoEmail(email),
+      cpf: cpf,
+      active: true,
+      canEdit: perfil === "administrativo",
+      tempPassword: true,
+      createdAt: new Date().toISOString(),
+      lastLogin: "",
+      previousLogin: ""
     });
 
     var ok = await salvarUsuarios();
-    if(!ok){ state.users.pop(); return; }
+    if(!ok){
+      state.users.pop();
+      /* desfaz a conta recém-criada para não deixá-la órfã no Authentication */
+      try { await credencial.user.delete(); } catch(e2){}
+      try { await secundario.signOut(); } catch(e3){}
+      liberar("btn-criar");
+      render();
+      return;
+    }
+
+    try { await secundario.signOut(); } catch(e4){}
 
     state.ultimaCredencial = {
-      username:nome, cpf:cpf, password:senha,
+      username: usuarioDoEmail(email),
+      email: email,
+      password: senha,
       perfil: perfil === "administrativo" ? "Administrativo" : "Colaborativo"
     };
-    registrar("Acesso criado (" + state.ultimaCredencial.perfil + ")", nome);
+    registrar("Acesso criado (" + state.ultimaCredencial.perfil + ")", state.ultimaCredencial.username);
     toast("Acesso criado.");
     render();
   }
@@ -1026,34 +1214,27 @@ async function concluirLogin(nome){
     if(!c) return;
     copiar(
       "RA Detran-SP\nUsuário: " + c.username +
-      "\nCPF: " + formatCPF(c.cpf) +
+      "\nE-mail: " + c.email +
       "\nPerfil: " + c.perfil +
       "\nSenha temporária: " + c.password,
       "Dados copiados."
     );
   }
 
+  /* Trocar a senha de outra pessoa só é possível pelo Admin SDK (servidor).
+     No navegador, o caminho é enviar o link de redefinição. */
   async function resetarSenha(username){
     if(!ehAdministrativo()) return;
     var user = acharUsuario(username);
     if(!user) return;
-    var senha = gerarSenha();
-    var anterior = { password:user.password, tempPassword:user.tempPassword };
-    user.password = senha;
-    user.tempPassword = true;
-
-    var ok = await salvarUsuarios();
-    if(!ok){ user.password = anterior.password; user.tempPassword = anterior.tempPassword; return; }
-
-    state.ultimaCredencial = {
-      username:user.username, cpf:user.cpf, password:senha,
-      perfil: nomePerfil(user)
-    };
-    registrar("Senha redefinida", user.username);
-    toast("Nova senha gerada.");
-
-    if(ehVoce(username)){ sair(); return; }
-    render();
+    var email = user.email || (user.username + "@" + DOMINIOS[0]);
+    try {
+      await auth.sendPasswordResetEmail(email);
+      registrar("Link de redefinição enviado", user.username);
+      toast("Link de redefinição enviado para " + email + ".");
+    } catch(err){
+      toast(msgAuth(err));
+    }
   }
 
   async function mudarStatus(username){
@@ -1061,9 +1242,10 @@ async function concluirLogin(nome){
     if(ehVoce(username)){ toast("Você não pode inativar o próprio acesso."); return; }
     var user = acharUsuario(username);
     if(!user) return;
-    user.active = !user.active;
+    var antes = user.active;
+    user.active = (user.active === false);
     var ok = await salvarUsuarios();
-    if(!ok){ user.active = !user.active; return; }
+    if(!ok){ user.active = antes; render(); return; }
     registrar(user.active ? "Acesso ativado" : "Acesso inativado", user.username);
     toast(user.active ? "Acesso ativado." : "Acesso inativado.");
     render();
@@ -1074,24 +1256,21 @@ async function concluirLogin(nome){
     if(ehVoce(username)){ toast("Você não pode mudar o próprio perfil."); return; }
     var user = acharUsuario(username);
     if(!user) return;
+    var antes = user.canEdit;
     user.canEdit = (user.canEdit === false);
     var ok = await salvarUsuarios();
-    if(!ok){ user.canEdit = !user.canEdit; return; }
+    if(!ok){ user.canEdit = antes; render(); return; }
     registrar("Perfil alterado para " + (user.canEdit ? "administrativo" : "colaborativo"), user.username);
     toast(user.canEdit ? "Agora é administrativo." : "Agora é colaborativo.");
     render();
   }
 
   function sair(){
-    state.currentUser = null;
-    state.screen = "login";
-    state.painelAba = "inicio";
-    state.ultimaCredencial = null;
-    render();
+    state.error = "";
+    if(auth) auth.signOut();
   }
 
-  sincronizarUsuarios();
-  sincronizarLogs();
+  iniciar();
 
 })();
 </script>
