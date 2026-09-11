@@ -12,13 +12,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    /* paleta base (tema escuro) */
     --sage:#239b4e;
     --amber:#b0c628;
     --rust:#c0392b;
     --gold:#239b4e;
     --olive:#235e9b;
-    /* derivadas */
     --olive-deep:#1a1c21;
     --olive-soft:#3a7bc4;
     --paper:#22242a;
@@ -45,7 +43,6 @@
   h1,h2,h3{font-family:var(--font-display); font-weight:700; letter-spacing:-0.02em; margin:0;}
   button{font-family:inherit;}
 
-  /* ---------- marca ---------- */
   .mark{display:block; line-height:0;}
   .mark-logo{
     display:block; height:52px; width:auto; max-width:100%;
@@ -56,7 +53,6 @@
     .entrada-arte .mark-logo{height:44px; border-radius:22px;}
   }
 
-  /* ---------- login ---------- */
   .entrada{display:grid; grid-template-columns:minmax(0,44%) minmax(0,56%); min-height:100vh;}
   .entrada-arte{
     background:var(--olive-deep); color:#F2F0E4; padding:44px 46px; position:relative; overflow:hidden;
@@ -86,7 +82,6 @@
     .arte-base{display:none;}
   }
 
-  /* ---------- formulário ---------- */
   .campo{margin-bottom:16px;}
   .campo label{display:block; font-size:13px; font-weight:500; color:var(--ink-soft); margin-bottom:6px;}
   .campo-linha{position:relative;}
@@ -143,8 +138,9 @@
   .passo-config li{margin-bottom:7px;}
   .passo-config code{font-family:var(--font-mono); font-size:12.5px; color:var(--amber-deep);}
 
-  /* ---------- shell interno ---------- */
-  .shell{display:grid; grid-template-columns:236px minmax(0,1fr); min-height:100vh;}
+  .shell{display:grid; grid-template-columns:236px minmax(0,1fr); min-height:100vh; transition:grid-template-columns .16s ease;}
+  .shell.recolhido{grid-template-columns:0 minmax(0,1fr);}
+  .shell.recolhido .trilho{display:none;}
   .trilho{
     background:var(--olive-deep); color:#EDEBDC; padding:22px 16px;
     display:flex; flex-direction:column; gap:26px; position:sticky; top:0; height:100vh;
@@ -162,22 +158,38 @@
 
   .principal{display:flex; flex-direction:column; min-width:0;}
   .cabecalho{
-    display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
-    padding:16px 30px; background:var(--surface); border-bottom:1px solid var(--line);
+    display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:14px;
+    padding:14px 26px; background:var(--surface); border-bottom:1px solid var(--line);
     position:sticky; top:0; z-index:12;
   }
-  .cabecalho h1{font-size:19px; color:var(--ink);}
-  .cabecalho .sub{font-size:13px; color:var(--ink-soft);}
-  .usuario-chip{display:flex; align-items:center; gap:10px; font-size:13.5px;}
-  .usuario-nome{font-weight:600; color:var(--ink);}
+  .btn-trilho{
+    background:var(--paper); border:1px solid var(--line-strong); color:var(--ink);
+    border-radius:8px; padding:8px; display:flex; align-items:center; cursor:pointer;
+  }
+  .btn-trilho:hover{border-color:var(--olive); color:var(--olive-soft);}
+  .btn-trilho svg{width:18px; height:18px;}
+
+  .uso-campo{
+    justify-self:center; min-width:min(340px,100%); max-width:460px; text-align:center;
+    background:var(--paper); border:1px solid var(--line-strong); border-radius:10px; padding:7px 20px;
+  }
+  .uso-campo .rotulo{font-size:11px; letter-spacing:.10em; text-transform:uppercase; color:var(--ink-soft); line-height:1.4;}
+  .uso-campo .nome{font-family:var(--font-display); font-weight:700; font-size:18px; color:var(--amber-deep); line-height:1.3; word-break:break-word;}
+  .uso-campo.livre{border-style:dashed;}
+  .uso-campo.livre .nome{font-family:var(--font-body); font-weight:500; font-size:15px; color:var(--ink-soft);}
+
   .conteudo{padding:26px 30px 70px; max-width:1080px; width:100%;}
   @media (max-width:820px){
     .shell{grid-template-columns:1fr;}
+    .shell.recolhido{grid-template-columns:1fr;}
     .trilho{position:static; height:auto; flex-direction:row; align-items:center; gap:16px; overflow-x:auto; padding:14px 16px;}
     .trilho .mark-logo{height:36px; border-radius:18px;}
     .trilho-nav{flex-direction:row; gap:6px;}
     .trilho-pe{display:none;}
-    .cabecalho, .conteudo{padding-left:18px; padding-right:18px;}
+    .cabecalho{padding:12px 14px; gap:10px;}
+    .uso-campo{min-width:0; padding:6px 12px;}
+    .uso-campo .nome{font-size:16px;}
+    .conteudo{padding-left:18px; padding-right:18px;}
   }
 
   .cartao{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:22px 24px; margin-bottom:22px;}
@@ -187,17 +199,24 @@
   .grade-2{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px;}
   @media (max-width:700px){ .grade-3,.grade-2{grid-template-columns:1fr;} }
 
-  /* ---------- manutenção ---------- */
-  .manutencao{
-    display:flex; align-items:center; justify-content:center; text-align:center;
-    min-height:min(58vh,420px); padding:30px 18px;
+  .controle{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:16px; text-align:center; padding:34px 12px 26px;
   }
-  .manutencao p{
-    font-family:var(--font-display); font-weight:600; letter-spacing:-0.02em;
-    font-size:clamp(20px,3.2vw,30px); line-height:1.3; color:var(--ink); margin:0;
+  .btn-uso{
+    font-family:var(--font-display); font-weight:700; font-size:18px; letter-spacing:.07em;
+    padding:16px 54px; border-radius:11px; border:none; cursor:pointer;
+    transition:background .14s, color .14s;
   }
+  .btn-uso-iniciar{background:var(--sage); color:#06210f;}
+  .btn-uso-iniciar:hover{background:#2ab85c;}
+  .btn-uso-finalizar{background:var(--rust); color:#fff;}
+  .btn-uso-finalizar:hover{background:#d9503f;}
+  .btn-uso-bloqueado{background:#383b42; color:#767b68; cursor:not-allowed;}
+  .btn-uso:disabled{cursor:not-allowed;}
+  .controle-estado{font-size:13.5px; color:var(--ink-soft); max-width:46ch;}
+  .controle-estado strong{color:var(--ink);}
 
-  /* ---------- credencial gerada ---------- */
   .credencial{
     border:1px solid var(--gold); background:var(--amber-soft); border-radius:11px;
     padding:16px 18px; margin-top:18px;
@@ -207,7 +226,6 @@
   .cred-linha b{font-family:var(--font-mono); font-weight:600; font-size:14.5px; color:var(--amber-deep); word-break:break-all; text-align:right;}
   .cred-nota{font-size:12.5px; color:var(--ink-soft); margin-top:10px;}
 
-  /* ---------- tabela ---------- */
   .rolagem{overflow-x:auto;}
   table{width:100%; border-collapse:collapse; min-width:700px;}
   th{
@@ -219,6 +237,7 @@
   .mono{font-family:var(--font-mono); font-size:13px; color:var(--ink-soft);}
   .acoes{display:flex; gap:7px; flex-wrap:wrap;}
   .voce{font-size:12.5px; color:var(--ink-soft);}
+  .tabela-uso{min-width:560px;}
 
   .selo{display:inline-flex; align-items:center; gap:5px; border-radius:100px; padding:3px 10px; font-size:12px; font-weight:500; white-space:nowrap;}
   .selo-ativo{background:var(--sage-soft); color:#a3e666; border:1px solid var(--sage);}
@@ -226,6 +245,8 @@
   .selo-temp{background:var(--amber-soft); color:var(--amber-deep); border:1px solid var(--gold); margin-left:6px;}
   .selo-edicao{background:#2a3020; color:#c3d19a; border:1px solid var(--olive-soft);}
   .selo-leitura{background:var(--paper); color:var(--ink-soft); border:1px solid var(--line-strong);}
+  .selo-inicio{background:var(--sage-soft); color:#a3e666; border:1px solid var(--sage);}
+  .selo-fim{background:var(--rust-soft); color:#f2a99b; border:1px solid #6b3129;}
 
   .vazio{padding:34px 12px; text-align:center; color:var(--ink-soft); font-size:13.5px;}
   .dica{font-size:12.5px; color:var(--ink-soft); margin-top:6px;}
@@ -243,7 +264,7 @@
   .carregando{display:flex; align-items:center; justify-content:center; gap:10px; min-height:100vh; color:var(--ink-soft); font-size:14px;}
   .giro{width:16px; height:16px; border-radius:50%; border:2px solid var(--line-strong); border-top-color:var(--olive); animation:gira .8s linear infinite;}
   @keyframes gira{to{transform:rotate(360deg);}}
-  @media (prefers-reduced-motion: reduce){ .giro{animation:none;} }
+  @media (prefers-reduced-motion: reduce){ .giro{animation:none;} .shell{transition:none;} }
 
   .aviso-flutuante{
     position:fixed; left:50%; bottom:22px; transform:translateX(-50%);
@@ -255,21 +276,12 @@
 <body>
 <div id="app"><div class="carregando"><span class="giro"></span>Carregando…</div></div>
 
-<!-- Um SDK só. Nunca carregue duas versões do firebase-app-compat na mesma página. -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 <script>
 (function(){
   "use strict";
-
-  /* =====================================================================
-     CONFIGURAÇÃO
-     Pegue estes valores em: Firebase → Configurações do projeto →
-     Seus apps → App da Web → Configuração do SDK.
-     O apiKey não é segredo: ele apenas identifica o projeto. Quem protege
-     os dados são as regras do Realtime Database + o Authentication.
-     ===================================================================== */
 
   var firebaseConfig = {
     apiKey:      "AIzaSyANuJqxS0rsYBahW7hvoHCv0MPjoxLQxBw",
@@ -278,11 +290,8 @@
     projectId:   "reclameaqui-7cf38"
   };
 
-  /* Domínios de e-mail aceitos. A pessoa digita só o usuário e o sistema
-     tenta os domínios abaixo, na ordem. */
   var DOMINIOS = ["apoiodetran.sp.gov.br", "detran.sp.gov.br"];
 
-  /* Logo: arquivo Reclame.png na mesma pasta deste HTML. */
   var LOGO_URL = "Reclame.png";
 
   var configOk = !!firebaseConfig.apiKey && firebaseConfig.apiKey.indexOf("COLE_AQUI") === -1;
@@ -298,13 +307,17 @@
     booted:false,
     users:[],
     logs:[],
-    screen:"login",      /* config | login | trocaSenha | painel */
-    painelAba:"inicio",  /* inicio | usuarios | registro | conta */
-    currentUser:null,    /* cadastro vindo do banco */
+    uso:[],
+    sessao:null,
+    screen:"login",
+    painelAba:"inicio",
+    trilhoAberto:true,
+    currentUser:null,
     error:"",
     ultimaCredencial:null,
     loginRegistrado:false,
-    criandoPrimeiro:false
+    criandoPrimeiro:false,
+    ocupadoUso:false
   };
 
   var app = document.getElementById("app");
@@ -313,6 +326,12 @@
   var IC_REGISTRO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><line x1="9" y1="13" x2="16" y2="13"/><line x1="9" y1="17" x2="14" y2="17"/></svg>';
   var IC_INICIO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.4 12 4l9 7.4"/><path d="M5 10v9.5a.5.5 0 0 0 .5.5H10v-6h4v6h4.5a.5.5 0 0 0 .5-.5V10"/></svg>';
   var IC_CONTA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>';
+
+  function iconeTrilho(aberto){
+    return aberto
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>';
+  }
 
   function olhoSVG(aberto){
     return aberto
@@ -354,6 +373,20 @@
     var d = new Date(iso);
     if(isNaN(d.getTime())) return iso;
     return d.toLocaleDateString("pt-BR") + " " + d.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"});
+  }
+
+  function soData(iso){
+    if(!iso) return "";
+    var d = new Date(iso);
+    if(isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString("pt-BR");
+  }
+
+  function soHora(iso){
+    if(!iso) return "";
+    var d = new Date(iso);
+    if(isNaN(d.getTime())) return "";
+    return d.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit", second:"2-digit"});
   }
 
   function autor(){
@@ -399,7 +432,6 @@
     return DOMINIOS.map(function(d){ return v + "@" + d; });
   }
 
-  /* Traduz o código do Firebase em algo que ajude a entender o problema. */
   function msgAuth(err){
     var c = (err && err.code) || "";
     switch(c){
@@ -438,12 +470,6 @@
     return "Não foi possível salvar no servidor.";
   }
 
-  /* =====================================================================
-     PERFIS
-     Administrativo = canEdit true  → gerencia acessos
-     Colaborativo   = canEdit false → somente leitura
-     ===================================================================== */
-
   function ehAdministrativo(user){
     var u = user || state.currentUser;
     return !!(u && u.canEdit !== false);
@@ -464,13 +490,7 @@
       (state.currentUser.username||"").toLowerCase() === (username||"").toLowerCase());
   }
 
-  /* =====================================================================
-     BASE DE DADOS
-     O banco guarda perfil, situação e datas. Senha nenhuma: quem valida
-     senha é o Firebase Authentication.
-     ===================================================================== */
-
-  var refUsuarios = null, refLogs = null;
+  var refUsuarios = null, refLogs = null, refSessao = null, refUso = null, aoCair = null;
 
   function ligarBase(){
     if(refUsuarios) return;
@@ -484,12 +504,29 @@
     refLogs.on("value", function(snap){
       state.logs = toArray(snap.val());
       if(state.screen === "painel" && state.painelAba === "registro") render();
-    }, function(){ /* registro é secundário */ });
+    }, function(){});
+    refSessao = db.ref("sessaoAtiva");
+    refSessao.on("value", function(snap){
+      var valor = snap.val();
+      state.sessao = (valor && valor.username) ? valor : null;
+      if(state.screen === "painel" && !digitandoNoFormulario()) render();
+    }, function(){});
+    refUso = db.ref("usoRegistro");
+    refUso.on("value", function(snap){
+      state.uso = toArray(snap.val()).sort(function(a,b){
+        return String(a.em||"").localeCompare(String(b.em||""));
+      });
+      if(state.screen === "painel" && state.painelAba === "registro") render();
+    }, function(){});
   }
 
   function desligarBase(){
     if(refUsuarios){ refUsuarios.off(); refUsuarios = null; }
     if(refLogs){ refLogs.off(); refLogs = null; }
+    if(refSessao){ refSessao.off(); refSessao = null; }
+    if(refUso){ refUso.off(); refUso = null; }
+    state.sessao = null;
+    state.uso = [];
   }
 
   function acharPorUid(uid){
@@ -516,7 +553,6 @@
     return null;
   }
 
-  /* Casa a conta autenticada com o cadastro: uid → e-mail → nome de usuário. */
   function acharCadastro(authUser){
     return acharPorUid(authUser.uid)
         || acharPorEmail(authUser.email)
@@ -524,7 +560,6 @@
   }
 
   async function salvarUsuarios(){
-    /* Remove qualquer campo password herdado da versão antiga. */
     var limpos = state.users.map(function(u){
       var copia = {};
       for(var k in u){ if(k !== "password" && Object.prototype.hasOwnProperty.call(u,k)) copia[k] = u[k]; }
@@ -537,7 +572,20 @@
   async function registrar(evento, alvo){
     state.logs.push({ evento: evento, alvo: alvo || "", por: autor(), em: new Date().toISOString() });
     if(state.logs.length > 200) state.logs = state.logs.slice(-200);
-    try { await db.ref("registro").set(state.logs); } catch(e){ /* registro é secundário */ }
+    try { await db.ref("registro").set(state.logs); } catch(e){}
+  }
+
+  async function registrarUso(acao){
+    var u = state.currentUser;
+    if(!u) return;
+    try {
+      await db.ref("usoRegistro").push({
+        username: u.username || "",
+        email: u.email || "",
+        acao: acao,
+        em: new Date().toISOString()
+      });
+    } catch(e){}
   }
 
   function digitandoNoFormulario(){
@@ -548,8 +596,6 @@
     }
     return false;
   }
-
-  /* ---------- ciclo de autenticação ---------- */
 
   function iniciar(){
     if(!configOk){
@@ -588,7 +634,6 @@
     var cadastro = acharCadastro(authUser);
 
     if(!cadastro){
-      /* Base vazia: a primeira conta que entra vira o perfil administrativo. */
       if(state.users.length === 0){
         if(state.criandoPrimeiro) return;
         state.criandoPrimeiro = true;
@@ -609,7 +654,7 @@
         state.criandoPrimeiro = false;
         if(!criou){ state.users.pop(); render(); return; }
         registrar("Primeiro acesso administrativo criado", novo.username);
-        return; /* o próprio listener reprocessa já com o cadastro salvo */
+        return;
       }
       state.error = "Sua conta foi autenticada, mas não há cadastro para ela neste sistema. Fale com o perfil administrativo.";
       auth.signOut();
@@ -625,7 +670,6 @@
     state.currentUser = cadastro;
     state.error = "";
 
-    /* Cadastro antigo, sem uid: amarra à conta autenticada. */
     if(!cadastro.uid || !cadastro.email){
       cadastro.uid = authUser.uid;
       cadastro.email = (authUser.email||"").toLowerCase();
@@ -647,10 +691,6 @@
     if(digitandoNoFormulario()) return;
     render();
   }
-
-  /* =====================================================================
-     RENDER
-     ===================================================================== */
 
   function render(){
     if(!state.booted){
@@ -752,7 +792,7 @@
 
   function shell(nav, cabecalho, conteudo){
     return '' +
-    '<div class="shell">' +
+    '<div class="shell' + (state.trilhoAberto ? '' : ' recolhido') + '">' +
       '<aside class="trilho">' +
         marca() +
         '<nav class="trilho-nav">' + nav + '</nav>' +
@@ -769,14 +809,25 @@
     return '<button data-painel="' + id + '" class="' + (ativo ? "on" : "") + '">' + icone + rotulo + '</button>';
   }
 
-  /* ---------- painel ---------- */
+  function ehMinhaSessao(){
+    var s = state.sessao, u = state.currentUser;
+    if(!s || !s.username || !u) return false;
+    return String(s.username).toLowerCase() === String(u.username||"").toLowerCase();
+  }
 
-  var TITULOS = {
-    inicio:   { titulo:"Início",                sub:"Área de trabalho do RA Detran-SP" },
-    usuarios: { titulo:"Usuários e acessos",    sub:"" },
-    registro: { titulo:"Registro de atividade", sub:"O que foi feito no sistema" },
-    conta:    { titulo:"Minha conta",           sub:"Seus dados de acesso" }
-  };
+  function campoUso(){
+    var s = state.sessao;
+    if(s && s.username){
+      return '<div class="uso-campo">' +
+        '<div class="rotulo">Em uso por</div>' +
+        '<div class="nome">' + esc(s.username) + '</div>' +
+      '</div>';
+    }
+    return '<div class="uso-campo livre">' +
+      '<div class="rotulo">Em uso por</div>' +
+      '<div class="nome">Ninguém no momento</div>' +
+    '</div>';
+  }
 
   function telaPainel(){
     var u = state.currentUser || {};
@@ -793,18 +844,13 @@
     }
     nav += itemNav("conta", "Minha conta", IC_CONTA, state.painelAba === "conta");
 
-    var t = TITULOS[state.painelAba] || TITULOS.inicio;
-    var sub = state.painelAba === "usuarios"
-      ? state.users.length + " acesso(s) cadastrado(s)"
-      : t.sub;
-
     var cabecalho =
-      '<div><h1>' + esc(t.titulo) + '</h1><div class="sub">' + esc(sub) + '</div></div>' +
-      '<div class="usuario-chip">' +
-        '<span class="usuario-nome">' + esc(u.username || "") + '</span>' +
-        seloPerfil(u) +
-        '<button class="btn btn-neutro btn-mini" id="sair">Sair</button>' +
-      '</div>';
+      '<button class="btn-trilho" id="alternar-trilho" aria-label="' +
+        (state.trilhoAberto ? "Esconder menu lateral" : "Mostrar menu lateral") + '">' +
+        iconeTrilho(state.trilhoAberto) +
+      '</button>' +
+      campoUso() +
+      '<button class="btn btn-neutro btn-mini" id="sair">Sair</button>';
 
     var conteudo;
     if(state.painelAba === "conta") conteudo = blocoConta(u);
@@ -816,9 +862,28 @@
   }
 
   function blocoInicio(){
+    var s = state.sessao;
+    var meu = ehMinhaSessao();
+    var ocupado = !!(s && s.username);
+    var botao, estado;
+
+    if(meu){
+      botao = '<button class="btn-uso btn-uso-finalizar" id="btn-uso">FINALIZAR</button>';
+      estado = 'Você iniciou em <strong>' + esc(dataHora(s.em)) + '</strong>. Clique em finalizar para liberar o sistema.';
+    } else if(ocupado){
+      botao = '<button class="btn-uso btn-uso-bloqueado" id="btn-uso" disabled>INICIAR</button>';
+      estado = '<strong>' + esc(s.username) + '</strong> está utilizando desde ' + esc(dataHora(s.em)) + '. Aguarde a finalização para liberar o botão.';
+    } else {
+      botao = '<button class="btn-uso btn-uso-iniciar" id="btn-uso">INICIAR</button>';
+      estado = 'Ninguém está utilizando o sistema agora. Ao iniciar, seu nome aparece no campo do topo.';
+    }
+
     return '' +
       '<div class="cartao">' +
-        '<div class="manutencao"><p>Pagina em manutenção 🛠️ - Aguarde ...</p></div>' +
+        '<div class="controle">' +
+          botao +
+          '<div class="controle-estado">' + estado + '</div>' +
+        '</div>' +
       '</div>';
   }
 
@@ -846,8 +911,6 @@
         '<button class="btn btn-principal" style="width:auto;" id="conta-salvar-senha">Salvar nova senha</button>' +
       '</div>';
   }
-
-  /* ---------- gestão de acessos (perfil administrativo) ---------- */
 
   function blocoUsuarios(){
     var linhas = state.users.map(function(u){
@@ -931,26 +994,55 @@
     '</div>';
   }
 
-  function blocoRegistro(){
-    if(state.logs.length === 0){
-      return '<div class="cartao"><h2>Registro de atividade</h2>' +
-        '<p class="apoio">Cada criação, redefinição e mudança de perfil fica anotada aqui.</p>' +
-        '<div class="vazio">Nenhuma atividade registrada ainda.</div></div>';
+  function blocoUso(){
+    if(state.uso.length === 0){
+      return '<div class="cartao">' +
+        '<h2>Registro de uso</h2>' +
+        '<p class="apoio">Todo clique em INICIAR e FINALIZAR fica registrado com nome, data e horário.</p>' +
+        '<div class="vazio">Nenhum uso registrado ainda.</div>' +
+      '</div>';
     }
-    var itens = state.logs.slice().reverse().map(function(l){
-      return '<li>' +
-        '<div class="registro-topo">' + esc(l.evento) + (l.alvo ? ' — ' + esc(l.alvo) : '') + '</div>' +
-        '<div class="registro-meta">' + esc(dataHora(l.em)) + ' · ' + esc(l.por || "—") + '</div>' +
-      '</li>';
+    var linhas = state.uso.slice().reverse().map(function(r){
+      var selo = (r.acao === "INICIAR")
+        ? '<span class="selo selo-inicio">INICIAR</span>'
+        : '<span class="selo selo-fim">FINALIZAR</span>';
+      return '<tr>' +
+        '<td><strong>' + esc(r.username || "—") + '</strong>' +
+          (r.email ? '<div class="mono">' + esc(r.email) + '</div>' : '') + '</td>' +
+        '<td>' + selo + '</td>' +
+        '<td class="mono">' + esc(soData(r.em)) + '</td>' +
+        '<td class="mono">' + esc(soHora(r.em)) + '</td>' +
+      '</tr>';
     }).join("");
-    return '<div class="cartao"><h2>Registro de atividade</h2>' +
-      '<p class="apoio">Últimas ' + state.logs.length + ' ações, da mais recente para a mais antiga.</p>' +
-      '<ul class="registro">' + itens + '</ul></div>';
+
+    return '<div class="cartao">' +
+      '<h2>Registro de uso</h2>' +
+      '<p class="apoio">' + state.uso.length + ' registro(s) de INICIAR e FINALIZAR, do mais recente para o mais antigo.</p>' +
+      '<div class="rolagem"><table class="tabela-uso"><thead><tr>' +
+        '<th>Nome</th><th>Ação</th><th>Data</th><th>Horário</th>' +
+      '</tr></thead><tbody>' + linhas + '</tbody></table></div>' +
+    '</div>';
   }
 
-  /* =====================================================================
-     EVENTOS
-     ===================================================================== */
+  function blocoRegistro(){
+    var atividade;
+    if(state.logs.length === 0){
+      atividade = '<div class="cartao"><h2>Registro de atividade</h2>' +
+        '<p class="apoio">Cada criação, redefinição e mudança de perfil fica anotada aqui.</p>' +
+        '<div class="vazio">Nenhuma atividade registrada ainda.</div></div>';
+    } else {
+      var itens = state.logs.slice().reverse().map(function(l){
+        return '<li>' +
+          '<div class="registro-topo">' + esc(l.evento) + (l.alvo ? ' — ' + esc(l.alvo) : '') + '</div>' +
+          '<div class="registro-meta">' + esc(dataHora(l.em)) + ' · ' + esc(l.por || "—") + '</div>' +
+        '</li>';
+      }).join("");
+      atividade = '<div class="cartao"><h2>Registro de atividade</h2>' +
+        '<p class="apoio">Últimas ' + state.logs.length + ' ações, da mais recente para a mais antiga.</p>' +
+        '<ul class="registro">' + itens + '</ul></div>';
+    }
+    return blocoUso() + atividade;
+  }
 
   function ligarEventos(){
     liga("form-login", "submit", entrar);
@@ -960,6 +1052,12 @@
     liga("form-troca", "submit", salvarSenhaInicial);
     liga("sair-troca", "click", sair);
     liga("sair", "click", sair);
+
+    liga("alternar-trilho", "click", function(){
+      state.trilhoAberto = !state.trilhoAberto;
+      render();
+    });
+    liga("btn-uso", "click", alternarUso);
 
     liga("form-novo", "submit", criarAcesso);
     liga("novo-cpf", "input", function(){ this.value = formatCPF(this.value); });
@@ -1014,7 +1112,72 @@
     }
   }
 
-  /* ---------- login ---------- */
+  async function alternarUso(){
+    if(state.ocupadoUso) return;
+    if(ehMinhaSessao()) await finalizarUso(false);
+    else await iniciarUso();
+  }
+
+  async function iniciarUso(){
+    var u = state.currentUser;
+    if(!u) return;
+    if(state.sessao && state.sessao.username){
+      toast("O sistema já está em uso por " + state.sessao.username + ".");
+      return;
+    }
+
+    state.ocupadoUso = true;
+    ocupar("btn-uso", "AGUARDE…");
+
+    var dados = {
+      username: u.username || "",
+      email: u.email || "",
+      uid: u.uid || "",
+      em: new Date().toISOString()
+    };
+
+    try {
+      var res = await db.ref("sessaoAtiva").transaction(function(atual){
+        if(atual && atual.username) return;
+        return dados;
+      });
+      if(!res.committed){
+        state.ocupadoUso = false;
+        toast("Outra pessoa iniciou antes de você.");
+        render();
+        return;
+      }
+      aoCair = db.ref("sessaoAtiva").onDisconnect();
+      aoCair.remove();
+      state.sessao = dados;
+      await registrarUso("INICIAR");
+      toast("Uso iniciado.");
+    } catch(err){
+      toast(msgBanco(err));
+    }
+
+    state.ocupadoUso = false;
+    render();
+  }
+
+  async function finalizarUso(silencioso){
+    if(!ehMinhaSessao()) return;
+    state.ocupadoUso = true;
+    if(!silencioso) ocupar("btn-uso", "AGUARDE…");
+
+    try {
+      if(aoCair){ try { await aoCair.cancel(); } catch(e){} aoCair = null; }
+      await db.ref("sessaoAtiva").remove();
+      state.sessao = null;
+      await registrarUso("FINALIZAR");
+      if(!silencioso) toast("Uso finalizado.");
+    } catch(err){
+      if(!silencioso) toast(msgBanco(err));
+    }
+
+    state.ocupadoUso = false;
+    if(!silencioso) render();
+  }
 
   async function entrar(e){
     e.preventDefault();
@@ -1029,7 +1192,6 @@
 
     try {
       await tentarEntrar(emailsCandidatos(nome), senha);
-      /* onAuthStateChanged assume daqui: carrega o cadastro e abre o painel. */
     } catch(err){
       state.error = msgAuth(err);
       liberar("btn-entrar");
@@ -1049,7 +1211,6 @@
         var eDeCredencial =
           c === "auth/invalid-credential" || c === "auth/user-not-found" ||
           c === "auth/wrong-password"     || c === "auth/invalid-email";
-        /* Erro de configuração ou de rede: não adianta tentar o outro domínio. */
         if(!eDeCredencial) throw err;
       }
     }
@@ -1074,8 +1235,6 @@
       render();
     }
   }
-
-  /* ---------- troca de senha ---------- */
 
   async function salvarSenhaInicial(e){
     e.preventDefault();
@@ -1132,9 +1291,6 @@
     toast("Senha alterada.");
   }
 
-  /* ---------- gestão de acessos ---------- */
-
-  /* App secundário: cria a conta sem derrubar a sessão de quem está criando. */
   function appSecundario(){
     try { return firebase.app("criacao"); }
     catch(e){ return firebase.initializeApp(firebaseConfig, "criacao"); }
@@ -1188,7 +1344,6 @@
     var ok = await salvarUsuarios();
     if(!ok){
       state.users.pop();
-      /* desfaz a conta recém-criada para não deixá-la órfã no Authentication */
       try { await credencial.user.delete(); } catch(e2){}
       try { await secundario.signOut(); } catch(e3){}
       liberar("btn-criar");
@@ -1221,8 +1376,6 @@
     );
   }
 
-  /* Trocar a senha de outra pessoa só é possível pelo Admin SDK (servidor).
-     No navegador, o caminho é enviar o link de redefinição. */
   async function resetarSenha(username){
     if(!ehAdministrativo()) return;
     var user = acharUsuario(username);
@@ -1265,8 +1418,9 @@
     render();
   }
 
-  function sair(){
+  async function sair(){
     state.error = "";
+    if(ehMinhaSessao()) await finalizarUso(true);
     if(auth) auth.signOut();
   }
 
