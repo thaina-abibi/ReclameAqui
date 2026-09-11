@@ -56,30 +56,25 @@
   .entrada{display:grid; grid-template-columns:minmax(0,44%) minmax(0,56%); min-height:100vh;}
   .entrada-arte{
     background:var(--olive-deep); color:#F2F0E4; padding:44px 46px; position:relative; overflow:hidden;
-    display:flex; flex-direction:column; justify-content:space-between;
+    display:flex; flex-direction:column; justify-content:space-between; gap:28px;
   }
   .entrada-arte::after{
     content:""; position:absolute; inset:0;
     background:repeating-linear-gradient(115deg, rgba(110,180,1,0.10) 0 2px, transparent 2px 22px);
     pointer-events:none;
   }
-  .arte-topo, .arte-base{position:relative; z-index:1;}
-  .arte-titulo{font-family:var(--font-display); font-weight:700; font-size:clamp(38px,4.4vw,60px); line-height:0.98; letter-spacing:-0.035em; margin:0 0 18px; color:#F2F0E4;}
+  .arte-topo{position:relative; z-index:1;}
+  .arte-titulo{font-family:var(--font-display); font-weight:700; font-size:clamp(38px,4.4vw,60px); line-height:0.98; letter-spacing:-0.035em; margin:0; color:#F2F0E4;}
   .arte-titulo span{display:block; color:var(--sage);}
-  .arte-texto{max-width:34ch; color:#B9BDAA; font-size:15px;}
-  .arte-base{font-size:12.5px; color:#7C8170; border-top:1px solid rgba(242,240,228,0.16); padding-top:14px;}
 
   .entrada-form{display:flex; align-items:center; justify-content:center; padding:40px 28px; background:var(--paper);}
   .form-bloco{width:100%; max-width:420px;}
-  .form-bloco h1{font-size:27px; margin-bottom:6px; color:var(--ink);}
-  .form-bloco .apoio{color:var(--ink-soft); font-size:14px; margin:0 0 26px;}
+  .form-bloco h1{font-size:27px; margin-bottom:22px; color:var(--ink);}
 
   @media (max-width:860px){
     .entrada{grid-template-columns:1fr;}
-    .entrada-arte{padding:26px 22px 30px; gap:22px;}
-    .arte-titulo{font-size:34px; margin-bottom:10px;}
-    .arte-texto{font-size:14px;}
-    .arte-base{display:none;}
+    .entrada-arte{padding:26px 22px 30px; gap:18px;}
+    .arte-titulo{font-size:34px;}
   }
 
   .campo{margin-bottom:16px;}
@@ -127,8 +122,7 @@
     cursor:pointer; padding:6px 2px; text-decoration:underline; text-underline-offset:3px;
   }
   .link:hover{color:var(--amber);}
-  .rodape-form{margin-top:20px; padding-top:16px; border-top:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;}
-  .rodape-form span{font-size:12.5px; color:var(--ink-soft);}
+  .rodape-form{margin-top:20px; padding-top:16px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; align-items:center; gap:12px; flex-wrap:wrap;}
 
   .aviso{border-radius:8px; padding:11px 13px; font-size:13.5px; margin-bottom:16px;}
   .aviso-erro{background:var(--rust-soft); border:1px solid #6b3129; color:#f2a99b;}
@@ -138,13 +132,18 @@
   .passo-config li{margin-bottom:7px;}
   .passo-config code{font-family:var(--font-mono); font-size:12.5px; color:var(--amber-deep);}
 
-  .shell{display:grid; grid-template-columns:236px minmax(0,1fr); min-height:100vh; transition:grid-template-columns .16s ease;}
-  .shell.recolhido{grid-template-columns:0 minmax(0,1fr);}
-  .shell.recolhido .trilho{display:none;}
+  .shell{min-height:100vh; width:100%;}
+
   .trilho{
+    position:fixed; top:0; left:0; z-index:40;
+    width:236px; height:100vh;
     background:var(--olive-deep); color:#EDEBDC; padding:22px 16px;
-    display:flex; flex-direction:column; gap:26px; position:sticky; top:0; height:100vh;
+    display:flex; flex-direction:column; gap:26px;
+    transform:translateX(-100%); transition:transform .18s ease;
+    box-shadow:0 0 34px rgba(0,0,0,0.45);
   }
+  .shell.aberto .trilho{transform:translateX(0);}
+  .fundo-trilho{position:fixed; inset:0; background:rgba(10,11,13,0.55); z-index:35;}
   .trilho-nav{display:flex; flex-direction:column; gap:3px;}
   .trilho-nav button{
     display:flex; align-items:center; gap:10px; width:100%; text-align:left;
@@ -154,9 +153,8 @@
   .trilho-nav button:hover{background:rgba(242,240,228,0.09); color:#F2F0E4;}
   .trilho-nav button.on{background:var(--amber); color:#1a1c05; font-weight:600;}
   .trilho-nav svg{width:17px; height:17px; flex-shrink:0;}
-  .trilho-pe{margin-top:auto; font-size:12px; color:#767b68; line-height:1.5;}
 
-  .principal{display:flex; flex-direction:column; min-width:0;}
+  .principal{display:flex; flex-direction:column; min-width:0; width:100%;}
   .cabecalho{
     display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:14px;
     padding:14px 26px; background:var(--surface); border-bottom:1px solid var(--line);
@@ -164,37 +162,33 @@
   }
   .btn-trilho{
     background:var(--paper); border:1px solid var(--line-strong); color:var(--ink);
-    border-radius:8px; padding:8px; display:flex; align-items:center; cursor:pointer;
+    border-radius:8px; padding:9px 10px; display:flex; align-items:center; cursor:pointer;
   }
   .btn-trilho:hover{border-color:var(--olive); color:var(--olive-soft);}
-  .btn-trilho svg{width:18px; height:18px;}
+  .btn-trilho svg{width:22px; height:16px;}
+  .acoes-topo{display:flex; align-items:center; gap:8px;}
 
   .uso-campo{
-    justify-self:center; min-width:min(340px,100%); max-width:460px; text-align:center;
-    background:var(--paper); border:1px solid var(--line-strong); border-radius:10px; padding:7px 20px;
+    justify-self:center; min-width:min(420px,100%); max-width:560px; text-align:center;
+    background:var(--paper); border:2px dashed var(--sage); border-radius:12px; padding:10px 26px;
   }
-  .uso-campo .rotulo{font-size:11px; letter-spacing:.10em; text-transform:uppercase; color:var(--ink-soft); line-height:1.4;}
-  .uso-campo .nome{font-family:var(--font-display); font-weight:700; font-size:18px; color:var(--amber-deep); line-height:1.3; word-break:break-word;}
-  .uso-campo.livre{border-style:dashed;}
-  .uso-campo.livre .nome{font-family:var(--font-body); font-weight:500; font-size:15px; color:var(--ink-soft);}
+  .uso-campo .rotulo{font-size:11.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); line-height:1.4;}
+  .uso-campo .nome{font-family:var(--font-display); font-weight:700; font-size:24px; line-height:1.25; color:#8fe23d; word-break:break-word;}
+  .uso-campo.ocupado{border-color:var(--rust); background:rgba(58,36,34,0.45);}
+  .uso-campo.ocupado .nome{color:#ef8474;}
+  .uso-campo.livre .nome{letter-spacing:.08em;}
 
   .conteudo{padding:26px 30px 70px; max-width:1080px; width:100%;}
   @media (max-width:820px){
-    .shell{grid-template-columns:1fr;}
-    .shell.recolhido{grid-template-columns:1fr;}
-    .trilho{position:static; height:auto; flex-direction:row; align-items:center; gap:16px; overflow-x:auto; padding:14px 16px;}
-    .trilho .mark-logo{height:36px; border-radius:18px;}
-    .trilho-nav{flex-direction:row; gap:6px;}
-    .trilho-pe{display:none;}
     .cabecalho{padding:12px 14px; gap:10px;}
-    .uso-campo{min-width:0; padding:6px 12px;}
-    .uso-campo .nome{font-size:16px;}
+    .uso-campo{min-width:0; padding:8px 12px;}
+    .uso-campo .nome{font-size:19px;}
+    .uso-campo .rotulo{font-size:10.5px;}
     .conteudo{padding-left:18px; padding-right:18px;}
   }
 
   .cartao{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:22px 24px; margin-bottom:22px;}
-  .cartao h2{font-size:17px; margin-bottom:3px; color:var(--ink);}
-  .cartao .apoio{color:var(--ink-soft); font-size:13.5px; margin:0 0 18px;}
+  .cartao h2{font-size:17px; margin-bottom:18px; color:var(--ink);}
   .grade-3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px;}
   .grade-2{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px;}
   @media (max-width:700px){ .grade-3,.grade-2{grid-template-columns:1fr;} }
@@ -224,7 +218,6 @@
   .credencial h3{font-family:var(--font-display); font-size:15px; margin-bottom:10px; color:var(--ink);}
   .cred-linha{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:5px 0; font-size:13.5px; color:var(--ink-soft);}
   .cred-linha b{font-family:var(--font-mono); font-weight:600; font-size:14.5px; color:var(--amber-deep); word-break:break-all; text-align:right;}
-  .cred-nota{font-size:12.5px; color:var(--ink-soft); margin-top:10px;}
 
   .rolagem{overflow-x:auto;}
   table{width:100%; border-collapse:collapse; min-width:700px;}
@@ -249,7 +242,6 @@
   .selo-fim{background:var(--rust-soft); color:#f2a99b; border:1px solid #6b3129;}
 
   .vazio{padding:34px 12px; text-align:center; color:var(--ink-soft); font-size:13.5px;}
-  .dica{font-size:12.5px; color:var(--ink-soft); margin-top:6px;}
 
   .linha-dado{display:flex; justify-content:space-between; gap:14px; padding:11px 0; border-bottom:1px solid var(--line); font-size:14px; color:var(--ink);}
   .linha-dado:last-child{border-bottom:none;}
@@ -264,7 +256,7 @@
   .carregando{display:flex; align-items:center; justify-content:center; gap:10px; min-height:100vh; color:var(--ink-soft); font-size:14px;}
   .giro{width:16px; height:16px; border-radius:50%; border:2px solid var(--line-strong); border-top-color:var(--olive); animation:gira .8s linear infinite;}
   @keyframes gira{to{transform:rotate(360deg);}}
-  @media (prefers-reduced-motion: reduce){ .giro{animation:none;} .shell{transition:none;} }
+  @media (prefers-reduced-motion: reduce){ .giro{animation:none;} .trilho{transition:none;} }
 
   .aviso-flutuante{
     position:fixed; left:50%; bottom:22px; transform:translateX(-50%);
@@ -439,7 +431,7 @@ status("Painel pronto.");
     sessao:null,
     screen:"login",
     painelAba:"inicio",
-    trilhoAberto:true,
+    trilhoAberto:false,
     currentUser:null,
     error:"",
     ultimaCredencial:null,
@@ -454,12 +446,7 @@ status("Painel pronto.");
   var IC_REGISTRO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><line x1="9" y1="13" x2="16" y2="13"/><line x1="9" y1="17" x2="14" y2="17"/></svg>';
   var IC_INICIO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.4 12 4l9 7.4"/><path d="M5 10v9.5a.5.5 0 0 0 .5.5H10v-6h4v6h4.5a.5.5 0 0 0 .5-.5V10"/></svg>';
   var IC_CONTA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>';
-
-  function iconeTrilho(aberto){
-    return aberto
-      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
-      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>';
-  }
+  var IC_MENU = '<svg viewBox="0 0 30 20" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><line x1="2" y1="3" x2="28" y2="3"/><line x1="2" y1="10" x2="28" y2="10"/><line x1="2" y1="17" x2="28" y2="17"/></svg>';
 
   function olhoSVG(aberto){
     return aberto
@@ -745,6 +732,7 @@ status("Painel pronto.");
         state.currentUser = null;
         state.screen = "login";
         state.painelAba = "inicio";
+        state.trilhoAberto = false;
         state.ultimaCredencial = null;
         state.booted = true;
         render();
@@ -836,16 +824,15 @@ status("Painel pronto.");
     ligarEventos();
   }
 
-  function moldura(conteudo, titulo, subtitulo){
+  function moldura(conteudo, titulo){
     return '' +
     '<div class="entrada">' +
       '<div class="entrada-arte">' +
         '<div class="arte-topo">' + marca() + '</div>' +
         '<div class="arte-topo">' +
           '<h2 class="arte-titulo">' + titulo + '</h2>' +
-          '<p class="arte-texto">' + subtitulo + '</p>' +
         '</div>' +
-        '<div class="arte-base">BASE · uso interno</div>' +
+        '<div class="arte-topo"></div>' +
       '</div>' +
       '<div class="entrada-form">' +
         '<div class="form-bloco">' + conteudo + '</div>' +
@@ -856,22 +843,19 @@ status("Painel pronto.");
   function telaConfig(){
     return moldura(
       '<h1>Falta configurar o Firebase</h1>' +
-      '<p class="apoio">O login usa o Firebase Authentication, que precisa da configuração completa do app da Web.</p>' +
       '<ol class="passo-config">' +
         '<li>No Firebase, abra <code>Configurações do projeto → Seus apps</code> e copie o objeto <code>firebaseConfig</code>.</li>' +
-        '<li>Cole os valores no topo do script deste arquivo, no lugar de <code>COLE_AQUI_SUA_API_KEY</code>.</li>' +
+        '<li>Cole os valores no topo do script deste arquivo.</li>' +
         '<li>Em <code>Authentication → Sign-in method</code>, ative <code>E-mail/senha</code>.</li>' +
-        '<li>Crie a primeira conta em <code>Authentication → Usuários</code> e entre com ela: o sistema cria o cadastro administrativo sozinho.</li>' +
+        '<li>Crie a primeira conta em <code>Authentication → Usuários</code> e entre com ela.</li>' +
       '</ol>',
-      '<span>ReclameAqui</span>Detran-SP',
-      'Ambiente restrito da equipe do Reclame Aqui do Detran-SP.'
+      '<span>ReclameAqui</span>Detran-SP'
     );
   }
 
   function telaLogin(){
     return moldura(
       '<h1>Entrar</h1>' +
-      '<p class="apoio">Use o usuário e a senha que você recebeu do perfil administrativo.</p>' +
       (state.error ? '<div class="aviso aviso-erro">' + esc(state.error) + '</div>' : '') +
       '<form id="form-login">' +
         '<div class="campo">' +
@@ -888,18 +872,15 @@ status("Painel pronto.");
         '<button type="submit" class="btn btn-principal" id="btn-entrar">Entrar</button>' +
       '</form>' +
       '<div class="rodape-form">' +
-        '<span>Esqueceu a senha? Escreva seu usuário acima e peça o link.</span>' +
         '<button class="link" id="abrir-reset">Receber link por e-mail</button>' +
       '</div>',
-      '<span>ReclameAqui</span>Detran-SP',
-      'Ambiente restrito da equipe do Reclame Aqui do Detran-SP.'
+      '<span>ReclameAqui</span>Detran-SP'
     );
   }
 
   function telaTrocaSenha(){
     return moldura(
       '<h1>Defina sua senha</h1>' +
-      '<p class="apoio">Você está entrando como <strong>' + esc(state.currentUser ? state.currentUser.username : "") + '</strong>. A senha que você recebeu é temporária.</p>' +
       (state.error ? '<div class="aviso aviso-erro">' + esc(state.error) + '</div>' : '') +
       '<form id="form-troca">' +
         '<div class="campo">' +
@@ -913,18 +894,17 @@ status("Painel pronto.");
         '<button type="submit" class="btn btn-principal">Salvar e continuar</button>' +
       '</form>' +
       '<div class="rodape-form"><button class="link" id="sair-troca">Sair sem salvar</button></div>',
-      'Primeiro<span>acesso</span>',
-      'A senha que você recebeu é temporária e só serve para esta primeira entrada.'
+      'Primeiro<span>acesso</span>'
     );
   }
 
   function shell(nav, cabecalho, conteudo){
     return '' +
-    '<div class="shell' + (state.trilhoAberto ? '' : ' recolhido') + '">' +
+    '<div class="shell' + (state.trilhoAberto ? ' aberto' : '') + '">' +
+      (state.trilhoAberto ? '<div class="fundo-trilho" id="fundo-trilho"></div>' : '') +
       '<aside class="trilho">' +
         marca() +
         '<nav class="trilho-nav">' + nav + '</nav>' +
-        '<div class="trilho-pe">RA Detran-SP<br>Sessão autenticada</div>' +
       '</aside>' +
       '<div class="principal">' +
         '<header class="cabecalho">' + cabecalho + '</header>' +
@@ -946,14 +926,14 @@ status("Painel pronto.");
   function campoUso(){
     var s = state.sessao;
     if(s && s.username){
-      return '<div class="uso-campo">' +
+      return '<div class="uso-campo ocupado">' +
         '<div class="rotulo">Em uso por</div>' +
         '<div class="nome">' + esc(s.username) + '</div>' +
       '</div>';
     }
     return '<div class="uso-campo livre">' +
-      '<div class="rotulo">Em uso por</div>' +
-      '<div class="nome">Ninguém no momento</div>' +
+      '<div class="rotulo">Em uso</div>' +
+      '<div class="nome">LIVRE</div>' +
     '</div>';
   }
 
@@ -974,11 +954,12 @@ status("Painel pronto.");
 
     var cabecalho =
       '<button class="btn-trilho" id="alternar-trilho" aria-label="' +
-        (state.trilhoAberto ? "Esconder menu lateral" : "Mostrar menu lateral") + '">' +
-        iconeTrilho(state.trilhoAberto) +
-      '</button>' +
+        (state.trilhoAberto ? "Esconder menu" : "Mostrar menu") + '">' + IC_MENU + '</button>' +
       campoUso() +
-      '<button class="btn btn-neutro btn-mini" id="sair">Sair</button>';
+      '<div class="acoes-topo">' +
+        '<button class="btn btn-neutro btn-mini" id="btn-coleta">COLETA</button>' +
+        '<button class="btn btn-neutro btn-mini" id="sair">Sair</button>' +
+      '</div>';
 
     var conteudo;
     if(state.painelAba === "conta") conteudo = blocoConta(u);
@@ -997,27 +978,21 @@ status("Painel pronto.");
 
     if(meu){
       botao = '<button class="btn-uso btn-uso-finalizar" id="btn-uso">FINALIZAR</button>';
-      estado = 'Você iniciou em <strong>' + esc(dataHora(s.em)) + '</strong>. Clique em finalizar para liberar o sistema.';
+      estado = 'Você iniciou em <strong>' + esc(dataHora(s.em)) + '</strong>.';
     } else if(ocupado){
       botao = '<button class="btn-uso btn-uso-bloqueado" id="btn-uso" disabled>INICIAR</button>';
-      estado = '<strong>' + esc(s.username) + '</strong> está utilizando desde ' + esc(dataHora(s.em)) + '. Aguarde a finalização para liberar o botão.';
+      estado = '<strong>' + esc(s.username) + '</strong> está utilizando desde ' + esc(dataHora(s.em)) + '.';
     } else {
       botao = '<button class="btn-uso btn-uso-iniciar" id="btn-uso">INICIAR</button>';
-      estado = 'Ninguém está utilizando o sistema agora. Ao iniciar, seu nome aparece no campo do topo.';
+      estado = '';
     }
 
     return '' +
       '<div class="cartao">' +
         '<div class="controle">' +
           botao +
-          '<div class="controle-estado">' + estado + '</div>' +
+          (estado ? '<div class="controle-estado">' + estado + '</div>' : '') +
         '</div>' +
-      '</div>' +
-      '<div class="cartao">' +
-        '<h2>Coletor de IDs do Reclame Aqui</h2>' +
-        '<p class="apoio">Copie o código, abra a lista de reclamações no Reclame Aqui, pressione F12 → Console, cole e dê Enter. Um painel aparece no canto da tela para coletar e copiar os IDs.</p>' +
-        '<button class="btn btn-neutro" id="copiar-coletor">Copiar código de coleta</button>' +
-        '<p class="dica">Os IDs ficam guardados no navegador enquanto você troca de página, então dá para percorrer várias páginas e copiar tudo de uma vez no final.</p>' +
       '</div>';
   }
 
@@ -1026,7 +1001,6 @@ status("Painel pronto.");
     return '' +
       '<div class="cartao">' +
         '<h2>Dados de acesso</h2>' +
-        '<p class="apoio">Para alterar usuário, CPF ou perfil, fale com alguém do perfil administrativo.</p>' +
         '<div class="linha-dado"><span>Usuário</span><span>' + esc(u.username || "") + '</span></div>' +
         '<div class="linha-dado"><span>E-mail</span><span class="mono">' + esc(email) + '</span></div>' +
         '<div class="linha-dado"><span>CPF</span><span class="mono">' + esc(u.cpf ? formatCPF(u.cpf) : "não informado") + '</span></div>' +
@@ -1036,7 +1010,6 @@ status("Painel pronto.");
       '</div>' +
       '<div class="cartao">' +
         '<h2>Trocar senha</h2>' +
-        '<p class="apoio">A troca vale para a sua conta de autenticação e passa a valer no próximo acesso.</p>' +
         '<div id="troca-feedback"></div>' +
         '<div class="grade-2">' +
           '<div class="campo"><label for="conta-senha1">Nova senha</label><input type="password" id="conta-senha1" autocomplete="new-password" placeholder="Mínimo de 6 caracteres"></div>' +
@@ -1079,7 +1052,6 @@ status("Painel pronto.");
     return '' +
     '<div class="cartao">' +
       '<h2>Criar acesso</h2>' +
-      '<p class="apoio">Cria a conta no Firebase Authentication e o cadastro aqui. A senha é gerada agora e trocada pela pessoa no primeiro acesso.</p>' +
       (state.error ? '<div class="aviso aviso-erro">' + esc(state.error) + '</div>' : '') +
       '<form id="form-novo">' +
         '<div class="grade-3">' +
@@ -1093,8 +1065,8 @@ status("Painel pronto.");
         '<div class="grade-3">' +
           '<div class="campo"><label for="novo-perfil">Perfil</label>' +
             '<select id="novo-perfil">' +
-              '<option value="colaborativo">Colaborativo (somente leitura)</option>' +
-              '<option value="administrativo">Administrativo (gerencia acessos)</option>' +
+              '<option value="colaborativo">Colaborativo</option>' +
+              '<option value="administrativo">Administrativo</option>' +
             '</select></div>' +
         '</div>' +
         '<button type="submit" class="btn btn-principal" style="width:auto;" id="btn-criar">Criar acesso</button>' +
@@ -1103,13 +1075,11 @@ status("Painel pronto.");
     '</div>' +
     '<div class="cartao">' +
       '<h2>Acessos cadastrados</h2>' +
-      '<p class="apoio">Inativar bloqueia a entrada no sistema sem apagar o cadastro. Só o perfil administrativo gerencia acessos.</p>' +
       (state.users.length === 0
-        ? '<div class="vazio">Nenhum acesso criado ainda. Comece pelo formulário acima.</div>'
+        ? '<div class="vazio">Nenhum acesso criado ainda.</div>'
         : '<div class="rolagem"><table><thead><tr>' +
             '<th>Usuário</th><th>Perfil</th><th>Situação</th><th>Último acesso</th><th>Ações</th>' +
           '</tr></thead><tbody>' + linhas + '</tbody></table></div>') +
-      '<p class="dica">Para apagar uma conta de vez, use Firebase → Authentication → Usuários. Aqui só é possível inativar.</p>' +
     '</div>';
   }
 
@@ -1124,7 +1094,6 @@ status("Painel pronto.");
       '<div class="cred-linha"><span>Senha temporária</span>' +
         '<span style="display:flex; align-items:center; gap:10px;"><b>' + esc(c.password) + '</b>' +
         '<button class="btn btn-neutro btn-mini" id="copiar-credencial">Copiar tudo</button></span></div>' +
-      '<div class="cred-nota">Esta senha aparece só agora e não fica guardada em lugar nenhum. Se ela se perder, use "Redefinir senha" na tabela.</div>' +
     '</div>';
   }
 
@@ -1132,7 +1101,6 @@ status("Painel pronto.");
     if(state.uso.length === 0){
       return '<div class="cartao">' +
         '<h2>Registro de uso</h2>' +
-        '<p class="apoio">Todo clique em INICIAR e FINALIZAR fica registrado com nome, data e horário.</p>' +
         '<div class="vazio">Nenhum uso registrado ainda.</div>' +
       '</div>';
     }
@@ -1151,7 +1119,6 @@ status("Painel pronto.");
 
     return '<div class="cartao">' +
       '<h2>Registro de uso</h2>' +
-      '<p class="apoio">' + state.uso.length + ' registro(s) de INICIAR e FINALIZAR, do mais recente para o mais antigo.</p>' +
       '<div class="rolagem"><table class="tabela-uso"><thead><tr>' +
         '<th>Nome</th><th>Ação</th><th>Data</th><th>Horário</th>' +
       '</tr></thead><tbody>' + linhas + '</tbody></table></div>' +
@@ -1162,7 +1129,6 @@ status("Painel pronto.");
     var atividade;
     if(state.logs.length === 0){
       atividade = '<div class="cartao"><h2>Registro de atividade</h2>' +
-        '<p class="apoio">Cada criação, redefinição e mudança de perfil fica anotada aqui.</p>' +
         '<div class="vazio">Nenhuma atividade registrada ainda.</div></div>';
     } else {
       var itens = state.logs.slice().reverse().map(function(l){
@@ -1172,7 +1138,6 @@ status("Painel pronto.");
         '</li>';
       }).join("");
       atividade = '<div class="cartao"><h2>Registro de atividade</h2>' +
-        '<p class="apoio">Últimas ' + state.logs.length + ' ações, da mais recente para a mais antiga.</p>' +
         '<ul class="registro">' + itens + '</ul></div>';
     }
     return blocoUso() + atividade;
@@ -1191,8 +1156,12 @@ status("Painel pronto.");
       state.trilhoAberto = !state.trilhoAberto;
       render();
     });
+    liga("fundo-trilho", "click", function(){
+      state.trilhoAberto = false;
+      render();
+    });
     liga("btn-uso", "click", alternarUso);
-    liga("copiar-coletor", "click", copiarCodigoColetor);
+    liga("btn-coleta", "click", copiarCodigoColetor);
 
     liga("form-novo", "submit", criarAcesso);
     liga("novo-cpf", "input", function(){ this.value = formatCPF(this.value); });
@@ -1202,6 +1171,7 @@ status("Painel pronto.");
     cada("[data-painel]", function(b){
       b.addEventListener("click", function(){
         state.painelAba = b.getAttribute("data-painel");
+        state.trilhoAberto = false;
         state.error = "";
         render();
       });
