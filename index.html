@@ -538,7 +538,11 @@ status("Painel pronto.");
     ultimaCredencial:null,
     loginRegistrado:false,
     criandoPrimeiro:false,
-    ocupadoUso:false
+    ocupadoUso:false,
+    coleta:(function(){
+      try { return JSON.parse(localStorage.getItem("ra_app_coleta_v1") || "[]") || []; }
+      catch(e){ return []; }
+    })()
   };
 
   var app = document.getElementById("app");
@@ -1094,7 +1098,65 @@ status("Painel pronto.");
           botao +
           (estado ? '<div class="controle-estado">' + estado + '</div>' : '') +
         '</div>' +
-      '</div>';
+      '</div>' + blocoColeta();
+  }
+
+  function blocoColeta(){
+    var opcoes = ["CNH","VEÍCULOS","MULTAS","PORTAL","CREDENCIADOS","ANÁLISE","OUTROS"];
+    var linhas = state.coleta.map(function(item, indice){
+      return '<tr>' +
+        '<td>' + esc(item.data || "—") + '</td>' +
+        '<td class="mono">' + esc(item.id || "—") + '</td>' +
+        '<td><select class="coleta-assunto" data-indice="' + indice + '">' +
+          opcoes.map(function(op){ return '<option' + (op === item.assunto ? ' selected' : '') + '>' + op + '</option>'; }).join('') +
+        '</select></td>' +
+        '<td><button class="btn btn-risco btn-mini" data-remover-coleta="' + indice + '">Excluir</button></td>' +
+      '</tr>';
+    }).join('');
+
+    return '<div class="cartao" id="area-coleta">' +
+      '<h2>Coleta — Reclame Aqui</h2>' +
+      '<p style="color:var(--ink-soft);margin:-8px 0 16px">Cole abaixo o CSV copiado pelo coletor para exibir os registros no aplicativo.</p>' +
+      '<div class="grade-2">' +
+        '<div class="campo"><label for="coleta-dados">Dados coletados</label><textarea id="coleta-dados" rows="5" placeholder="DATA;ID;ASSUNTO&#10;11/09/2026;123456789;CNH"></textarea></div>' +
+        '<div style="display:flex;flex-direction:column;gap:9px;justify-content:flex-end">' +
+          '<button class="btn btn-principal" id="importar-coleta">IMPORTAR COLETA</button>' +
+          '<button class="btn btn-neutro" id="copiar-coletor">COPIAR CÓDIGO DO COLETOR</button>' +
+          '<button class="btn btn-risco" id="limpar-coleta-app">LIMPAR REGISTROS</button>' +
+        '</div>' +
+      '</div>' +
+      '<div style="margin:8px 0 12px;color:var(--ink-soft)"><strong style="color:var(--ink)">' + state.coleta.length + '</strong> registro(s)</div>' +
+      '<div class="rolagem"><table><thead><tr><th>DATA</th><th>ID</th><th>ASSUNTO</th><th>AÇÃO</th></tr></thead><tbody>' +
+        (linhas || '<tr><td colspan="4" class="vazio">Nenhuma coleta importada.</td></tr>') +
+      '</tbody></table></div>' +
+    '</div>';
+  }
+
+  function salvarColetaApp(){
+    localStorage.setItem("ra_app_coleta_v1", JSON.stringify(state.coleta));
+  }
+
+  function importarColeta(){
+    var campo = document.getElementById("coleta-dados");
+    var texto = campo ? campo.value.trim() : "";
+    if(!texto){ toast("Cole os dados copiados pelo coletor."); return; }
+    var existentes = Object.create(null);
+    state.coleta.forEach(function(i){ existentes[i.id] = true; });
+    var novos = 0;
+    texto.split(/\r?\n/).forEach(function(linha, indice){
+      if(!linha.trim() || (indice === 0 && /^DATA[;\t,]/i.test(linha))) return;
+      var partes = linha.split(linha.indexOf(";") >= 0 ? ";" : "\t");
+      var data = (partes[0] || "").trim();
+      var id = (partes[1] || "").replace(/\D/g, "");
+      var assunto = (partes[2] || "OUTROS").trim().toUpperCase();
+      if(id.length >= 6 && !existentes[id]){
+        state.coleta.push({data:data, id:id, assunto:assunto});
+        existentes[id] = true; novos++;
+      }
+    });
+    salvarColetaApp();
+    render();
+    toast(novos + " novo(s) registro(s) importado(s).");
   }
 
   function blocoConta(u){
@@ -1262,7 +1324,30 @@ status("Painel pronto.");
       render();
     });
     liga("btn-uso", "click", alternarUso);
-    liga("btn-coleta", "click", copiarCodigoColetor);
+    liga("btn-coleta", "click", function(){
+      var area = document.getElementById("area-coleta");
+      if(area) area.scrollIntoView({behavior:"smooth", block:"start"});
+    });
+    liga("copiar-coletor", "click", copiarCodigoColetor);
+    liga("importar-coleta", "click", importarColeta);
+    liga("limpar-coleta-app", "click", function(){
+      if(!state.coleta.length) return toast("Não há registros para limpar.");
+      if(confirm("Deseja apagar todos os registros da coleta?")){
+        state.coleta = []; salvarColetaApp(); render(); toast("Registros removidos.");
+      }
+    });
+    cada(".coleta-assunto", function(sel){
+      sel.addEventListener("change", function(){
+        state.coleta[Number(this.getAttribute("data-indice"))].assunto = this.value;
+        salvarColetaApp();
+      });
+    });
+    cada("[data-remover-coleta]", function(btn){
+      btn.addEventListener("click", function(){
+        state.coleta.splice(Number(this.getAttribute("data-remover-coleta")), 1);
+        salvarColetaApp(); render();
+      });
+    });
 
     liga("form-novo", "submit", criarAcesso);
     liga("novo-cpf", "input", function(){ this.value = formatCPF(this.value); });
