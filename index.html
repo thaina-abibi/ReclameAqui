@@ -276,6 +276,134 @@
 <body>
 <div id="app"><div class="carregando"><span class="giro"></span>Carregando…</div></div>
 
+<script type="text/plain" id="codigo-coletor">
+(function(){
+"use strict";
+if(document.getElementById("ra-coletor")) return;
+
+var CHAVE = "ra_detran_ids";
+var ids = [], vistos = Object.create(null);
+try { ids = JSON.parse(localStorage.getItem(CHAVE) || "[]") || []; } catch(e){ ids = []; }
+ids.forEach(function(id){ vistos[id] = true; });
+
+function salvar(){ try { localStorage.setItem(CHAVE, JSON.stringify(ids)); } catch(e){} }
+
+function varrer(){
+  var texto = document.body.innerText || "";
+  var re = /ID:\s*(\d{6,})/g, m, novos = 0;
+  while((m = re.exec(texto)) !== null){
+    var id = m[1];
+    if(!vistos[id]){ vistos[id] = true; ids.push(id); novos++; }
+  }
+  if(novos) salvar();
+  return novos;
+}
+
+function copiar(texto, msg){
+  function manual(){
+    var ta = document.createElement("textarea");
+    ta.value = texto; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); status(msg); }
+    catch(e){ status("Não deu para copiar. A lista saiu no console."); console.log(texto); }
+    ta.remove();
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(texto).then(function(){ status(msg); }, manual);
+  } else manual();
+}
+
+var caixa = document.createElement("div");
+caixa.id = "ra-coletor";
+caixa.style.cssText = "position:fixed;right:18px;bottom:18px;width:254px;z-index:2147483647;background:#22242a;color:#e3e2e0;font:13px/1.45 system-ui,-apple-system,sans-serif;border:1px solid #4a4e56;border-radius:12px;padding:14px 15px;box-shadow:0 14px 34px rgba(0,0,0,.45)";
+
+function botao(rotulo, principal){
+  var b = document.createElement("button");
+  b.textContent = rotulo;
+  b.style.cssText = "display:block;width:100%;margin-top:7px;padding:8px 10px;border-radius:7px;cursor:pointer;font:600 12.5px system-ui,sans-serif;border:1px solid " +
+    (principal ? "#b0c628;background:#b0c628;color:#1a1c05" : "#4a4e56;background:#2a2d34;color:#e3e2e0");
+  caixa.appendChild(b);
+  return b;
+}
+
+var topo = document.createElement("div");
+topo.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px";
+var tit = document.createElement("strong");
+tit.textContent = "Coletor de IDs";
+var x = document.createElement("button");
+x.textContent = "\u00d7";
+x.style.cssText = "background:none;border:none;color:#a3a89a;font-size:18px;line-height:1;cursor:pointer";
+topo.appendChild(tit); topo.appendChild(x);
+caixa.appendChild(topo);
+
+var contador = document.createElement("div");
+contador.style.cssText = "font:700 26px system-ui,sans-serif;color:#c9d94a;margin:8px 0 2px";
+caixa.appendChild(contador);
+
+var recado = document.createElement("div");
+recado.style.cssText = "font-size:11.5px;color:#a3a89a;min-height:28px";
+caixa.appendChild(recado);
+
+function status(msg){
+  contador.textContent = ids.length + " ID(s)";
+  recado.textContent = msg || "";
+}
+
+var bColetar = botao("Coletar esta página", true);
+var bLinha   = botao("Copiar (um por linha)");
+var bVirgula = botao("Copiar separado por vírgula");
+var bLimpar  = botao("Limpar lista");
+
+var rodape = document.createElement("label");
+rodape.style.cssText = "display:flex;align-items:center;gap:7px;margin-top:10px;font-size:11.5px;color:#a3a89a;cursor:pointer";
+var chk = document.createElement("input");
+chk.type = "checkbox"; chk.checked = true;
+rodape.appendChild(chk);
+rodape.appendChild(document.createTextNode("Coletar sozinho ao trocar de página"));
+caixa.appendChild(rodape);
+
+var observador = null, espera = null;
+function auto(ativo){
+  if(ativo && !observador){
+    observador = new MutationObserver(function(){
+      clearTimeout(espera);
+      espera = setTimeout(function(){
+        var n = varrer();
+        status(n ? n + " novo(s) coletado(s) automaticamente." : "");
+      }, 700);
+    });
+    observador.observe(document.body, {childList:true, subtree:true});
+  } else if(!ativo && observador){
+    observador.disconnect(); observador = null;
+  }
+}
+
+bColetar.onclick = function(){
+  var n = varrer();
+  status(n ? n + " novo(s) nesta página." : "Nenhum ID novo nesta página.");
+};
+bLinha.onclick = function(){
+  if(!ids.length) return status("A lista está vazia.");
+  copiar(ids.join("\n"), ids.length + " ID(s) copiado(s).");
+};
+bVirgula.onclick = function(){
+  if(!ids.length) return status("A lista está vazia.");
+  copiar(ids.join(", "), ids.length + " ID(s) copiado(s).");
+};
+bLimpar.onclick = function(){
+  ids = []; vistos = Object.create(null); salvar();
+  status("Lista zerada.");
+};
+chk.onchange = function(){ auto(chk.checked); };
+x.onclick = function(){ auto(false); caixa.remove(); };
+
+document.body.appendChild(caixa);
+varrer();
+auto(true);
+status("Painel pronto.");
+})();
+</script>
+
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
@@ -884,6 +1012,12 @@
           botao +
           '<div class="controle-estado">' + estado + '</div>' +
         '</div>' +
+      '</div>' +
+      '<div class="cartao">' +
+        '<h2>Coletor de IDs do Reclame Aqui</h2>' +
+        '<p class="apoio">Copie o código, abra a lista de reclamações no Reclame Aqui, pressione F12 → Console, cole e dê Enter. Um painel aparece no canto da tela para coletar e copiar os IDs.</p>' +
+        '<button class="btn btn-neutro" id="copiar-coletor">Copiar código de coleta</button>' +
+        '<p class="dica">Os IDs ficam guardados no navegador enquanto você troca de página, então dá para percorrer várias páginas e copiar tudo de uma vez no final.</p>' +
       '</div>';
   }
 
@@ -1058,6 +1192,7 @@
       render();
     });
     liga("btn-uso", "click", alternarUso);
+    liga("copiar-coletor", "click", copiarCodigoColetor);
 
     liga("form-novo", "submit", criarAcesso);
     liga("novo-cpf", "input", function(){ this.value = formatCPF(this.value); });
@@ -1110,6 +1245,12 @@
       var r = b.getAttribute("data-rotulo");
       if(r) b.textContent = r;
     }
+  }
+
+  function copiarCodigoColetor(){
+    var el = document.getElementById("codigo-coletor");
+    if(!el){ toast("Código do coletor não encontrado no arquivo."); return; }
+    copiar(el.textContent.trim(), "Código copiado. Cole no console do Reclame Aqui.");
   }
 
   async function alternarUso(){
