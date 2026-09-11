@@ -263,6 +263,17 @@
     background:var(--surface); border:1px solid var(--line-strong); color:var(--ink); padding:11px 18px; border-radius:9px;
     font-size:13.5px; z-index:100; box-shadow:0 12px 28px rgba(0,0,0,0.5); max-width:calc(100% - 32px); text-align:center;
   }
+
+  #popup-coleta{width:min(640px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;margin:auto;padding:0;border:1px solid var(--line-strong);border-radius:14px;background:var(--surface);color:var(--ink);box-shadow:0 24px 80px #0008;}
+  #popup-coleta::backdrop{background:rgba(0,0,0,.55);}
+  .coleta-topo{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 24px;border-bottom:1px solid var(--line);}
+  .coleta-topo h2{font-size:19px;}
+  .coleta-miolo{padding:24px;}
+  .coleta-miolo p{font-size:14px;color:var(--ink-soft);margin:0 0 18px;}
+  #coleta-dados{min-height:200px;resize:vertical;font-family:var(--font-mono);font-size:14px;}
+  #coleta-feedback{margin:14px 0 0;font-size:14px;white-space:pre-wrap;}
+  #coleta-dock{position:fixed;right:24px;bottom:24px;z-index:100;background:var(--amber);color:#1a1c05;box-shadow:0 8px 24px #0005;}
+
 </style>
 </head>
 <body>
@@ -334,78 +345,84 @@
 }
 </script>
 <script type="text/plain" id="codigo-coletor">
+
 (function(){
 "use strict";
-if(window.__raAutoCleanup) window.__raAutoCleanup();
-else if(document.getElementById("ra-coletor")) {
- alert("Feche o coletor antigo no X antes de executar esta versão."); return;
-}
-var APP_URL = __APP_URL__;
-var destino = new URL(APP_URL);
-if(location.protocol !== "https:" || !(location.hostname === "reclameaqui.com.br" || location.hostname.endsWith(".reclameaqui.com.br"))) {
- alert("Execute este coletor na página HTTPS do Reclame Aqui."); return;
-}
-var canal = Array.from(crypto.getRandomValues(new Uint8Array(24))).map(function(n){return n.toString(16).padStart(2,"0");}).join("");
-var janela=null, conectado=false, lote=null, enviados=new Set(), pendentes=new Map(), seq=0, parado=false;
-var caixa=document.createElement("div"); caixa.id="ra-coletor";
-caixa.style.cssText="position:fixed;right:18px;bottom:18px;width:310px;z-index:2147483647;background:#22242a;color:#fff;padding:18px;border-radius:12px;font:14px/1.5 system-ui;box-shadow:0 12px 40px #0008";
-var titulo=document.createElement("strong"); titulo.textContent="Coleta Firebase • versão 4"; caixa.appendChild(titulo);
-var recado=document.createElement("p"); caixa.appendChild(recado);
-function status(t){if(recado.textContent!==t) recado.textContent=t;}
-function botao(t,fn){var b=document.createElement("button");b.textContent=t;b.style.cssText="display:block;width:100%;padding:10px;margin:8px 0;border:0;border-radius:6px;cursor:pointer";b.onclick=fn;caixa.appendChild(b);}
-function categoria(t){
- t=(t||"").toLowerCase();
- if(/\b(cnh|habilita[çc][ãa]o|carteira|categoria|exame|ppd|pdd|renach|biometria)\b/.test(t))return "CNH";
- if(/\b(ve[íi]culo|carro|moto|placa|transfer[êe]ncia|licenciamento|ipva|crv|crlv|renavam)\b/.test(t))return "VEÍCULOS";
- if(/\b(multa|infra[çc][ãa]o|pontos|recurso|defesa|autua[çc][ãa]o)\b/.test(t))return "MULTAS";
- if(/\b(portal|site|sistema|app|aplicativo|login|senha|erro|acesso|cadastro)\b/.test(t))return "PORTAL";
- if(/\b(credenciad[oa]|autoescola|cfc|m[eé]dic[oa]|psic[óo]log[oa]|despachante|ecv)\b/.test(t))return "CREDENCIADOS";
- if(/\b(an[áa]lise|processo|andamento|pend[êe]ncia|aguardando|prazo|status)\b/.test(t))return "ANÁLISE";
+if(document.getElementById("ra-coletor")) return;
+var CHAVE="ra_detran_dados_v2";
+var itens=[],vistos=Object.create(null);
+try { itens=JSON.parse(localStorage.getItem(CHAVE)||"[]")||[]; } catch(e){itens=[];}
+itens.forEach(function(item){vistos[item.id]=true;});
+function salvar(){try{localStorage.setItem(CHAVE,JSON.stringify(itens));}catch(e){}}
+function categorizarAssunto(titulo){
+ var t=(titulo||"").toLowerCase();
+ if(t.match(/\b(cnh|habilita[çc][ãa]o|carteira|categoria|exame|pdd|renach|biometria)\b/))return "CNH";
+ if(t.match(/\b(ve[íi]culo|carro|moto|placa|transfer[êe]ncia|licenciamento|ipva|crv|crlv|renavam)\b/))return "VEÍCULOS";
+ if(t.match(/\b(multa|infra[çc][ãa]o|pontos|recurso|defesa|autua[çc][ãa]o)\b/))return "MULTAS";
+ if(t.match(/\b(portal|site|sistema|app|aplicativo|login|senha|erro|acesso|cadastro)\b/))return "PORTAL";
+ if(t.match(/\b(credenciad[oa]|autoescola|cfc|m[eé]dic[oa]|psic[óo]log[oa]|despachante|vistoriah)\b/))return "CREDENCIADOS";
+ if(t.match(/\b(an[áa]lise|processo|andamento|pend[êe]ncia|aguardando|prazo|status)\b/))return "ANÁLISE";
  return "OUTROS";
 }
 function varrer(){
- // Mesma expressão de captura confirmada pelo usuário.
- var texto=document.body.innerText||"";
- var re=/ID:\s*(\d{6,})[\s\S]*?\n([^\n]+)\n[\s\S]*?(\d{2}\/\d{2}\/\d{2,4})/g,m;
- while((m=re.exec(texto))!==null){
-   if(m[2].trim().length>3 && !enviados.has(m[1])){
-     pendentes.set(m[1],{id:m[1],data:m[3],assunto:categoria(m[2])});
-   }
+ var novos=0,texto=document.body.innerText||"";
+ var reCard=/ID:\s*(\d{6,})[\s\S]*?\n([^\n]+)\n[\s\S]*?(\d{2}\/\d{2}\/\d{2,4})/g,m;
+ while((m=reCard.exec(texto))!==null){
+  var id=m[1].trim(),titulo=m[2].trim(),data=m[3].trim();
+  if(titulo.length>3&&!vistos[id]){
+   vistos[id]=true;itens.push({data:data,id:id,assunto:categorizarAssunto(titulo),titulo:titulo});novos++;
+  }
  }
+ if(novos)salvar();return novos;
 }
-function enviar(){
- if(!conectado || !janela || janela.closed || parado)return;
- if(!lote && pendentes.size)lote={type:"RA_BATCH",canal:canal,seq:++seq,itens:Array.from(pendentes.values()).slice(0,50)};
- if(lote)janela.postMessage(lote,destino.origin);
-}
-function conectar(){
- var u=new URL(APP_URL);u.searchParams.set("ra_bridge","1");
- u.hash=new URLSearchParams({canal:canal,origem:location.origin}).toString();
- janela=window.open(u.href,"ra_bridge_"+canal,"width=1050,height=760");
- conectado=false;parado=false;
- status(janela?"Entre no app e clique em AUTORIZAR COLETA na janela aberta.":"Pop-up bloqueado. Permita pop-ups e clique novamente.");
-}
-function receber(e){
- var d=e.data;
- if(e.origin!==destino.origin || e.source!==janela || !d || d.canal!==canal)return;
- if(d.type==="RA_READY"){conectado=true;parado=false;varrer();status("Conectado. Enviando registros…");enviar();}
- if(d.type==="RA_ACK" && lote && d.seq===lote.seq){
-   lote.itens.forEach(function(i){enviados.add(i.id);pendentes.delete(i.id);});lote=null;
-   status(enviados.size+" registro(s) confirmado(s) no Firebase. Navegue para a próxima página.");enviar();
+function copiar(texto,msg){
+ function manual(){
+  var ta=document.createElement("textarea");ta.value=texto;ta.style.position="fixed";ta.style.opacity="0";
+  document.body.appendChild(ta);ta.select();
+  try{if(!document.execCommand("copy"))throw new Error();status(msg);}
+  catch(e){status("Erro ao copiar. Dados no console.");console.log(texto);}ta.remove();
  }
- if(d.type==="RA_ERROR"){parado=true;status("Envio pausado: "+d.message+" Clique em Tentar novamente.");}
+ if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(texto).then(function(){status(msg);},manual);
+ else manual();
 }
-window.addEventListener("message",receber);
-botao("Conectar ao app",conectar);
-botao("Coletar / Tentar novamente",function(){parado=false;varrer();enviar();if(!conectado)status("Clique primeiro em Conectar ao app.");});
-botao("Fechar coletor",function(){window.__raAutoCleanup();});
-document.body.appendChild(caixa);
-var timer=setInterval(function(){
- if(janela && janela.closed){conectado=false;status("Janela do app fechada. Conecte novamente.");}
- varrer();enviar();
-},3000);
-window.__raAutoCleanup=function(){clearInterval(timer);window.removeEventListener("message",receber);caixa.remove();delete window.__raAutoCleanup;};
-status("Clique em Conectar ao app. Não é preciso copiar os dados.");
+var caixa=document.createElement("div");caixa.id="ra-coletor";
+caixa.style.cssText="position:fixed;right:18px;bottom:18px;width:260px;z-index:2147483647;background:#22242a;color:#e3e2e0;font:13px/1.45 system-ui,-apple-system,sans-serif;border:1px solid #4a4e56;border-radius:12px;padding:14px 15px;box-shadow:0 14px 34px rgba(0,0,0,.45)";
+function botao(rotulo,principal){
+ var b=document.createElement("button");b.textContent=rotulo;
+ b.style.cssText="display:block;width:100%;margin-top:7px;padding:8px 10px;border-radius:7px;cursor:pointer;font:600 12.5px system-ui,sans-serif;border:1px solid "+(principal?"#b0c628;background:#b0c628;color:#1a1c05":"#4a4e56;background:#2a2d34;color:#e3e2e0");
+ caixa.appendChild(b);return b;
+}
+var topo=document.createElement("div");topo.style.cssText="display:flex;align-items:center;justify-content:space-between;gap:8px";
+var tit=document.createElement("strong");tit.textContent="Coletor Detran (Data/ID/Assunto)";
+var x=document.createElement("button");x.textContent="\u00d7";x.setAttribute("aria-label","Fechar coletor");
+x.style.cssText="background:none;border:none;color:#a3a89a;font-size:18px;line-height:1;cursor:pointer";
+topo.appendChild(tit);topo.appendChild(x);caixa.appendChild(topo);
+var contador=document.createElement("div");contador.style.cssText="font:700 24px system-ui,sans-serif;color:#c9d94a;margin:8px 0 2px";caixa.appendChild(contador);
+var recado=document.createElement("div");recado.style.cssText="font-size:11.5px;color:#a3a89a;min-height:28px";caixa.appendChild(recado);
+function status(msg){
+ if(contador.textContent!==itens.length+" Registro(s)")contador.textContent=itens.length+" Registro(s)";
+ if(recado.textContent!==(msg||""))recado.textContent=msg||"";
+}
+var bColetar=botao("Coletar esta página",true),bCSV=botao("Copiar como CSV (Excel)"),bTexto=botao("Copiar Lista Detalhada"),bLimpar=botao("Limpar lista");
+var rodape=document.createElement("label");rodape.style.cssText="display:flex;align-items:center;gap:7px;margin-top:10px;font-size:11.5px;color:#a3a89a;cursor:pointer";
+var chk=document.createElement("input");chk.type="checkbox";chk.checked=true;
+rodape.appendChild(chk);rodape.appendChild(document.createTextNode("Coletar auto ao navegar"));caixa.appendChild(rodape);
+var observador=null,espera=null;
+function auto(ativo){
+ if(ativo&&!observador){
+  observador=new MutationObserver(function(mudancas){
+   if(mudancas.every(function(m){return caixa.contains(m.target);}))return;
+   clearTimeout(espera);espera=setTimeout(function(){var n=varrer();if(n)status(n+" novo(s) registro(s).");},700);
+  });
+  observador.observe(document.body,{childList:true,subtree:true});
+ }else if(!ativo){clearTimeout(espera);if(observador)observador.disconnect();observador=null;}
+}
+bColetar.onclick=function(){var n=varrer();status(n?n+" novo(s) nesta página.":"Nenhum dado novo nesta página.");};
+bCSV.onclick=function(){if(!itens.length)return status("A lista está vazia.");copiar("DATA;ID;ASSUNTO\n"+itens.map(function(i){return i.data+";"+i.id+";"+i.assunto;}).join("\n"),itens.length+" linha(s) em CSV copiadas!");};
+bTexto.onclick=function(){if(!itens.length)return status("A lista está vazia.");copiar(itens.map(function(i){return "Data: "+i.data+" | ID: "+i.id+" | Assunto: "+i.assunto;}).join("\n"),itens.length+" item(ns) copiado(s).");};
+bLimpar.onclick=function(){itens=[];vistos=Object.create(null);salvar();status("Lista zerada.");};
+chk.onchange=function(){auto(chk.checked);};x.onclick=function(){auto(false);caixa.remove();};
+document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 })();
 </script>
 
@@ -763,6 +780,7 @@ status("Clique em Conectar ao app. Não é preciso copiar os dados.");
         ligarBase();
       } else {
         desligarBase();
+        ["popup-coleta","coleta-dock"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
         state.users = [];
         state.logs = [];
         state.currentUser = null;
@@ -1033,7 +1051,7 @@ status("Clique em Conectar ao app. Não é preciso copiar os dados.");
           botao +
           (estado ? '<div class="controle-estado">' + estado + '</div>' : '') +
         '</div>' +
-      '</div>' + blocoPonte() + blocoColeta();
+      '</div>' + blocoColeta();
   }
 
   function blocoColeta(){
@@ -1050,16 +1068,7 @@ status("Clique em Conectar ao app. Não é preciso copiar os dados.");
     }).join('');
 
     return '<div class="cartao" id="area-coleta">' +
-      '<h2>Coleta — Reclame Aqui</h2>' +
-      '<p style="color:var(--ink-soft);margin:-8px 0 16px">Envio automático: copie o código uma vez, execute no Reclame Aqui e clique em Conectar ao app. A importação abaixo é opcional.</p>' +
-      '<div class="grade-2">' +
-        '<div class="campo"><label for="coleta-dados">Dados coletados</label><textarea id="coleta-dados" rows="5" placeholder="DATA;ID;ASSUNTO&#10;11/09/2026;123456789;CNH"></textarea></div>' +
-        '<div style="display:flex;flex-direction:column;gap:9px;justify-content:flex-end">' +
-          '<button class="btn btn-principal" id="importar-coleta">IMPORTAR COLETA</button>' +
-          '<button class="btn btn-neutro" id="copiar-coletor">COPIAR CÓDIGO DO COLETOR</button>' +
-          '<button class="btn btn-risco" id="limpar-coleta-app">LIMPAR REGISTROS</button>' +
-        '</div>' +
-      '</div>' +
+      '<h2>Dados coletados</h2>' +
       '<div style="margin:8px 0 12px;color:var(--ink-soft)"><strong style="color:var(--ink)">' + state.coleta.length + '</strong> registro(s)</div>' +
       '<div class="rolagem"><table><thead><tr><th>DATA</th><th>ID</th><th>ASSUNTO</th><th>AÇÃO</th></tr></thead><tbody>' +
         (linhas || '<tr><td colspan="4" class="vazio">Nenhuma coleta importada.</td></tr>') +
@@ -1071,26 +1080,50 @@ status("Clique em Conectar ao app. Não é preciso copiar os dados.");
     throw new Error("Use gravações individuais no Firebase.");
   }
 
+
+  function prepararColeta(){
+    if(document.getElementById("popup-coleta"))return;
+    var d=document.createElement("dialog");d.id="popup-coleta";d.setAttribute("aria-labelledby","titulo-coleta");
+    d.innerHTML='<div class="coleta-topo"><h2 id="titulo-coleta">Coleta • Reclame Aqui</h2><div class="acoes"><button class="btn btn-neutro btn-mini" id="minimizar-coleta" aria-label="Minimizar coleta" title="Minimizar">−</button><button class="btn btn-neutro btn-mini" id="fechar-coleta" aria-label="Fechar coleta" title="Fechar">×</button></div></div><div class="coleta-miolo"><p>Copie o código e execute no Reclame Aqui. No coletor, clique em “Copiar como CSV (Excel)” e cole o resultado abaixo.</p><button class="btn btn-neutro btn-largo" id="popup-copiar-codigo">COPIAR CÓDIGO</button><div class="campo" style="margin-top:20px"><label for="coleta-dados">Dados para importar — DATA, ID e ASSUNTO</label><textarea id="coleta-dados" placeholder="DATA;ID;ASSUNTO&#10;11/09/2026;258814369;VEÍCULOS" spellcheck="false"></textarea></div><button class="btn btn-principal" id="popup-importar">IMPORTAR DADOS</button><div id="coleta-feedback" role="status" aria-live="polite"></div></div>';
+    document.body.appendChild(d);
+    var dock=document.createElement("button");dock.id="coleta-dock";dock.className="btn";dock.textContent="COLETA — Restaurar";dock.hidden=true;document.body.appendChild(dock);
+    document.getElementById("popup-copiar-codigo").onclick=copiarCodigoColetor;
+    document.getElementById("popup-importar").onclick=importarColeta;
+    document.getElementById("minimizar-coleta").onclick=function(){d.close();dock.hidden=false;};
+    document.getElementById("fechar-coleta").onclick=function(){d.close();dock.hidden=true;};
+    d.addEventListener("cancel",function(){dock.hidden=true;});
+    dock.onclick=abrirColeta;
+  }
+  function abrirColeta(){
+    prepararColeta();
+    document.getElementById("coleta-dock").hidden=true;
+    var d=document.getElementById("popup-coleta");if(!d.open)d.showModal();
+  }
+
   async function importarColeta(){
-    var campo = document.getElementById("coleta-dados");
-    var texto = campo ? campo.value.trim() : "";
-    if(!texto){ toast("Cole os dados copiados pelo coletor."); return; }
-    var existentes = Object.create(null);
-    state.coleta.forEach(function(i){ existentes[i.id] = true; });
-    var novos = 0, importar=[];
-    texto.split(/\r?\n/).forEach(function(linha, indice){
-      if(!linha.trim() || (indice === 0 && /^DATA[;\t,]/i.test(linha))) return;
-      var partes = linha.split(linha.indexOf(";") >= 0 ? ";" : "\t");
-      var data = (partes[0] || "").trim();
-      var id = (partes[1] || "").replace(/\D/g, "");
-      var assunto = (partes[2] || "OUTROS").trim().toUpperCase();
-      if(id.length >= 6 && !existentes[id]){
-        importar.push({data:data, id:id, assunto:assunto});
-        existentes[id] = true; novos++;
-      }
+    var campo=document.getElementById("coleta-dados"),feedback=document.getElementById("coleta-feedback"),botao=document.getElementById("popup-importar");
+    if(botao.disabled)return;
+    var texto=campo.value.trim();
+    if(!texto){feedback.textContent="Cole os dados antes de importar.";campo.focus();return;}
+    var mapa=new Map(),erros=[];
+    texto.split(/\r?\n/).forEach(function(linha,n){
+      if(!linha.trim() || /^\uFEFF?DATA[;\t]/i.test(linha.trim()))return;
+      var detalhada=linha.match(/^Data:\s*(.*?)\s*\|\s*ID:\s*(\d+)\s*\|\s*Assunto:\s*(.*?)\s*$/i);
+      var p=detalhada?detalhada.slice(1):linha.split(/[;\t]/).map(function(x){return x.trim();});
+      try{
+        if(p.length!==3)throw new Error("Esperadas três colunas");
+        var i=normalizarItem({data:p[0],id:p[1],assunto:p[2].toUpperCase()});mapa.set(i.id,i);
+      }catch(e){erros.push(n+1);}
     });
-    try{ await gravarColeta(importar);campo.value="";toast(novos+" registro(s) processado(s).");}
-    catch(e){toast("Não foi possível importar: "+e.message);}
+    if(erros.length){feedback.textContent="Revise as linhas "+erros.join(", ")+". Nada foi importado. Use DATA;ID;ASSUNTO.";return;}
+    var itens=Array.from(mapa.values());
+    if(!itens.length){feedback.textContent="Nenhum registro encontrado.";return;}
+    botao.disabled=true;feedback.textContent="Importando…";
+    try{
+      await gravarColeta(itens);
+      campo.value="";feedback.textContent=itens.length+" registro(s) processado(s). IDs existentes foram preservados. Os dados estão na página inicial.";
+    }catch(e){feedback.textContent="Importação não concluída: "+e.message+". O texto foi preservado; você pode tentar novamente. Alguns registros podem já ter sido salvos.";}
+    finally{botao.disabled=false;}
   }
 
   function blocoConta(u){
@@ -1258,14 +1291,9 @@ status("Clique em Conectar ao app. Não é preciso copiar os dados.");
       render();
     });
     liga("btn-uso", "click", alternarUso);
-    liga("btn-coleta", "click", function(){
-      var area = document.getElementById("area-coleta");
-      if(area) area.scrollIntoView({behavior:"smooth", block:"start"});
-    });
+    liga("btn-coleta", "click", abrirColeta);
     liga("copiar-coletor", "click", copiarCodigoColetor);
     liga("importar-coleta", "click", importarColeta);
-    liga("autorizar-ponte","click",autorizarPonte);
-    liga("copiar-regras","click",function(){copiar(document.getElementById("firebase-regras").textContent,"Regras copiadas.");});
     liga("limpar-coleta-app", "click", function(){
       if(!state.coleta.length) return toast("Não há registros para limpar.");
       if(confirm("Deseja apagar todos os registros da coleta?")){
@@ -1344,8 +1372,7 @@ status("Clique em Conectar ao app. Não é preciso copiar os dados.");
   function copiarCodigoColetor(){
     var el = document.getElementById("codigo-coletor");
     if(!el){ toast("Código do coletor não encontrado no arquivo."); return; }
-    var endereco=new URL(location.href);endereco.search="";endereco.hash="";
-    copiar(el.textContent.trim().replace("__APP_URL__",JSON.stringify(endereco.href)), "Código v4 copiado. Execute no Reclame Aqui e clique em Conectar ao app.");
+    copiar(el.textContent.trim(), "Código copiado. Feche o coletor antigo no X e execute este no Reclame Aqui.");
   }
 
   async function alternarUso(){
@@ -1656,32 +1683,12 @@ status("Clique em Conectar ao app. Não é preciso copiar os dados.");
 
   async function sair(){
     state.error = "";
+    ["popup-coleta","coleta-dock"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
     if(ehMinhaSessao()) await finalizarUso(true);
     if(auth) auth.signOut();
   }
 
 
-  var canalPonte=null, origemPonte=null, autorizouPonte=false, uidPonte=null, processando=false;
-  try{
-    if(new URLSearchParams(location.search).get("ra_bridge")==="1"){
-      var p=new URLSearchParams(location.hash.slice(1)), o=new URL(p.get("origem"));
-      if(o.protocol==="https:" && (o.hostname==="reclameaqui.com.br" || o.hostname.endsWith(".reclameaqui.com.br")) && /^[a-f0-9]{48}$/.test(p.get("canal")||"")){
-        canalPonte=p.get("canal");origemPonte=o.origin;
-      }
-    }
-  }catch(e){}
-  function blocoPonte(){
-    var h="";
-    if(canalPonte)h='<div class="cartao"><h2>Conexão com Reclame Aqui</h2><p>Origem: '+esc(origemPonte)+'</p><p>Autorize apenas se você acabou de clicar em Conectar ao app no coletor. Mantenha esta janela aberta.</p><button class="btn btn-sage" id="autorizar-ponte">AUTORIZAR COLETA</button></div>';
-    if(ehAdministrativo())h+='<div class="cartao"><h2>Configuração Firebase • v4</h2><p>Faça backup do banco e das regras atuais. Copie as regras, publique em Realtime Database → Regras e entre novamente com a conta administradora antes dos demais usuários.</p><button class="btn btn-neutro" id="copiar-regras">COPIAR REGRAS DO FIREBASE</button><p>Somente o UID administrador gerencia usuários. Os demais acessos ativos são sincronizados por UID. Cadastros antigos sem UID precisam ser atualizados pelo administrador.</p></div>';
-    return h;
-  }
-  function autorizarPonte(){
-    if(!auth.currentUser || !state.currentUser || !window.opener)return toast("Entre na conta e abra esta janela pelo coletor.");
-    uidPonte=auth.currentUser.uid;autorizouPonte=true;
-    window.opener.postMessage({type:"RA_READY",canal:canalPonte},origemPonte);
-    toast("Conexão autorizada. Volte ao Reclame Aqui e mantenha esta janela aberta.");
-  }
   function normalizarItem(i){
     var op=["CNH","VEÍCULOS","MULTAS","PORTAL","CREDENCIADOS","ANÁLISE","OUTROS"];
     if(!i || !/^\d{6,15}$/.test(String(i.id)) || !/^\d{2}\/\d{2}\/(?:\d{2}|\d{4})$/.test(i.data||"") || !op.includes(i.assunto))throw new Error("Registro inválido");
@@ -1697,21 +1704,7 @@ status("Clique em Conectar ao app. Não é preciso copiar os dados.");
       await db.ref("coleta/"+item.id).transaction(function(atual){return atual || item;},undefined,false);
     }
   }
-  window.addEventListener("message",async function(e){
-    var d=e.data;
-    if(!autorizouPonte || e.source!==window.opener || e.origin!==origemPonte || !d || d.canal!==canalPonte || d.type!=="RA_BATCH")return;
-    if(processando)return;
-    if(!auth.currentUser || auth.currentUser.uid!==uidPonte){autorizouPonte=false;return;}
-    processando=true;
-    try{
-      if(!Number.isSafeInteger(d.seq) || !Array.isArray(d.itens) || !d.itens.length || d.itens.length>50)throw new Error("Lote inválido");
-      await gravarColeta(d.itens);
-      e.source.postMessage({type:"RA_ACK",canal:canalPonte,seq:d.seq},origemPonte);
-    }catch(err){
-      e.source.postMessage({type:"RA_ERROR",canal:canalPonte,message:"Confira login, conexão e regras no app."},origemPonte);
-      toast("Coleta não confirmada: "+err.message);
-    }finally{processando=false;}
-  });
+
 
   iniciar();
 
