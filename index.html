@@ -200,81 +200,122 @@
 <body>
 <div id="app"><div class="carregando"><span class="giro"></span>Carregando…</div></div>
 
-<!-- SCRIPT DO COLETOR AUTOMÁTICO (ENVIA PARA O FIREBASE) -->
-<script type="text/plain" id="codigo-coletor">
+<!-- ============================================================
+     COLETOR POP IP  —  COLE ESTE BLOCO NO CONSOLE DA PÁGINA
+     ============================================================ -->
+<script type="text/plain" id="codigo-coletor-pop-ip">
 (function(){
 "use strict";
-if(document.getElementById("ra-coletor")) return;
 
-var CHAVE = "ra_detran_dados_v2";
+var CHAVE_LOCAL = "ra_pop_ip_dados_v1";
+var FIREBASE_URL = "https://reclameaqui-7cf38-default-rtdb.firebaseio.com/coletas";
+
 var itens = [], vistos = Object.create(null);
 
-try { 
-  itens = JSON.parse(localStorage.getItem(CHAVE) || "[]") || []; 
-} catch(e){ 
-  itens = []; 
-}
-
+try { itens = JSON.parse(localStorage.getItem(CHAVE_LOCAL) || "[]") || []; } catch(e){ itens = []; }
 itens.forEach(function(item){ vistos[item.id] = true; });
 
-function salvarLocal(){ 
-  try { localStorage.setItem(CHAVE, JSON.stringify(itens)); } catch(e){} 
+function salvarLocal(){
+  try { localStorage.setItem(CHAVE_LOCAL, JSON.stringify(itens)); } catch(e){}
 }
 
+/* Envia cada registro para o Firebase usando o ID como chave */
 function enviarParaFirebase(novosItens) {
   novosItens.forEach(function(item) {
-    var url = "https://reclameaqui-7cf38-default-rtdb.firebaseio.com/coletas/" + item.id + ".json";
+    var url = FIREBASE_URL + "/" + encodeURIComponent(item.id) + ".json";
     fetch(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(item)
-    }).catch(function(err){ console.error("Erro ao sincronizar com Firebase:", err); });
+    })
+    .then(function(r){ if(!r.ok) throw new Error("HTTP " + r.status); })
+    .catch(function(err){ console.error("Erro ao sincronizar ID " + item.id + ":", err); });
   });
 }
 
-function categorizarAssunto(titulo) {
-  var t = (titulo || "").toLowerCase();
+/* Categoriza o assunto a partir do título/descrição */
+function categorizarAssunto(texto) {
+  var t = (texto || "").toLowerCase();
   if (t.match(/\b(cnh|habilita[çc][ãa]o|carteira|categoria|exame|pdd|renach|biometria)\b/)) return "CNH";
   if (t.match(/\b(ve[íi]culo|carro|moto|placa|transfer[êe]ncia|licenciamento|ipva|crv|crlv|renavam)\b/)) return "VEÍCULOS";
   if (t.match(/\b(multa|infra[çc][ãa]o|pontos|recurso|defesa|autua[çc][ãa]o)\b/)) return "MULTAS";
   if (t.match(/\b(portal|site|sistema|app|aplicativo|login|senha|erro|acesso|cadastro)\b/)) return "PORTAL";
-  if (t.match(/\b(credenciad[oa]|autoescola|cfc|m[eé]dic[oa]|psic[óo]log[oa]|despachante|vistoriah)\b/)) return "CREDENCIADOS";
+  if (t.match(/\b(credenciad[oa]|autoescola|cfc|m[eé]dic[oa]|psic[óo]log[oa]|despachante|vistoria)\b/)) return "CREDENCIADOS";
   if (t.match(/\b(an[áa]lise|processo|andamento|pend[êe]ncia|aguardando|prazo|status)\b/)) return "ANÁLISE";
   return "OUTROS";
 }
 
-function varrer(){
-  var novosItens = [];
+/* Extrai IP, ID e data/hora do texto visível da página POP IP */
+function varrerPOPIP(){
+  var novos = [];
   var texto = document.body.innerText || "";
-  var reCard = /ID:\s*(\d{6,})[\s\S]*?\n([^\n]+)\n[\s\S]*?(\d{2}\/\d{2}\/\d{2,4})/g;
+
+  /* Padrão principal: ID + IP + data/hora */
+  var re = /(?:ID|Protocolo|Registro|Chamado)[:\s#]*([A-Za-z0-9\-\.\/]{4,})[\s\S]{0,120}?(?:IP)[:\s]*([0-9a-fA-F\.:]{7,45})[\s\S]{0,80}?(\d{2}\/\d{2}\/\d{2,4}(?:\s+\d{2}:\d{2}(?::\d{2})?)?)/gi;
+
   var m;
+  while((m = re.exec(texto)) !== null){
+    var id    = (m[1] || "").trim();
+    var ip    = (m[2] || "").trim();
+    var data  = (m[3] || "").trim();
+    if(!id || !ip) continue;
 
-  while((m = reCard.exec(texto)) !== null){
-    var id = m[1].trim();
-    var titulo = m[2].trim();
-    var data = m[3].trim();
+    var chave = id + "|" + ip;
+    if(vistos[chave]) continue;
+    vistos[chave] = true;
 
-    if(titulo.length > 3 && !vistos[id]){
-      vistos[id] = true;
-      var objetoItem = {
-        data: data,
-        id: id,
-        assunto: categorizarAssunto(titulo),
-        titulo: titulo,
+    /* Tenta capturar o título/descrição logo após o bloco */
+    var idx = m.index + m[0].length;
+    var trecho = texto.slice(idx, idx + 220).split("\n").map(function(l){ return l.trim(); }).filter(Boolean);
+    var titulo = trecho.length ? trecho[0].slice(0, 180) : "Registro POP IP";
+
+    var item = {
+      id: id,
+      ip: ip,
+      data: data,
+      assunto: categorizarAssunto(titulo),
+      titulo: titulo,
+      coletadoEm: new Date().toISOString()
+    };
+
+    itens.push(item);
+    novos.push(item);
+  }
+
+  /* Fallback: apenas IPs soltos + ID próximo */
+  if(!novos.length){
+    var reIP = /\b((?:\d{1,3}\.){3}\d{1,3}|(?:[0-9a-fA-F]{1,4}:){2,}[0-9a-fA-F:]+)\b/g;
+    var reID = /(?:ID|Protocolo|Registro|Chamado)[:\s#]*([A-Za-z0-9\-\.\/]{4,})/i;
+    var ipM;
+    var idM = reID.exec(texto);
+    while((ipM = reIP.exec(texto)) !== null){
+      var ip2 = ipM[1];
+      var id2 = idM ? idM[1] : ("IP-" + ip2.replace(/[^\w]/g, ""));
+      var chave2 = id2 + "|" + ip2;
+      if(vistos[chave2]) continue;
+      vistos[chave2] = true;
+
+      var item2 = {
+        id: id2,
+        ip: ip2,
+        data: new Date().toLocaleString("pt-BR"),
+        assunto: "POP IP",
+        titulo: "Registro capturado automaticamente",
         coletadoEm: new Date().toISOString()
       };
-      itens.push(objetoItem);
-      novosItens.push(objetoItem);
+      itens.push(item2);
+      novos.push(item2);
     }
   }
 
-  if(novosItens.length) {
+  if(novos.length){
     salvarLocal();
-    enviarParaFirebase(novosItens);
+    enviarParaFirebase(novos);
   }
-  return novosItens.length;
+  return novos.length;
 }
 
+/* ---------- Interface flutuante do coletor ---------- */
 function copiar(texto, msg){
   function manual(){
     var ta = document.createElement("textarea");
@@ -290,8 +331,8 @@ function copiar(texto, msg){
 }
 
 var caixa = document.createElement("div");
-caixa.id = "ra-coletor";
-caixa.style.cssText = "position:fixed;right:18px;bottom:18px;width:260px;z-index:2147483647;background:#22242a;color:#e3e2e0;font:13px/1.45 system-ui,-apple-system,sans-serif;border:1px solid #4a4e56;border-radius:12px;padding:14px 15px;box-shadow:0 14px 34px rgba(0,0,0,.45)";
+caixa.id = "ra-coletor-pop-ip";
+caixa.style.cssText = "position:fixed;right:18px;bottom:18px;width:280px;z-index:2147483647;background:#22242a;color:#e3e2e0;font:13px/1.45 system-ui,-apple-system,sans-serif;border:1px solid #4a4e56;border-radius:12px;padding:14px 15px;box-shadow:0 14px 34px rgba(0,0,0,.45)";
 
 function botao(rotulo, principal){
   var b = document.createElement("button");
@@ -305,7 +346,7 @@ function botao(rotulo, principal){
 var topo = document.createElement("div");
 topo.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px";
 var tit = document.createElement("strong");
-tit.textContent = "Coletor Detran (Nuvem)";
+tit.textContent = "Coletor POP IP (Nuvem)";
 var x = document.createElement("button");
 x.textContent = "\u00d7";
 x.style.cssText = "background:none;border:none;color:#a3a89a;font-size:18px;line-height:1;cursor:pointer";
@@ -325,7 +366,7 @@ function status(msg){
   recado.textContent = msg || "";
 }
 
-var bColetar = botao("Coletar esta página", true);
+var bColetar = botao("Coletar POP IP desta página", true);
 var bCSV     = botao("Copiar como CSV (Excel)");
 var bLimpar  = botao("Limpar lista local");
 
@@ -335,7 +376,7 @@ function auto(ativo){
     observador = new MutationObserver(function(){
       clearTimeout(espera);
       espera = setTimeout(function(){
-        var n = varrer();
+        var n = varrerPOPIP();
         status(n ? n + " enviado(s) ao painel." : "");
       }, 700);
     });
@@ -346,14 +387,14 @@ function auto(ativo){
 }
 
 bColetar.onclick = function(){
-  var n = varrer();
+  var n = varrerPOPIP();
   status(n ? n + " novo(s) enviado(s) ao app." : "Nenhum dado novo nesta página.");
 };
 
 bCSV.onclick = function(){
   if(!itens.length) return status("A lista está vazia.");
-  var csv = "DATA;ID;ASSUNTO;TITULO\n" + itens.map(function(i){
-    return i.data + ";" + i.id + ";" + i.assunto + ';"' + (i.titulo||"").replace(/"/g, '""') + '"';
+  var csv = "DATA;ID;IP;ASSUNTO;TITULO\n" + itens.map(function(i){
+    return i.data + ";" + i.id + ";" + i.ip + ";" + i.assunto + ';"' + (i.titulo||"").replace(/"/g, '""') + '"';
   }).join("\n");
   copiar(csv, itens.length + " linha(s) em CSV copiadas!");
 };
@@ -366,12 +407,15 @@ bLimpar.onclick = function(){
 x.onclick = function(){ auto(false); caixa.remove(); };
 
 document.body.appendChild(caixa);
-varrer();
+varrerPOPIP();
 auto(true);
-status("Painel sincronizado.");
+status("Painel POP IP sincronizado.");
 })();
 </script>
 
+<!-- ============================================================
+     PAINEL (APP)  —  Firebase + Tabela em tempo real
+     ============================================================ -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
@@ -420,16 +464,17 @@ status("Painel sincronizado.");
     });
   }
 
-  // FUNÇÃO QUE RENDERIZA A TABELA DE COLETAS NA TELA INICIAL
+  /* Tabela com colunas Data, ID, IP, Assunto, Título */
   function renderTabelaColetas() {
     if (!state.coletas || state.coletas.length === 0) {
-      return '<div class="vazio">Nenhuma reclamação coletada até o momento.</div>';
+      return '<div class="vazio">Nenhum registro POP IP coletado até o momento.</div>';
     }
 
     var linhas = state.coletas.map(function(item) {
       return '<tr>' +
         '<td class="mono">' + esc(item.data) + '</td>' +
         '<td><strong class="mono">' + esc(item.id) + '</strong></td>' +
+        '<td class="mono">' + esc(item.ip || "-") + '</td>' +
         '<td><span class="selo selo-ativo">' + esc(item.assunto) + '</span></td>' +
         '<td>' + esc(item.titulo || "-") + '</td>' +
       '</tr>';
@@ -441,6 +486,7 @@ status("Painel sincronizado.");
           '<tr>' +
             '<th>Data</th>' +
             '<th>ID</th>' +
+            '<th>IP</th>' +
             '<th>Assunto</th>' +
             '<th>Título / Descrição</th>' +
           '</tr>' +
@@ -456,11 +502,11 @@ status("Painel sincronizado.");
     var html = '<div class="shell">' +
       '<div class="principal">' +
         '<header class="cabecalho">' +
-          '<div style="font-weight:700; font-size:18px;">Painel de Coletas Detran-SP</div>' +
+          '<div style="font-weight:700; font-size:18px;">Painel POP IP — Detran-SP</div>' +
         '</header>' +
         '<main class="conteudo">' +
           '<div class="cartao">' +
-            '<h2>Reclamações Coletadas em Tempo Real (' + state.coletas.length + ')</h2>' +
+            '<h2>Registros POP IP em Tempo Real (' + state.coletas.length + ')</h2>' +
             renderTabelaColetas() +
           '</div>' +
         '</main>' +
