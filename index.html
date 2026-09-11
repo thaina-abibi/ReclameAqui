@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RA Detran-SP — Coleta</title>
+<title>RA Detran-SP</title>
 <link rel="icon" type="image/png" href="RA.png">
 <link rel="shortcut icon" type="image/png" href="RA.png">
 <link rel="apple-touch-icon" href="RA.png">
@@ -268,232 +268,144 @@
 <body>
 <div id="app"><div class="carregando"><span class="giro"></span>Carregando…</div></div>
 
+<script type="application/json" id="firebase-regras">
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "acessos": {
+      ".read": "auth != null && auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3'",
+      ".write": "auth != null && auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3'",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid"
+      }
+    },
+    "usuarios": {
+      ".read": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true)",
+      ".write": "auth != null && auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3'",
+      "$indice": {
+        "lastLogin": {
+          ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true) && data.parent().child('uid').val() === auth.uid",
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "previousLogin": {
+          ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true) && data.parent().child('uid').val() === auth.uid",
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "tempPassword": {
+          ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true) && data.parent().child('uid').val() === auth.uid",
+          ".validate": "newData.val() === false"
+        }
+      }
+    },
+    "registro": {
+      ".read": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true)",
+      ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true)"
+    },
+    "usoRegistro": {
+      ".read": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true)",
+      ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true)"
+    },
+    "sessaoAtiva": {
+      ".read": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true)",
+      ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true)"
+    },
+    "coleta": {
+      ".read": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true)",
+      ".write": "auth != null && auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3'",
+      "$id": {
+        ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true) && newData.exists() && (!data.exists() || (newData.child('id').val() === data.child('id').val() && newData.child('data').val() === data.child('data').val()))",
+        ".validate": "newData.hasChildren(['id','data','assunto']) && $id.matches(/^[0-9]{6,15}$/)",
+        "id": {
+          ".validate": "newData.isString() && newData.val() === $id"
+        },
+        "data": {
+          ".validate": "newData.isString() && newData.val().matches(/^[0-9]{2}\\/[0-9]{2}\\/([0-9]{2}|[0-9]{4})$/)"
+        },
+        "assunto": {
+          ".validate": "newData.isString() && newData.val().matches(/^(CNH|VEÍCULOS|MULTAS|PORTAL|CREDENCIADOS|ANÁLISE|OUTROS)$/)"
+        },
+        "$outro": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}
+</script>
 <script type="text/plain" id="codigo-coletor">
 (function(){
 "use strict";
-if(document.getElementById("ra-coletor")) return;
- 
-var CHAVE = "ra_detran_dados_v2";
-var itens = [], vistos = Object.create(null);
- 
-try { 
-  itens = JSON.parse(localStorage.getItem(CHAVE) || "[]") || []; 
-} catch(e){ 
-  itens = []; 
+if(window.__raAutoCleanup) window.__raAutoCleanup();
+else if(document.getElementById("ra-coletor")) {
+ alert("Feche o coletor antigo no X antes de executar esta versão."); return;
 }
- 
-itens.forEach(function(item){ vistos[item.id] = true; });
- 
-function salvar(){ 
-  try { localStorage.setItem(CHAVE, JSON.stringify(itens)); } catch(e){} 
+var APP_URL = __APP_URL__;
+var destino = new URL(APP_URL);
+if(location.protocol !== "https:" || !(location.hostname === "reclameaqui.com.br" || location.hostname.endsWith(".reclameaqui.com.br"))) {
+ alert("Execute este coletor na página HTTPS do Reclame Aqui."); return;
 }
- 
-function categorizarAssunto(titulo) {
-  var t = (titulo || "").toLowerCase();
-  if (t.match(/\b(cnh|habilita[çc][ãa]o|carteira|categoria|exame|pdd|renach|biometria)\b/)) return "CNH";
-  if (t.match(/\b(ve[íi]culo|carro|moto|placa|transfer[êe]ncia|licenciamento|ipva|crv|crlv|renavam)\b/)) return "VEÍCULOS";
-  if (t.match(/\b(multa|infra[çc][ãa]o|pontos|recurso|defesa|autua[çc][ãa]o)\b/)) return "MULTAS";
-  if (t.match(/\b(portal|site|sistema|app|aplicativo|login|senha|erro|acesso|cadastro)\b/)) return "PORTAL";
-  if (t.match(/\b(credenciad[oa]|autoescola|cfc|m[eé]dic[oa]|psic[óo]log[oa]|despachante|empresa de vistoria|ecv)\b/)) return "CREDENCIADOS";
-  if (t.match(/\b(an[áa]lise|processo|andamento|pend[êe]ncia|aguardando|prazo|status)\b/)) return "ANÁLISE";
-  return "OUTROS";
+var canal = Array.from(crypto.getRandomValues(new Uint8Array(24))).map(function(n){return n.toString(16).padStart(2,"0");}).join("");
+var janela=null, conectado=false, lote=null, enviados=new Set(), pendentes=new Map(), seq=0, parado=false;
+var caixa=document.createElement("div"); caixa.id="ra-coletor";
+caixa.style.cssText="position:fixed;right:18px;bottom:18px;width:310px;z-index:2147483647;background:#22242a;color:#fff;padding:18px;border-radius:12px;font:14px/1.5 system-ui;box-shadow:0 12px 40px #0008";
+var titulo=document.createElement("strong"); titulo.textContent="Coleta Firebase • versão 4"; caixa.appendChild(titulo);
+var recado=document.createElement("p"); caixa.appendChild(recado);
+function status(t){if(recado.textContent!==t) recado.textContent=t;}
+function botao(t,fn){var b=document.createElement("button");b.textContent=t;b.style.cssText="display:block;width:100%;padding:10px;margin:8px 0;border:0;border-radius:6px;cursor:pointer";b.onclick=fn;caixa.appendChild(b);}
+function categoria(t){
+ t=(t||"").toLowerCase();
+ if(/\b(cnh|habilita[çc][ãa]o|carteira|categoria|exame|ppd|pdd|renach|biometria)\b/.test(t))return "CNH";
+ if(/\b(ve[íi]culo|carro|moto|placa|transfer[êe]ncia|licenciamento|ipva|crv|crlv|renavam)\b/.test(t))return "VEÍCULOS";
+ if(/\b(multa|infra[çc][ãa]o|pontos|recurso|defesa|autua[çc][ãa]o)\b/.test(t))return "MULTAS";
+ if(/\b(portal|site|sistema|app|aplicativo|login|senha|erro|acesso|cadastro)\b/.test(t))return "PORTAL";
+ if(/\b(credenciad[oa]|autoescola|cfc|m[eé]dic[oa]|psic[óo]log[oa]|despachante|ecv)\b/.test(t))return "CREDENCIADOS";
+ if(/\b(an[áa]lise|processo|andamento|pend[êe]ncia|aguardando|prazo|status)\b/.test(t))return "ANÁLISE";
+ return "OUTROS";
 }
- 
 function varrer(){
-  var novos = 0;
-  var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-  var no, idsNaTela = [];
-
-  while((no = walker.nextNode())){
-    var achado = (no.nodeValue || "").match(/\bID\s*:\s*(\d{6,})\b/i);
-    if(achado) idsNaTela.push({ id: achado[1], no: no.parentElement });
-  }
-
-  idsNaTela.forEach(function(registro){
-    var id = registro.id;
-    if(vistos[id]) return;
-
-    var card = registro.no;
-    while(card && card !== document.body){
-      var textoCard = card.innerText || "";
-      if(textoCard.length >= 40 && textoCard.length <= 2500 &&
-         /\bID\s*:\s*\d{6,}\b/i.test(textoCard) &&
-         /\b\d{2}\/\d{2}\/\d{2,4}\b/.test(textoCard)) break;
-      card = card.parentElement;
-    }
-    if(!card || card === document.body) card = registro.no.parentElement;
-
-    var texto = (card && card.innerText) || "";
-    var dataMatch = texto.match(/\b(\d{2}\/\d{2}\/\d{2,4})(?:\s+(?:às|[-–])?\s*\d{2}:\d{2})?/i);
-    var data = dataMatch ? dataMatch[1] : "";
-    var linhas = texto.split(/\n+/).map(function(s){ return s.trim(); }).filter(Boolean);
-    var titulo = linhas.find(function(linha){
-      return linha.length >= 12 &&
-        !/^ID\s*:/i.test(linha) &&
-        !/\b\d{2}\/\d{2}\/\d{2,4}\b/.test(linha) &&
-        !/^(via |não respond|responder|ver reclama|detalhes|status)/i.test(linha);
-    }) || "Sem título identificado";
-
-    if(data && !vistos[id]){
-      vistos[id] = true;
-      var assunto = categorizarAssunto(titulo);
-      itens.push({
-        data: data,
-        id: id,
-        assunto: assunto,
-        titulo: titulo
-      });
-      novos++;
-    }
-  });
- 
-  if(novos) salvar();
-  renderizarLista();
-  return novos;
+ // Mesma expressão de captura confirmada pelo usuário.
+ var texto=document.body.innerText||"";
+ var re=/ID:\s*(\d{6,})[\s\S]*?\n([^\n]+)\n[\s\S]*?(\d{2}\/\d{2}\/\d{2,4})/g,m;
+ while((m=re.exec(texto))!==null){
+   if(m[2].trim().length>3 && !enviados.has(m[1])){
+     pendentes.set(m[1],{id:m[1],data:m[3],assunto:categoria(m[2])});
+   }
+ }
 }
- 
-function copiar(texto, msg){
-  function manual(){
-    var ta = document.createElement("textarea");
-    ta.value = texto; ta.style.position = "fixed"; ta.style.opacity = "0";
-    document.body.appendChild(ta); ta.select();
-    try { document.execCommand("copy"); status(msg); }
-    catch(e){ status("Erro ao copiar. Dados no console."); console.log(texto); }
-    ta.remove();
-  }
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(texto).then(function(){ status(msg); }, manual);
-  } else manual();
+function enviar(){
+ if(!conectado || !janela || janela.closed || parado)return;
+ if(!lote && pendentes.size)lote={type:"RA_BATCH",canal:canal,seq:++seq,itens:Array.from(pendentes.values()).slice(0,50)};
+ if(lote)janela.postMessage(lote,destino.origin);
 }
- 
-// Interface
-var caixa = document.createElement("div");
-caixa.id = "ra-coletor";
-caixa.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(920px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;z-index:2147483647;background:#22242a;color:#e3e2e0;font:13px/1.45 system-ui,-apple-system,sans-serif;border:1px solid #4a4e56;border-radius:14px;padding:18px 20px;box-shadow:0 20px 60px rgba(0,0,0,.65)";
- 
-function botao(rotulo, principal){
-  var b = document.createElement("button");
-  b.textContent = rotulo;
-  b.style.cssText = "display:block;width:100%;margin-top:7px;padding:8px 10px;border-radius:7px;cursor:pointer;font:600 12.5px system-ui,sans-serif;border:1px solid " +
-    (principal ? "#b0c628;background:#b0c628;color:#1a1c05" : "#4a4e56;background:#2a2d34;color:#e3e2e0");
-  caixa.appendChild(b);
-  return b;
+function conectar(){
+ var u=new URL(APP_URL);u.searchParams.set("ra_bridge","1");
+ u.hash=new URLSearchParams({canal:canal,origem:location.origin}).toString();
+ janela=window.open(u.href,"ra_bridge_"+canal,"width=1050,height=760");
+ conectado=false;parado=false;
+ status(janela?"Entre no app e clique em AUTORIZAR COLETA na janela aberta.":"Pop-up bloqueado. Permita pop-ups e clique novamente.");
 }
- 
-var topo = document.createElement("div");
-topo.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px";
-var tit = document.createElement("strong");
-tit.textContent = "Coletor Detran (Data/ID/Assunto)";
-var x = document.createElement("button");
-x.textContent = "\u00d7";
-x.style.cssText = "background:none;border:none;color:#a3a89a;font-size:18px;line-height:1;cursor:pointer";
-topo.appendChild(tit); topo.appendChild(x);
-caixa.appendChild(topo);
- 
-var contador = document.createElement("div");
-contador.style.cssText = "font:700 24px system-ui,sans-serif;color:#c9d94a;margin:8px 0 2px";
-caixa.appendChild(contador);
- 
-var recado = document.createElement("div");
-recado.style.cssText = "font-size:11.5px;color:#a3a89a;min-height:28px";
-caixa.appendChild(recado);
-
-var lista = document.createElement("div");
-lista.style.cssText = "margin:12px 0;max-height:360px;overflow:auto;border:1px solid #3a3d44;border-radius:8px";
-caixa.appendChild(lista);
-
-var OPCOES = ["CNH","VEÍCULOS","MULTAS","PORTAL","CREDENCIADOS","ANÁLISE","OUTROS"];
-function renderizarLista(){
-  if(!lista) return;
-  if(!itens.length){
-    lista.innerHTML = '<div style="padding:22px;text-align:center;color:#a3a89a">Nenhum registro coletado.</div>';
-    return;
-  }
-  var html = '<table style="width:100%;border-collapse:collapse"><thead><tr>' +
-    '<th style="padding:9px;text-align:left;border-bottom:1px solid #4a4e56">DATA</th>' +
-    '<th style="padding:9px;text-align:left;border-bottom:1px solid #4a4e56">ID</th>' +
-    '<th style="padding:9px;text-align:left;border-bottom:1px solid #4a4e56">ASSUNTO</th></tr></thead><tbody>';
-  itens.forEach(function(item, indice){
-    html += '<tr><td style="padding:8px 9px;border-bottom:1px solid #3a3d44;white-space:nowrap">' + item.data + '</td>' +
-      '<td style="padding:8px 9px;border-bottom:1px solid #3a3d44;font-family:monospace">' + item.id + '</td>' +
-      '<td style="padding:8px 9px;border-bottom:1px solid #3a3d44"><select data-indice="' + indice + '" style="width:100%;min-width:170px;background:#2a2d34;color:#e3e2e0;border:1px solid #4a4e56;border-radius:6px;padding:6px">' +
-      OPCOES.map(function(op){ return '<option' + (op === item.assunto ? ' selected' : '') + '>' + op + '</option>'; }).join('') +
-      '</select></td></tr>';
-  });
-  lista.innerHTML = html + '</tbody></table>';
-  Array.prototype.forEach.call(lista.querySelectorAll('select[data-indice]'), function(sel){
-    sel.onchange = function(){ itens[Number(this.getAttribute('data-indice'))].assunto = this.value; salvar(); };
-  });
+function receber(e){
+ var d=e.data;
+ if(e.origin!==destino.origin || e.source!==janela || !d || d.canal!==canal)return;
+ if(d.type==="RA_READY"){conectado=true;parado=false;varrer();status("Conectado. Enviando registros…");enviar();}
+ if(d.type==="RA_ACK" && lote && d.seq===lote.seq){
+   lote.itens.forEach(function(i){enviados.add(i.id);pendentes.delete(i.id);});lote=null;
+   status(enviados.size+" registro(s) confirmado(s) no Firebase. Navegue para a próxima página.");enviar();
+ }
+ if(d.type==="RA_ERROR"){parado=true;status("Envio pausado: "+d.message+" Clique em Tentar novamente.");}
 }
- 
-function status(msg){
-  contador.textContent = itens.length + " Registro(s)";
-  recado.textContent = msg || "";
-  renderizarLista();
-}
- 
-var bColetar = botao("Coletar esta página", true);
-var bCSV     = botao("Copiar como CSV (Excel)");
-var bTexto   = botao("Copiar Lista Detalhada");
-var bLimpar  = botao("Limpar lista");
- 
-var rodape = document.createElement("label");
-rodape.style.cssText = "display:flex;align-items:center;gap:7px;margin-top:10px;font-size:11.5px;color:#a3a89a;cursor:pointer";
-var chk = document.createElement("input");
-chk.type = "checkbox"; chk.checked = true;
-rodape.appendChild(chk);
-rodape.appendChild(document.createTextNode("Coletar auto ao navegar"));
-caixa.appendChild(rodape);
- 
-var observador = null, espera = null;
-function auto(ativo){
-  if(ativo && !observador){
-    observador = new MutationObserver(function(){
-      clearTimeout(espera);
-      espera = setTimeout(function(){
-        var n = varrer();
-        status(n ? n + " novo(s) registro(s)." : "");
-      }, 700);
-    });
-    observador.observe(document.body, {childList:true, subtree:true});
-  } else if(!ativo && observador){
-    observador.disconnect(); observador = null;
-  }
-}
- 
-bColetar.onclick = function(){
-  var n = varrer();
-  status(n ? n + " novo(s) nesta página." : "Nenhum dado novo nesta página.");
-};
- 
-bCSV.onclick = function(){
-  if(!itens.length) return status("A lista está vazia.");
-  var csv = "DATA;ID;ASSUNTO\n" + itens.map(function(i){
-    return i.data + ";" + i.id + ";" + i.assunto;
-  }).join("\n");
-  copiar(csv, itens.length + " linha(s) em CSV copiadas!");
-};
- 
-bTexto.onclick = function(){
-  if(!itens.length) return status("A lista está vazia.");
-  var txt = itens.map(function(i){
-    return "Data: " + i.data + " | ID: " + i.id + " | Assunto: " + i.assunto;
-  }).join("\n");
-  copiar(txt, itens.length + " item(ns) copiado(s).");
-};
- 
-bLimpar.onclick = function(){
-  itens = []; vistos = Object.create(null); salvar();
-  status("Lista zerada.");
-};
- 
-chk.onchange = function(){ auto(chk.checked); };
-x.onclick = function(){ auto(false); caixa.remove(); };
- 
+window.addEventListener("message",receber);
+botao("Conectar ao app",conectar);
+botao("Coletar / Tentar novamente",function(){parado=false;varrer();enviar();if(!conectado)status("Clique primeiro em Conectar ao app.");});
+botao("Fechar coletor",function(){window.__raAutoCleanup();});
 document.body.appendChild(caixa);
-varrer();
-auto(true);
-status("Painel pronto.");
+var timer=setInterval(function(){
+ if(janela && janela.closed){conectado=false;status("Janela do app fechada. Conecte novamente.");}
+ varrer();enviar();
+},3000);
+window.__raAutoCleanup=function(){clearInterval(timer);window.removeEventListener("message",receber);caixa.remove();delete window.__raAutoCleanup;};
+status("Clique em Conectar ao app. Não é preciso copiar os dados.");
 })();
 </script>
 
@@ -524,6 +436,8 @@ status("Painel pronto.");
     db = firebase.database();
   }
 
+  var ADMIN_UID = "SEFaMdmhNNNtXdSuUvOhjFNiXDJ3";
+  var coletaRef=null;
   var state = {
     booted:false,
     users:[],
@@ -539,10 +453,7 @@ status("Painel pronto.");
     loginRegistrado:false,
     criandoPrimeiro:false,
     ocupadoUso:false,
-    coleta:(function(){
-      try { return JSON.parse(localStorage.getItem("ra_app_coleta_v1") || "[]") || []; }
-      catch(e){ return []; }
-    })()
+    coleta:[]
   };
 
   var app = document.getElementById("app");
@@ -691,8 +602,7 @@ status("Painel pronto.");
   }
 
   function ehAdministrativo(user){
-    var u = user || state.currentUser;
-    return !!(u && u.canEdit !== false);
+    return !!(auth && auth.currentUser && auth.currentUser.uid === ADMIN_UID);
   }
 
   function nomePerfil(user){
@@ -714,6 +624,12 @@ status("Painel pronto.");
 
   function ligarBase(){
     if(refUsuarios) return;
+    coletaRef=db.ref("coleta");
+    coletaRef.on("value",function(snap){
+      var v=snap.val()||{};
+      state.coleta=Object.keys(v).map(function(k){return v[k];}).sort(function(a,b){return b.id.localeCompare(a.id);});
+      if(state.screen==="painel" && !digitandoNoFormulario())render();
+    },function(){toast("Coleta sem permissão de leitura. Confira as regras e sua liberação.");});
     refUsuarios = db.ref("usuarios");
     refUsuarios.on("value", aoReceberUsuarios, function(){
       state.booted = true;
@@ -741,6 +657,7 @@ status("Painel pronto.");
   }
 
   function desligarBase(){
+    if(coletaRef){coletaRef.off();coletaRef=null;} state.coleta=[];
     if(refUsuarios){ refUsuarios.off(); refUsuarios = null; }
     if(refLogs){ refLogs.off(); refLogs = null; }
     if(refSessao){ refSessao.off(); refSessao = null; }
@@ -785,7 +702,21 @@ status("Painel pronto.");
       for(var k in u){ if(k !== "password" && Object.prototype.hasOwnProperty.call(u,k)) copia[k] = u[k]; }
       return copia;
     });
-    try { await db.ref("usuarios").set(limpos); return true; }
+    try {
+      if(ehAdministrativo()){
+        var permissoes={}; limpos.forEach(function(u){if(u.uid)permissoes[u.uid]={active:u.active!==false};});
+        // Permissões no servidor: só o administrador pode alterar esta lista.
+        await db.ref().update({usuarios:limpos,acessos:permissoes});
+      }else{
+        var indice=state.users.findIndex(function(u){return u.uid===auth.currentUser.uid;});
+        if(indice<0)throw new Error("Cadastro sem UID");
+        var meu=limpos[indice];
+        await db.ref("usuarios/"+indice).update({
+          lastLogin:meu.lastLogin||"",previousLogin:meu.previousLogin||"",tempPassword:!!meu.tempPassword
+        });
+      }
+      return true;
+    }
     catch(e){ toast(msgBanco(e)); return false; }
   }
 
@@ -809,7 +740,7 @@ status("Painel pronto.");
   }
 
   function digitandoNoFormulario(){
-    var ids = ["novo-usuario","novo-cpf","login-usuario","conta-senha1","senha-nova"];
+    var ids = ["coleta-dados","novo-usuario","novo-cpf","login-usuario","conta-senha1","senha-nova"];
     for(var i=0;i<ids.length;i++){
       var campo = document.getElementById(ids[i]);
       if(campo && campo.value) return true;
@@ -847,6 +778,10 @@ status("Painel pronto.");
 
   async function aoReceberUsuarios(snap){
     state.users = toArray(snap.val());
+    if(ehAdministrativo()){
+      var mapa={};state.users.forEach(function(u){if(u.uid)mapa[u.uid]={active:u.active!==false};});
+      db.ref("acessos").set(mapa).catch(function(){toast("Falha ao sincronizar permissões.");});
+    }
     state.booted = true;
 
     var authUser = auth.currentUser;
@@ -891,7 +826,7 @@ status("Painel pronto.");
     state.currentUser = cadastro;
     state.error = "";
 
-    if(!cadastro.uid || !cadastro.email){
+    if(ehAdministrativo() && (!cadastro.uid || !cadastro.email)){
       cadastro.uid = authUser.uid;
       cadastro.email = (authUser.email||"").toLowerCase();
       salvarUsuarios();
@@ -1098,7 +1033,7 @@ status("Painel pronto.");
           botao +
           (estado ? '<div class="controle-estado">' + estado + '</div>' : '') +
         '</div>' +
-      '</div>' + blocoColeta();
+      '</div>' + blocoPonte() + blocoColeta();
   }
 
   function blocoColeta(){
@@ -1116,7 +1051,7 @@ status("Painel pronto.");
 
     return '<div class="cartao" id="area-coleta">' +
       '<h2>Coleta — Reclame Aqui</h2>' +
-      '<p style="color:var(--ink-soft);margin:-8px 0 16px">Cole abaixo o CSV copiado pelo coletor para exibir os registros no aplicativo.</p>' +
+      '<p style="color:var(--ink-soft);margin:-8px 0 16px">Envio automático: copie o código uma vez, execute no Reclame Aqui e clique em Conectar ao app. A importação abaixo é opcional.</p>' +
       '<div class="grade-2">' +
         '<div class="campo"><label for="coleta-dados">Dados coletados</label><textarea id="coleta-dados" rows="5" placeholder="DATA;ID;ASSUNTO&#10;11/09/2026;123456789;CNH"></textarea></div>' +
         '<div style="display:flex;flex-direction:column;gap:9px;justify-content:flex-end">' +
@@ -1133,16 +1068,16 @@ status("Painel pronto.");
   }
 
   function salvarColetaApp(){
-    localStorage.setItem("ra_app_coleta_v1", JSON.stringify(state.coleta));
+    throw new Error("Use gravações individuais no Firebase.");
   }
 
-  function importarColeta(){
+  async function importarColeta(){
     var campo = document.getElementById("coleta-dados");
     var texto = campo ? campo.value.trim() : "";
     if(!texto){ toast("Cole os dados copiados pelo coletor."); return; }
     var existentes = Object.create(null);
     state.coleta.forEach(function(i){ existentes[i.id] = true; });
-    var novos = 0;
+    var novos = 0, importar=[];
     texto.split(/\r?\n/).forEach(function(linha, indice){
       if(!linha.trim() || (indice === 0 && /^DATA[;\t,]/i.test(linha))) return;
       var partes = linha.split(linha.indexOf(";") >= 0 ? ";" : "\t");
@@ -1150,13 +1085,12 @@ status("Painel pronto.");
       var id = (partes[1] || "").replace(/\D/g, "");
       var assunto = (partes[2] || "OUTROS").trim().toUpperCase();
       if(id.length >= 6 && !existentes[id]){
-        state.coleta.push({data:data, id:id, assunto:assunto});
+        importar.push({data:data, id:id, assunto:assunto});
         existentes[id] = true; novos++;
       }
     });
-    salvarColetaApp();
-    render();
-    toast(novos + " novo(s) registro(s) importado(s).");
+    try{ await gravarColeta(importar);campo.value="";toast(novos+" registro(s) processado(s).");}
+    catch(e){toast("Não foi possível importar: "+e.message);}
   }
 
   function blocoConta(u){
@@ -1330,22 +1264,26 @@ status("Painel pronto.");
     });
     liga("copiar-coletor", "click", copiarCodigoColetor);
     liga("importar-coleta", "click", importarColeta);
+    liga("autorizar-ponte","click",autorizarPonte);
+    liga("copiar-regras","click",function(){copiar(document.getElementById("firebase-regras").textContent,"Regras copiadas.");});
     liga("limpar-coleta-app", "click", function(){
       if(!state.coleta.length) return toast("Não há registros para limpar.");
       if(confirm("Deseja apagar todos os registros da coleta?")){
-        state.coleta = []; salvarColetaApp(); render(); toast("Registros removidos.");
+        if(!ehAdministrativo())return toast("Só o administrador pode limpar a coleta.");
+        db.ref("coleta").remove().then(function(){toast("Registros removidos do Firebase.");}).catch(function(){toast("Não foi possível excluir.");});
       }
     });
     cada(".coleta-assunto", function(sel){
       sel.addEventListener("change", function(){
-        state.coleta[Number(this.getAttribute("data-indice"))].assunto = this.value;
-        salvarColetaApp();
+        var item=state.coleta[Number(this.getAttribute("data-indice"))];
+        db.ref("coleta/"+item.id+"/assunto").set(this.value).catch(function(){toast("Falha ao salvar assunto.");});
       });
     });
     cada("[data-remover-coleta]", function(btn){
       btn.addEventListener("click", function(){
-        state.coleta.splice(Number(this.getAttribute("data-remover-coleta")), 1);
-        salvarColetaApp(); render();
+        if(!ehAdministrativo())return toast("Somente o administrador pode excluir.");
+        var item=state.coleta[Number(this.getAttribute("data-remover-coleta"))];
+        if(confirm("Excluir o ID "+item.id+" do Firebase?"))db.ref("coleta/"+item.id).remove().catch(function(){toast("Falha ao excluir.");});
       });
     });
 
@@ -1406,7 +1344,8 @@ status("Painel pronto.");
   function copiarCodigoColetor(){
     var el = document.getElementById("codigo-coletor");
     if(!el){ toast("Código do coletor não encontrado no arquivo."); return; }
-    copiar(el.textContent.trim(), "Código copiado. Cole no console do Reclame Aqui.");
+    var endereco=new URL(location.href);endereco.search="";endereco.hash="";
+    copiar(el.textContent.trim().replace("__APP_URL__",JSON.stringify(endereco.href)), "Código v4 copiado. Execute no Reclame Aqui e clique em Conectar ao app.");
   }
 
   async function alternarUso(){
@@ -1720,6 +1659,59 @@ status("Painel pronto.");
     if(ehMinhaSessao()) await finalizarUso(true);
     if(auth) auth.signOut();
   }
+
+
+  var canalPonte=null, origemPonte=null, autorizouPonte=false, uidPonte=null, processando=false;
+  try{
+    if(new URLSearchParams(location.search).get("ra_bridge")==="1"){
+      var p=new URLSearchParams(location.hash.slice(1)), o=new URL(p.get("origem"));
+      if(o.protocol==="https:" && (o.hostname==="reclameaqui.com.br" || o.hostname.endsWith(".reclameaqui.com.br")) && /^[a-f0-9]{48}$/.test(p.get("canal")||"")){
+        canalPonte=p.get("canal");origemPonte=o.origin;
+      }
+    }
+  }catch(e){}
+  function blocoPonte(){
+    var h="";
+    if(canalPonte)h='<div class="cartao"><h2>Conexão com Reclame Aqui</h2><p>Origem: '+esc(origemPonte)+'</p><p>Autorize apenas se você acabou de clicar em Conectar ao app no coletor. Mantenha esta janela aberta.</p><button class="btn btn-sage" id="autorizar-ponte">AUTORIZAR COLETA</button></div>';
+    if(ehAdministrativo())h+='<div class="cartao"><h2>Configuração Firebase • v4</h2><p>Faça backup do banco e das regras atuais. Copie as regras, publique em Realtime Database → Regras e entre novamente com a conta administradora antes dos demais usuários.</p><button class="btn btn-neutro" id="copiar-regras">COPIAR REGRAS DO FIREBASE</button><p>Somente o UID administrador gerencia usuários. Os demais acessos ativos são sincronizados por UID. Cadastros antigos sem UID precisam ser atualizados pelo administrador.</p></div>';
+    return h;
+  }
+  function autorizarPonte(){
+    if(!auth.currentUser || !state.currentUser || !window.opener)return toast("Entre na conta e abra esta janela pelo coletor.");
+    uidPonte=auth.currentUser.uid;autorizouPonte=true;
+    window.opener.postMessage({type:"RA_READY",canal:canalPonte},origemPonte);
+    toast("Conexão autorizada. Volte ao Reclame Aqui e mantenha esta janela aberta.");
+  }
+  function normalizarItem(i){
+    var op=["CNH","VEÍCULOS","MULTAS","PORTAL","CREDENCIADOS","ANÁLISE","OUTROS"];
+    if(!i || !/^\d{6,15}$/.test(String(i.id)) || !/^\d{2}\/\d{2}\/(?:\d{2}|\d{4})$/.test(i.data||"") || !op.includes(i.assunto))throw new Error("Registro inválido");
+    var d=i.data.split("/").map(Number),ano=d[2]<100?2000+d[2]:d[2],dt=new Date(Date.UTC(ano,d[1]-1,d[0]));
+    if(dt.getUTCFullYear()!==ano || dt.getUTCMonth()!==d[1]-1 || dt.getUTCDate()!==d[0])throw new Error("Data inválida");
+    return {id:String(i.id),data:i.data,assunto:i.assunto};
+  }
+  async function gravarColeta(itens){
+    if(!auth.currentUser || !state.currentUser)throw new Error("Entre no app.");
+    var limpos=itens.map(normalizarItem);
+    for(var i=0;i<limpos.length;i++){
+      var item=limpos[i];
+      await db.ref("coleta/"+item.id).transaction(function(atual){return atual || item;},undefined,false);
+    }
+  }
+  window.addEventListener("message",async function(e){
+    var d=e.data;
+    if(!autorizouPonte || e.source!==window.opener || e.origin!==origemPonte || !d || d.canal!==canalPonte || d.type!=="RA_BATCH")return;
+    if(processando)return;
+    if(!auth.currentUser || auth.currentUser.uid!==uidPonte){autorizouPonte=false;return;}
+    processando=true;
+    try{
+      if(!Number.isSafeInteger(d.seq) || !Array.isArray(d.itens) || !d.itens.length || d.itens.length>50)throw new Error("Lote inválido");
+      await gravarColeta(d.itens);
+      e.source.postMessage({type:"RA_ACK",canal:canalPonte,seq:d.seq},origemPonte);
+    }catch(err){
+      e.source.postMessage({type:"RA_ERROR",canal:canalPonte,message:"Confira login, conexão e regras no app."},origemPonte);
+      toast("Coleta não confirmada: "+err.message);
+    }finally{processando=false;}
+  });
 
   iniciar();
 
