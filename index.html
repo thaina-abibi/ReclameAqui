@@ -272,22 +272,35 @@
 (function(){
 "use strict";
 if(document.getElementById("ra-coletor")) return;
- 
+
 var CHAVE = "ra_detran_dados_v2";
+var FIREBASE_URL = "https://reclameaqui-7cf38-default-rtdb.firebaseio.com/coletas.json";
 var itens = [], vistos = Object.create(null);
- 
+
 try { 
   itens = JSON.parse(localStorage.getItem(CHAVE) || "[]") || []; 
 } catch(e){ 
   itens = []; 
 }
- 
+
 itens.forEach(function(item){ vistos[item.id] = true; });
- 
-function salvar(){ 
+
+function salvarLocal(){ 
   try { localStorage.setItem(CHAVE, JSON.stringify(itens)); } catch(e){} 
 }
- 
+
+function enviarParaFirebase(novosItens) {
+  novosItens.forEach(function(item) {
+    // Envia cada novo item com o ID como chave no Firebase para evitar duplicatas
+    var url = "https://reclameaqui-7cf38-default-rtdb.firebaseio.com/coletas/" + item.id + ".json";
+    fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(item)
+    }).catch(function(err){ console.error("Erro ao sincronizar com Firebase:", err); });
+  });
+}
+
 function categorizarAssunto(titulo) {
   var t = (titulo || "").toLowerCase();
   if (t.match(/\b(cnh|habilita[çc][ãa]o|carteira|categoria|exame|pdd|renach|biometria)\b/)) return "CNH";
@@ -298,57 +311,59 @@ function categorizarAssunto(titulo) {
   if (t.match(/\b(an[áa]lise|processo|andamento|pend[êe]ncia|aguardando|prazo|status)\b/)) return "ANÁLISE";
   return "OUTROS";
 }
- 
+
 function varrer(){
-  var novos = 0;
+  var novosItens = [];
   var texto = document.body.innerText || "";
-  // Captura o bloco contendo ID, Título e Data
-  // Regex busca a estrutura dos cards da página do Reclame Aqui
   var reCard = /ID:\s*(\d{6,})[\s\S]*?\n([^\n]+)\n[\s\S]*?(\d{2}\/\d{2}\/\d{2,4})/g;
   var m;
- 
+
   while((m = reCard.exec(texto)) !== null){
     var id = m[1].trim();
     var titulo = m[2].trim();
     var data = m[3].trim();
- 
-    // Filtra falsos positivos de títulos que sejam trechos de layout
+
     if(titulo.length > 3 && !vistos[id]){
       vistos[id] = true;
-      var assunto = categorizarAssunto(titulo);
-      itens.push({
+      var objetoItem = {
         data: data,
         id: id,
-        assunto: assunto,
-        titulo: titulo
-      });
-      novos++;
+        assunto: categorizarAssunto(titulo),
+        titulo: titulo,
+        coletadoEm: new Date().toISOString()
+      };
+      
+      itens.push(objetoItem);
+      novosItens.push(objetoItem);
     }
   }
- 
-  if(novos) salvar();
-  return novos;
+
+  if(novosItens.length) {
+    salvarLocal();
+    enviarParaFirebase(novosItens);
+  }
+  return novosItens.length;
 }
- 
+
 function copiar(texto, msg){
   function manual(){
     var ta = document.createElement("textarea");
     ta.value = texto; ta.style.position = "fixed"; ta.style.opacity = "0";
     document.body.appendChild(ta); ta.select();
     try { document.execCommand("copy"); status(msg); }
-    catch(e){ status("Erro ao copiar. Dados no console."); console.log(texto); }
+    catch(e){ status("Erro ao copiar."); }
     ta.remove();
   }
   if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(texto).then(function(){ status(msg); }, manual);
   } else manual();
 }
- 
-// Interface
+
+// Interface Flutuante
 var caixa = document.createElement("div");
 caixa.id = "ra-coletor";
 caixa.style.cssText = "position:fixed;right:18px;bottom:18px;width:260px;z-index:2147483647;background:#22242a;color:#e3e2e0;font:13px/1.45 system-ui,-apple-system,sans-serif;border:1px solid #4a4e56;border-radius:12px;padding:14px 15px;box-shadow:0 14px 34px rgba(0,0,0,.45)";
- 
+
 function botao(rotulo, principal){
   var b = document.createElement("button");
   b.textContent = rotulo;
@@ -357,43 +372,34 @@ function botao(rotulo, principal){
   caixa.appendChild(b);
   return b;
 }
- 
+
 var topo = document.createElement("div");
 topo.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px";
 var tit = document.createElement("strong");
-tit.textContent = "Coletor Detran (Data/ID/Assunto)";
+tit.textContent = "Coletor Detran (Nuvem)";
 var x = document.createElement("button");
 x.textContent = "\u00d7";
 x.style.cssText = "background:none;border:none;color:#a3a89a;font-size:18px;line-height:1;cursor:pointer";
 topo.appendChild(tit); topo.appendChild(x);
 caixa.appendChild(topo);
- 
+
 var contador = document.createElement("div");
 contador.style.cssText = "font:700 24px system-ui,sans-serif;color:#c9d94a;margin:8px 0 2px";
 caixa.appendChild(contador);
- 
+
 var recado = document.createElement("div");
 recado.style.cssText = "font-size:11.5px;color:#a3a89a;min-height:28px";
 caixa.appendChild(recado);
- 
+
 function status(msg){
   contador.textContent = itens.length + " Registro(s)";
   recado.textContent = msg || "";
 }
- 
+
 var bColetar = botao("Coletar esta página", true);
 var bCSV     = botao("Copiar como CSV (Excel)");
-var bTexto   = botao("Copiar Lista Detalhada");
-var bLimpar  = botao("Limpar lista");
- 
-var rodape = document.createElement("label");
-rodape.style.cssText = "display:flex;align-items:center;gap:7px;margin-top:10px;font-size:11.5px;color:#a3a89a;cursor:pointer";
-var chk = document.createElement("input");
-chk.type = "checkbox"; chk.checked = true;
-rodape.appendChild(chk);
-rodape.appendChild(document.createTextNode("Coletar auto ao navegar"));
-caixa.appendChild(rodape);
- 
+var bLimpar  = botao("Limpar lista local");
+
 var observador = null, espera = null;
 function auto(ativo){
   if(ativo && !observador){
@@ -401,7 +407,7 @@ function auto(ativo){
       clearTimeout(espera);
       espera = setTimeout(function(){
         var n = varrer();
-        status(n ? n + " novo(s) registro(s)." : "");
+        status(n ? n + " enviado(s) ao painel." : "");
       }, 700);
     });
     observador.observe(document.body, {childList:true, subtree:true});
@@ -409,40 +415,31 @@ function auto(ativo){
     observador.disconnect(); observador = null;
   }
 }
- 
+
 bColetar.onclick = function(){
   var n = varrer();
-  status(n ? n + " novo(s) nesta página." : "Nenhum dado novo nesta página.");
+  status(n ? n + " novo(s) enviado(s) ao app." : "Nenhum dado novo nesta página.");
 };
- 
+
 bCSV.onclick = function(){
   if(!itens.length) return status("A lista está vazia.");
-  var csv = "DATA;ID;ASSUNTO\n" + itens.map(function(i){
-    return i.data + ";" + i.id + ";" + i.assunto;
+  var csv = "DATA;ID;ASSUNTO;TITULO\n" + itens.map(function(i){
+    return i.data + ";" + i.id + ";" + i.assunto + ';"' + (i.titulo||"").replace(/"/g, '""') + '"';
   }).join("\n");
   copiar(csv, itens.length + " linha(s) em CSV copiadas!");
 };
- 
-bTexto.onclick = function(){
-  if(!itens.length) return status("A lista está vazia.");
-  var txt = itens.map(function(i){
-    return "Data: " + i.data + " | ID: " + i.id + " | Assunto: " + i.assunto;
-  }).join("\n");
-  copiar(txt, itens.length + " item(ns) copiado(s).");
-};
- 
+
 bLimpar.onclick = function(){
-  itens = []; vistos = Object.create(null); salvar();
-  status("Lista zerada.");
+  itens = []; vistos = Object.create(null); salvarLocal();
+  status("Lista local zerada.");
 };
- 
-chk.onchange = function(){ auto(chk.checked); };
+
 x.onclick = function(){ auto(false); caixa.remove(); };
- 
+
 document.body.appendChild(caixa);
 varrer();
 auto(true);
-status("Painel pronto.");
+status("Painel sincronizado.");
 })();
 </script>
 
@@ -477,6 +474,7 @@ status("Painel pronto.");
     booted:false,
     users:[],
     logs:[],
+    coletas:[],
     uso:[],
     sessao:null,
     screen:"login",
@@ -655,10 +653,17 @@ status("Painel pronto.");
       (state.currentUser.username||"").toLowerCase() === (username||"").toLowerCase());
   }
 
-  var refUsuarios = null, refLogs = null, refSessao = null, refUso = null, aoCair = null;
+  var refUsuarios = null, refLogs = null, refSessao = null, refUso = null, refColetas = null, aoCair = null;
 
   function ligarBase(){
     if(refUsuarios) return;
+    refColetas = db.ref("coletas");
+    refColetas.on("value", function(snap){
+      state.coletas = toArray(snap.val()).sort(function(a, b){
+        return String(b.coletadoEm || "").localeCompare(String(a.coletadoEm || ""));
+      });
+      if(state.screen === "painel" && state.painelAba === "inicio") render();
+    }, function(){});
     refUsuarios = db.ref("usuarios");
     refUsuarios.on("value", aoReceberUsuarios, function(){
       state.booted = true;
@@ -686,12 +691,14 @@ status("Painel pronto.");
   }
 
   function desligarBase(){
+    if(refColetas){ refColetas.off(); refColetas = null; }
     if(refUsuarios){ refUsuarios.off(); refUsuarios = null; }
     if(refLogs){ refLogs.off(); refLogs = null; }
     if(refSessao){ refSessao.off(); refSessao = null; }
     if(refUso){ refUso.off(); refUso = null; }
     state.sessao = null;
     state.uso = [];
+    state.coletas = [];
   }
 
   function acharPorUid(uid){
@@ -987,6 +994,37 @@ status("Painel pronto.");
     '</div>';
   }
 
+  function renderTabelaColetas() {
+  if (!state.coletas || state.coletas.length === 0) {
+    return '<div class="vazio">Nenhuma reclamação coletada até o momento.</div>';
+  }
+
+  var linhas = state.coletas.map(function(item) {
+    return '<tr>' +
+      '<td class="mono">' + esc(item.data) + '</td>' +
+      '<td><strong class="mono">' + esc(item.id) + '</strong></td>' +
+      '<td><span class="selo selo-ativo">' + esc(item.assunto) + '</span></td>' +
+      '<td>' + esc(item.titulo || "-") + '</td>' +
+    '</tr>';
+  }).join("");
+
+  return '<div class="rolagem">' +
+    '<table>' +
+      '<thead>' +
+        '<tr>' +
+          '<th>Data</th>' +
+          '<th>ID</th>' +
+          '<th>Assunto</th>' +
+          '<th>Título / Descrição</th>' +
+        '</tr>' +
+      '</thead>' +
+      '<tbody>' +
+        linhas +
+      '</tbody>' +
+    '</table>' +
+  '</div>';
+}
+  
   function telaPainel(){
     var u = state.currentUser || {};
     var admin = ehAdministrativo(u);
