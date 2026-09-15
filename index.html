@@ -1111,7 +1111,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         '<div class="inicio-grade">' +
           '<div class="controle">' +
             botao +
-            '<button class="btn-mais" id="btn-mais" aria-label="Abrir aviso" title="Abrir">+</button>' +
+            (meu ? '<button class="btn-mais" id="btn-mais" aria-label="Abrir aviso" title="Abrir">+</button>' : '') +
             (estado ? '<div class="controle-estado">' + estado + '</div>' : '') +
           '</div>' +
           painelTotais() +
