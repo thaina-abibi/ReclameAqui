@@ -308,6 +308,58 @@
   .manutencao-miolo{padding:30px 26px;text-align:center;display:flex;flex-direction:column;gap:18px;align-items:center;}
   .manutencao-miolo h2{font-size:22px;}
 
+  .trilho-pe{margin-top:auto; width:204px;}
+  .btn-tema{
+    display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+    background:rgba(242,240,228,0.08); border:1px solid rgba(242,240,228,0.16); color:#D7DAC9;
+    padding:10px 12px; border-radius:8px; font-size:13.5px; font-weight:500; cursor:pointer; white-space:nowrap;
+  }
+  .btn-tema:hover{background:rgba(242,240,228,0.16); color:#F2F0E4;}
+  .btn-tema svg{width:17px; height:17px; flex-shrink:0;}
+  @media (max-width:820px){ .trilho-pe{width:168px;} }
+
+  html.tema-claro{
+    --olive-deep:#e8eae4;
+    --paper:#f2f3ef;
+    --surface:#ffffff;
+    --ink:#1b1d21;
+    --ink-soft:#5c6270;
+    --line:#e2e4e0;
+    --line-strong:#c8ccc6;
+    --amber-deep:#7d8f12;
+    --rust-soft:#fbe9e6;
+    --sage-soft:#e7f5e4;
+    --amber-soft:#f5f8dd;
+  }
+  html.tema-claro body{background:var(--paper); color:var(--ink);}
+  html.tema-claro .entrada-arte{background:var(--olive-deep); color:#2a2d34;}
+  html.tema-claro .entrada-arte::after{background:repeating-linear-gradient(115deg, rgba(35,94,155,0.08) 0 2px, transparent 2px 22px);}
+  html.tema-claro .arte-titulo{color:#1b1d21;}
+  html.tema-claro .trilho{color:#2a2d34;}
+  html.tema-claro .trilho-nav button{color:#4b5160;}
+  html.tema-claro .trilho-nav button:hover{background:rgba(0,0,0,0.06); color:#1b1d21;}
+  html.tema-claro .btn-tema{background:rgba(0,0,0,0.04); border-color:var(--line-strong); color:#4b5160;}
+  html.tema-claro .btn-tema:hover{background:rgba(0,0,0,0.08); color:#1b1d21;}
+  html.tema-claro input::placeholder{color:#9aa0a6;}
+  html.tema-claro .celula-vazia{color:#9aa0a6;}
+  html.tema-claro .aviso-erro{border-color:#e8b5ad; color:#a33a2a;}
+  html.tema-claro .aviso-ok{color:#1f7a37;}
+  html.tema-claro .btn-risco{color:#b0392b;}
+  html.tema-claro .btn-sage{color:#2a7a2e;}
+  html.tema-claro .btn-sage:hover{color:#ffffff;}
+  html.tema-claro .btn-uso-bloqueado{background:#e2e4e0; color:#9aa0a6;}
+  html.tema-claro .uso-campo .nome{color:#1f7a37;}
+  html.tema-claro .uso-campo.ocupado{background:rgba(192,57,43,0.08);}
+  html.tema-claro .uso-campo.ocupado .nome{color:#a33a2a;}
+  html.tema-claro .selo-ativo, html.tema-claro .selo-inicio{color:#1f7a37;}
+  html.tema-claro .selo-inativo, html.tema-claro .selo-fim{border-color:#e8b5ad; color:#a33a2a;}
+  html.tema-claro .selo-edicao{background:#eef3e2; color:#4a6320;}
+  html.tema-claro .cartao, html.tema-claro .cabecalho{box-shadow:0 1px 2px rgba(20,22,26,0.04);}
+  html.tema-claro .aviso-flutuante{box-shadow:0 12px 28px rgba(20,22,26,0.18);}
+  html.tema-claro #popup-coleta, html.tema-claro #popup-manutencao{box-shadow:0 24px 80px rgba(20,22,26,0.25);}
+  html.tema-claro #popup-coleta::backdrop, html.tema-claro #popup-manutencao::backdrop{background:rgba(20,22,26,0.35);}
+  html.tema-claro #coleta-dock{box-shadow:0 8px 24px rgba(20,22,26,0.2);}
+
 </style>
 </head>
 <body>
@@ -505,7 +557,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     loginRegistrado:false,
     criandoPrimeiro:false,
     ocupadoUso:false,
-    coleta:[]
+    coleta:[],
+    tema:"escuro"
   };
 
   var app = document.getElementById("app");
@@ -515,11 +568,29 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   var IC_INICIO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.4 12 4l9 7.4"/><path d="M5 10v9.5a.5.5 0 0 0 .5.5H10v-6h4v6h4.5a.5.5 0 0 0 .5-.5V10"/></svg>';
   var IC_CONTA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>';
   var IC_MENU = '<svg viewBox="0 0 30 20" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><line x1="2" y1="3" x2="28" y2="3"/><line x1="2" y1="10" x2="28" y2="10"/><line x1="2" y1="17" x2="28" y2="17"/></svg>';
+  var IC_SOL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><line x1="12" y1="1.8" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22.2"/><line x1="1.8" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22.2" y2="12"/><line x1="4.8" y1="4.8" x2="6.4" y2="6.4"/><line x1="17.6" y1="17.6" x2="19.2" y2="19.2"/><line x1="4.8" y1="19.2" x2="6.4" y2="17.6"/><line x1="17.6" y1="6.4" x2="19.2" y2="4.8"/></svg>';
+  var IC_LUA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.2A8.6 8.6 0 0 1 9.8 3.5a8.6 8.6 0 1 0 10.7 10.7z"/></svg>';
 
   function olhoSVG(aberto){
     return aberto
       ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5.5 5.5 12 5.5 22.5 12 22.5 12 18.5 18.5 12 18.5 1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>'
       : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17.9 17.9A10.7 10.7 0 0 1 12 19.5c-6.5 0-10.5-6.5-10.5-6.5a20 20 0 0 1 4.9-5.6M9.9 4.8A10.4 10.4 0 0 1 12 4.5c6.5 0 10.5 6.5 10.5 6.5a20 20 0 0 1-3.1 4.2M14.1 14.1A3 3 0 1 1 9.9 9.9"/><line x1="2" y1="2" x2="22" y2="22"/></svg>';
+  }
+
+  function aplicarTema(){
+    document.documentElement.classList.toggle("tema-claro", state.tema === "claro");
+  }
+
+  function carregarTema(){
+    try { if(localStorage.getItem("ra_tema") === "claro") state.tema = "claro"; } catch(e){}
+    aplicarTema();
+  }
+
+  function alternarTema(){
+    state.tema = (state.tema === "claro") ? "escuro" : "claro";
+    try { localStorage.setItem("ra_tema", state.tema); } catch(e){}
+    aplicarTema();
+    render();
   }
 
   function marca(){
@@ -806,6 +877,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   }
 
   function iniciar(){
+    carregarTema();
     if(!configOk){
       state.booted = true;
       state.screen = "config";
@@ -1001,6 +1073,12 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     '<div class="shell' + (state.trilhoAberto ? ' aberto' : '') + '">' +
       '<aside class="trilho">' +
         '<nav class="trilho-nav">' + nav + '</nav>' +
+        '<div class="trilho-pe">' +
+          '<button class="btn-tema" id="alternar-tema">' +
+            (state.tema === "claro" ? IC_LUA : IC_SOL) +
+            (state.tema === "claro" ? "Tema escuro" : "Tema claro") +
+          '</button>' +
+        '</div>' +
       '</aside>' +
       '<div class="principal">' +
         '<header class="cabecalho">' + cabecalho + '</header>' +
@@ -1389,6 +1467,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       });
     });
     liga("btn-mais", "click", abrirManutencao);
+    liga("alternar-tema", "click", alternarTema);
 
     liga("form-novo", "submit", criarAcesso);
     liga("novo-cpf", "input", function(){ this.value = formatCPF(this.value); });
