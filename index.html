@@ -137,10 +137,12 @@
   }
   .shell.aberto{grid-template-columns:236px minmax(0,1fr);}
   .trilho{
-    position:sticky; top:0; height:100vh; overflow:hidden;
+    position:sticky; top:0; height:100vh; overflow:hidden; min-width:0;
     background:var(--olive-deep); color:#EDEBDC; padding:22px 16px;
     display:flex; flex-direction:column; gap:22px; border-right:1px solid var(--line);
+    transition:padding .18s ease;
   }
+  .shell:not(.aberto) .trilho{padding:0; border-right:0; width:0;}
   .trilho-nav{display:flex; flex-direction:column; gap:3px; width:204px;}
   .trilho-nav button{
     display:flex; align-items:center; gap:10px; width:100%; text-align:left;
@@ -217,6 +219,12 @@
   .btn-uso:disabled{cursor:not-allowed;}
   .controle-estado{font-size:13.5px; color:var(--ink-soft); max-width:40ch;}
   .controle-estado strong{color:var(--ink);}
+  .btn-mais{
+    width:46px; height:46px; border-radius:50%; cursor:pointer;
+    background:var(--surface); border:1px solid var(--line-strong); color:var(--ink);
+    font-size:24px; line-height:1; display:flex; align-items:center; justify-content:center;
+  }
+  .btn-mais:hover{border-color:var(--amber); color:var(--amber-deep);}
 
   .painel-totais{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px;}
   @media (max-width:520px){ .painel-totais{grid-template-columns:1fr;} }
@@ -294,6 +302,11 @@
   #coleta-dados{min-height:200px;resize:vertical;font-family:var(--font-mono);font-size:14px;}
   #coleta-feedback{margin:14px 0 0;font-size:14px;white-space:pre-wrap;}
   #coleta-dock{position:fixed;right:24px;bottom:24px;z-index:100;background:var(--amber);color:#1a1c05;box-shadow:0 8px 24px #0005;}
+
+  #popup-manutencao{width:min(420px,calc(100vw - 32px));margin:auto;padding:0;border:1px solid var(--line-strong);border-radius:14px;background:var(--surface);color:var(--ink);box-shadow:0 24px 80px #0008;}
+  #popup-manutencao::backdrop{background:rgba(0,0,0,.55);}
+  .manutencao-miolo{padding:30px 26px;text-align:center;display:flex;flex-direction:column;gap:18px;align-items:center;}
+  .manutencao-miolo h2{font-size:22px;}
 
 </style>
 </head>
@@ -807,7 +820,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         ligarBase();
       } else {
         desligarBase();
-        ["popup-coleta","coleta-dock"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
+        ["popup-coleta","coleta-dock","popup-manutencao"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
         state.users = [];
         state.logs = [];
         state.currentUser = null;
@@ -1098,6 +1111,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         '<div class="inicio-grade">' +
           '<div class="controle">' +
             botao +
+            '<button class="btn-mais" id="btn-mais" aria-label="Abrir aviso" title="Abrir">+</button>' +
             (estado ? '<div class="controle-estado">' + estado + '</div>' : '') +
           '</div>' +
           painelTotais() +
@@ -1121,18 +1135,16 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         '<td class="celula-vazia">—</td>' +
         '<td class="celula-vazia">—</td>' +
         '<td class="celula-vazia">—</td>' +
-        (admin ? '<td><button class="btn btn-risco btn-mini" data-remover-coleta="' + indice + '">Excluir</button></td>' : '') +
       '</tr>';
     }).join('');
 
-    var colunas = admin ? 8 : 7;
+    var colunas = 7;
 
     return '<div class="cartao" id="area-coleta">' +
       '<h2>Dados coletados</h2>' +
       '<div style="margin:8px 0 12px;color:var(--ink-soft)"><strong style="color:var(--ink)">' + state.coleta.length + '</strong> registro(s)</div>' +
       '<div class="rolagem"><table class="tabela-coleta"><thead><tr>' +
         '<th>DATA</th><th>ID</th><th>ASSUNTO</th><th>DADOS</th><th>NOME</th><th>DESCRIÇÕES</th><th>OBSERVAÇÃO</th>' +
-        (admin ? '<th>AÇÃO</th>' : '') +
       '</tr></thead><tbody>' +
         (linhas || '<tr><td colspan="' + colunas + '" class="vazio">Nenhuma coleta importada.</td></tr>') +
       '</tbody></table></div>' +
@@ -1152,6 +1164,20 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     d.addEventListener("cancel",function(){dock.hidden=true;});
     dock.onclick=abrirColeta;
   }
+  function abrirManutencao(){
+    var d = document.getElementById("popup-manutencao");
+    if(!d){
+      d = document.createElement("dialog");
+      d.id = "popup-manutencao";
+      d.setAttribute("aria-labelledby","titulo-manutencao");
+      d.innerHTML = '<div class="manutencao-miolo"><h2 id="titulo-manutencao">Em manutenção</h2>' +
+        '<button class="btn btn-neutro" id="fechar-manutencao">Fechar</button></div>';
+      document.body.appendChild(d);
+      d.querySelector("#fechar-manutencao").onclick = function(){ d.close(); };
+    }
+    if(!d.open) d.showModal();
+  }
+
   function abrirColeta(){
     prepararColeta();
     document.getElementById("coleta-dock").hidden=true;
@@ -1362,13 +1388,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         db.ref("coleta/"+item.id+"/assunto").set(this.value).catch(function(){toast("Falha ao salvar assunto.");});
       });
     });
-    cada("[data-remover-coleta]", function(btn){
-      btn.addEventListener("click", function(){
-        if(!ehAdministrativo())return toast("Somente o administrador pode excluir.");
-        var item=state.coleta[Number(this.getAttribute("data-remover-coleta"))];
-        if(confirm("Excluir o ID "+item.id+" do Firebase?"))db.ref("coleta/"+item.id).remove().catch(function(){toast("Falha ao excluir.");});
-      });
-    });
+    liga("btn-mais", "click", abrirManutencao);
 
     liga("form-novo", "submit", criarAcesso);
     liga("novo-cpf", "input", function(){ this.value = formatCPF(this.value); });
@@ -1432,7 +1452,10 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   async function alternarUso(){
     if(state.ocupadoUso) return;
     if(ehMinhaSessao()) await finalizarUso(false);
-    else await iniciarUso();
+    else {
+      await iniciarUso();
+      if(ehMinhaSessao()) abrirManutencao();
+    }
   }
 
   async function iniciarUso(){
@@ -1737,7 +1760,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
   async function sair(){
     state.error = "";
-    ["popup-coleta","coleta-dock"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
+    ["popup-coleta","coleta-dock","popup-manutencao"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
     if(ehMinhaSessao()) await finalizarUso(true);
     if(auth) auth.signOut();
   }
