@@ -371,47 +371,47 @@
     ".read": false,
     ".write": false,
     "acessos": {
-      ".read": "auth != null && auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3'",
-      ".write": "auth != null && auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3'",
+      ".read": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true)",
+      ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true)",
       "$uid": {
         ".read": "auth != null && auth.uid === $uid"
       }
     },
     "usuarios": {
-      ".read": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true)",
-      ".write": "auth != null && auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3'",
+      ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
+      ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true)",
       "$indice": {
         "lastLogin": {
-          ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true) && data.parent().child('uid').val() === auth.uid",
+          ".write": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true) && data.parent().child('uid').val() === auth.uid",
           ".validate": "newData.isString() && newData.val().length <= 40"
         },
         "previousLogin": {
-          ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true) && data.parent().child('uid').val() === auth.uid",
+          ".write": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true) && data.parent().child('uid').val() === auth.uid",
           ".validate": "newData.isString() && newData.val().length <= 40"
         },
         "tempPassword": {
-          ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true) && data.parent().child('uid').val() === auth.uid",
+          ".write": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true) && data.parent().child('uid').val() === auth.uid",
           ".validate": "newData.val() === false"
         }
       }
     },
     "registro": {
-      ".read": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true)",
-      ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true)"
+      ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
+      ".write": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)"
     },
     "usoRegistro": {
-      ".read": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true)",
-      ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true)"
+      ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
+      ".write": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)"
     },
     "sessaoAtiva": {
-      ".read": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true)",
-      ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true)"
+      ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
+      ".write": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)"
     },
     "coleta": {
-      ".read": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true)",
-      ".write": "auth != null && auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3'",
+      ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
+      ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true)",
       "$id": {
-        ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('active').val() === true) && newData.exists() && (!data.exists() || (newData.child('id').val() === data.child('id').val() && newData.child('data').val() === data.child('data').val()))",
+        ".write": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true) && newData.exists() && (!data.exists() || (newData.child('id').val() === data.child('id').val() && newData.child('data').val() === data.child('data').val()))",
         ".validate": "newData.hasChildren(['id','data','assunto']) && $id.matches(/^[0-9]{6,15}$/)",
         "id": {
           ".validate": "newData.isString() && newData.val() === $id"
@@ -731,8 +731,9 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   }
 
   function ehAdministrativo(user){
-    if(user) return user.uid === ADMIN_UID;
-    return !!(auth && auth.currentUser && auth.currentUser.uid === ADMIN_UID);
+    var u = user || state.currentUser;
+    if(!u) return !!(auth && auth.currentUser && auth.currentUser.uid === ADMIN_UID);
+    return u.uid === ADMIN_UID || u.canEdit === true;
   }
 
   function nomePerfil(user){
@@ -834,7 +835,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     });
     try {
       if(ehAdministrativo()){
-        var permissoes={}; limpos.forEach(function(u){if(u.uid)permissoes[u.uid]={active:u.active!==false};});
+        var permissoes={}; limpos.forEach(function(u){if(u.uid)permissoes[u.uid]={active:u.active!==false,admin:(u.uid===ADMIN_UID||u.canEdit===true)};});
         await db.ref().update({usuarios:limpos,acessos:permissoes});
       }else{
         var indice=state.users.findIndex(function(u){return u.uid===auth.currentUser.uid;});
@@ -910,7 +911,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   async function aoReceberUsuarios(snap){
     state.users = toArray(snap.val());
     if(ehAdministrativo()){
-      var mapa={};state.users.forEach(function(u){if(u.uid)mapa[u.uid]={active:u.active!==false};});
+      var mapa={};state.users.forEach(function(u){if(u.uid)mapa[u.uid]={active:u.active!==false,admin:(u.uid===ADMIN_UID||u.canEdit===true)};});
       db.ref("acessos").set(mapa).catch(function(){toast("Falha ao sincronizar permissões.");});
     }
     state.booted = true;
@@ -1321,7 +1322,11 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
       var acoes = ehVoce(u.username)
         ? '<span class="voce">Seu próprio acesso</span>'
-        : '<button class="btn btn-sage btn-mini" data-acao="resetar" data-alvo="' + esc(u.username) + '">Redefinir senha</button>' +
+        : (u.uid === ADMIN_UID
+            ? '<span class="voce">Administrador principal</span>'
+            : '<button class="btn btn-neutro btn-mini" data-acao="perfil" data-alvo="' + esc(u.username) + '">' +
+                (ehAdministrativo(u) ? "Passar para colaborativo" : "Tornar administrativo") + '</button>') +
+          '<button class="btn btn-sage btn-mini" data-acao="resetar" data-alvo="' + esc(u.username) + '">Redefinir senha</button>' +
           '<button class="btn ' + (u.active === false ? "btn-sage" : "btn-risco") + ' btn-mini" data-acao="status" data-alvo="' + esc(u.username) + '">' +
             (u.active === false ? "Ativar" : "Inativar") + '</button>';
 
@@ -1352,6 +1357,13 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
             '<select id="novo-dominio">' + opcoesDominio + '</select></div>' +
           '<div class="campo"><label for="novo-cpf">CPF</label>' +
             '<input type="text" id="novo-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>' +
+        '</div>' +
+        '<div class="grade-3">' +
+          '<div class="campo"><label for="novo-perfil">Perfil</label>' +
+            '<select id="novo-perfil">' +
+              '<option value="colaborativo">Colaborativo</option>' +
+              '<option value="administrativo">Administrativo</option>' +
+            '</select></div>' +
         '</div>' +
         '<button type="submit" class="btn btn-principal" style="width:auto;" id="btn-criar">Criar acesso</button>' +
       '</form>' +
@@ -1477,7 +1489,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       b.addEventListener("click", function(){
         var acao = b.getAttribute("data-acao");
         var alvo = b.getAttribute("data-alvo");
-        if(acao === "resetar") resetarSenha(alvo);
+        if(acao === "perfil") mudarPerfil(alvo);
+        else if(acao === "resetar") resetarSenha(alvo);
         else if(acao === "status") mudarStatus(alvo);
       });
     });
@@ -1714,6 +1727,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var nome = (document.getElementById("novo-usuario").value || "").trim().toLowerCase();
     var dominio = document.getElementById("novo-dominio").value;
     var cpf = digitos(document.getElementById("novo-cpf").value || "");
+    var perfil = document.getElementById("novo-perfil").value;
 
     if(!nome){ state.error = "Informe o nome de usuário."; render(); return; }
     if(cpf.length !== 11){ state.error = "O CPF precisa ter 11 dígitos."; render(); return; }
@@ -1743,7 +1757,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       username: usuarioDoEmail(email),
       cpf: cpf,
       active: true,
-      canEdit: false,
+      canEdit: perfil === "administrativo",
       tempPassword: true,
       createdAt: new Date().toISOString(),
       lastLogin: "",
@@ -1766,7 +1780,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       username: usuarioDoEmail(email),
       email: email,
       password: senha,
-      perfil: "Colaborativo"
+      perfil: perfil === "administrativo" ? "Administrativo" : "Colaborativo"
     };
     registrar("Acesso criado (" + state.ultimaCredencial.perfil + ")", state.ultimaCredencial.username);
     toast("Acesso criado.");
@@ -1810,6 +1824,22 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     if(!ok){ user.active = antes; render(); return; }
     registrar(user.active ? "Acesso ativado" : "Acesso inativado", user.username);
     toast(user.active ? "Acesso ativado." : "Acesso inativado.");
+    render();
+  }
+
+  async function mudarPerfil(username){
+    if(!ehAdministrativo()) return;
+    if(ehVoce(username)){ toast("Você não pode mudar o próprio perfil."); return; }
+    var user = acharUsuario(username);
+    if(!user) return;
+    if(user.uid === ADMIN_UID){ toast("Este é o administrador principal do sistema."); return; }
+    var antes = user.canEdit;
+    var vira = !ehAdministrativo(user);
+    user.canEdit = vira;
+    var ok = await salvarUsuarios();
+    if(!ok){ user.canEdit = antes; render(); return; }
+    registrar("Perfil alterado para " + (vira ? "administrativo" : "colaborativo"), user.username);
+    toast(vira ? "Agora é administrativo." : "Agora é colaborativo.");
     render();
   }
 
