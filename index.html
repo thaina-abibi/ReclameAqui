@@ -226,6 +226,9 @@
   }
   .btn-mais:hover{border-color:var(--amber); color:var(--amber-deep);}
 
+  .cartao-topo{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; flex-wrap:wrap;}
+  .cartao-topo h2{margin-bottom:0;}
+
   .abas{display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap;}
   .aba{
     background:var(--paper); border:1px solid var(--line-strong); color:var(--ink-soft);
@@ -1272,7 +1275,10 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     }).join('');
 
     return '<div class="cartao" id="area-coleta">' +
-      '<h2>Dados coletados</h2>' +
+      '<div class="cartao-topo">' +
+        '<h2>Dados coletados</h2>' +
+        '<button class="btn btn-neutro btn-mini" id="btn-atualizar">Atualizar dados</button>' +
+      '</div>' +
       '<div class="abas">' +
         '<button class="aba' + (aba === "pendentes" ? " on" : "") + '" data-coleta-aba="pendentes">Não respondidas (' + pendentes.length + ')</button>' +
         '<button class="aba' + (aba === "respondidas" ? " on" : "") + '" data-coleta-aba="respondidas">Respondidas (' + respondidas.length + ')</button>' +
@@ -1380,6 +1386,37 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     toast("Dados alterados.");
     fecharEdicao();
     render();
+  }
+
+  async function atualizarDados(){
+    if(!db) return;
+    ocupar("btn-atualizar", "Atualizando…");
+    try {
+      var leituras = await Promise.all([
+        db.ref("coleta").once("value"),
+        db.ref("usuarios").once("value"),
+        db.ref("sessaoAtiva").once("value")
+      ]);
+
+      var bruto = leituras[0].val() || {};
+      state.coleta = Object.keys(bruto).map(function(k){ return bruto[k]; })
+        .sort(function(a,b){ return String(b.id).localeCompare(String(a.id)); });
+
+      state.users = toArray(leituras[1].val());
+      if(auth && auth.currentUser){
+        var cadastro = acharCadastro(auth.currentUser);
+        if(cadastro) state.currentUser = cadastro;
+      }
+
+      var sessao = leituras[2].val();
+      state.sessao = (sessao && sessao.username) ? sessao : null;
+
+      render();
+      toast("Dados atualizados.");
+    } catch(err){
+      liberar("btn-atualizar");
+      toast(msgBanco(err));
+    }
   }
 
   function abrirManutencao(){
@@ -1599,6 +1636,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     });
     liga("btn-uso", "click", alternarUso);
     liga("btn-coleta", "click", abrirColeta);
+    liga("btn-atualizar", "click", atualizarDados);
     liga("copiar-coletor", "click", copiarCodigoColetor);
     liga("importar-coleta", "click", importarColeta);
     liga("limpar-coleta-app", "click", function(){
