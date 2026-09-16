@@ -653,6 +653,11 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     return (state.currentUser && state.currentUser.username) || "Sistema";
   }
 
+  function nomeExibido(u){
+    if(!u) return "";
+    return u.nome || u.username || "";
+  }
+
   function toArray(val){
     if(!val) return [];
     return Array.isArray(val) ? val.filter(Boolean) : Object.keys(val).map(function(k){ return val[k]; });
@@ -862,6 +867,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     try {
       await db.ref("usoRegistro").push({
         username: u.username || "",
+        nome: nomeExibido(u),
         email: u.email || "",
         acao: acao,
         em: new Date().toISOString()
@@ -870,7 +876,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   }
 
   function digitandoNoFormulario(){
-    var ids = ["coleta-dados","novo-usuario","novo-cpf","login-usuario","conta-senha1","senha-nova"];
+    var ids = ["coleta-dados","novo-nome","novo-usuario","novo-cpf","login-usuario","conta-senha1","senha-nova"];
     for(var i=0;i<ids.length;i++){
       var campo = document.getElementById(ids[i]);
       if(campo && campo.value) return true;
@@ -929,6 +935,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
           uid: authUser.uid,
           email: (authUser.email||"").toLowerCase(),
           username: usuarioDoEmail(authUser.email),
+          nome: "",
           cpf: "",
           active: true,
           canEdit: true,
@@ -1104,7 +1111,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     if(s && s.username){
       return '<div class="uso-campo ocupado">' +
         '<div class="rotulo">Em uso por</div>' +
-        '<div class="nome">' + esc(s.username) + '</div>' +
+        '<div class="nome">' + esc(s.nome || s.username) + '</div>' +
       '</div>';
     }
     return '<div class="uso-campo livre">' +
@@ -1180,7 +1187,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       estado = 'Você iniciou em <strong>' + esc(dataHora(s.em)) + '</strong>.';
     } else if(ocupado){
       botao = '<button class="btn-uso btn-uso-bloqueado" id="btn-uso" disabled>INICIAR</button>';
-      estado = '<strong>' + esc(s.username) + '</strong> está utilizando desde ' + esc(dataHora(s.em)) + '.';
+      estado = '<strong>' + esc(s.nome || s.username) + '</strong> está utilizando desde ' + esc(dataHora(s.em)) + '.';
     } else {
       botao = '<button class="btn-uso btn-uso-iniciar" id="btn-uso">INICIAR</button>';
       estado = '';
@@ -1295,6 +1302,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     return '' +
       '<div class="cartao">' +
         '<h2>Dados de acesso</h2>' +
+        '<div class="linha-dado"><span>Nome</span><span>' + esc(u.nome || "não informado") + '</span></div>' +
         '<div class="linha-dado"><span>Usuário</span><span>' + esc(u.username || "") + '</span></div>' +
         '<div class="linha-dado"><span>E-mail</span><span class="mono">' + esc(email) + '</span></div>' +
         '<div class="linha-dado"><span>CPF</span><span class="mono">' + esc(u.cpf ? formatCPF(u.cpf) : "não informado") + '</span></div>' +
@@ -1331,7 +1339,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
             (u.active === false ? "Ativar" : "Inativar") + '</button>';
 
       return '<tr>' +
-        '<td><strong>' + esc(u.username) + '</strong>' +
+        '<td><strong>' + esc(nomeExibido(u)) + '</strong>' +
+          '<div class="mono">' + esc(u.username) + '</div>' +
           '<div class="mono">' + esc(u.email || "sem e-mail") + '</div>' +
           '<div class="mono">' + esc(u.cpf ? formatCPF(u.cpf) : "CPF não informado") + '</div></td>' +
         '<td>' + seloPerfil(u) + '</td>' +
@@ -1351,14 +1360,16 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       (state.error ? '<div class="aviso aviso-erro">' + esc(state.error) + '</div>' : '') +
       '<form id="form-novo">' +
         '<div class="grade-3">' +
+          '<div class="campo"><label for="novo-nome">Nome</label>' +
+            '<input type="text" id="novo-nome" placeholder="Nome e sobrenome"></div>' +
           '<div class="campo"><label for="novo-usuario">Usuário</label>' +
             '<input type="text" id="novo-usuario" autocapitalize="none" placeholder="nome.sobrenome"></div>' +
           '<div class="campo"><label for="novo-dominio">Domínio do e-mail</label>' +
             '<select id="novo-dominio">' + opcoesDominio + '</select></div>' +
-          '<div class="campo"><label for="novo-cpf">CPF</label>' +
-            '<input type="text" id="novo-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>' +
         '</div>' +
         '<div class="grade-3">' +
+          '<div class="campo"><label for="novo-cpf">CPF</label>' +
+            '<input type="text" id="novo-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>' +
           '<div class="campo"><label for="novo-perfil">Perfil</label>' +
             '<select id="novo-perfil">' +
               '<option value="colaborativo">Colaborativo</option>' +
@@ -1384,6 +1395,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     return '' +
     '<div class="credencial">' +
       '<h3>Dados para entregar à pessoa</h3>' +
+      '<div class="cred-linha"><span>Nome</span><b>' + esc(c.nome) + '</b></div>' +
       '<div class="cred-linha"><span>Usuário</span><b>' + esc(c.username) + '</b></div>' +
       '<div class="cred-linha"><span>E-mail</span><b>' + esc(c.email) + '</b></div>' +
       '<div class="cred-linha"><span>Perfil</span><b>' + esc(c.perfil) + '</b></div>' +
@@ -1405,7 +1417,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         ? '<span class="selo selo-inicio">INICIAR</span>'
         : '<span class="selo selo-fim">FINALIZAR</span>';
       return '<tr>' +
-        '<td><strong>' + esc(r.username || "—") + '</strong>' +
+        '<td><strong>' + esc(r.nome || r.username || "—") + '</strong>' +
           (r.email ? '<div class="mono">' + esc(r.email) + '</div>' : '') + '</td>' +
         '<td>' + selo + '</td>' +
         '<td class="mono">' + esc(soData(r.em)) + '</td>' +
@@ -1554,6 +1566,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
     var dados = {
       username: u.username || "",
+      nome: nomeExibido(u),
       email: u.email || "",
       uid: u.uid || "",
       em: new Date().toISOString()
@@ -1724,11 +1737,13 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     state.error = "";
     if(!ehAdministrativo()){ state.error = "Só o perfil administrativo pode criar acessos."; render(); return; }
 
+    var nomePessoa = (document.getElementById("novo-nome").value || "").trim();
     var nome = (document.getElementById("novo-usuario").value || "").trim().toLowerCase();
     var dominio = document.getElementById("novo-dominio").value;
     var cpf = digitos(document.getElementById("novo-cpf").value || "");
     var perfil = document.getElementById("novo-perfil").value;
 
+    if(!nomePessoa){ state.error = "Informe o nome da pessoa."; render(); return; }
     if(!nome){ state.error = "Informe o nome de usuário."; render(); return; }
     if(cpf.length !== 11){ state.error = "O CPF precisa ter 11 dígitos."; render(); return; }
 
@@ -1755,6 +1770,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       uid: credencial.user.uid,
       email: email,
       username: usuarioDoEmail(email),
+      nome: nomePessoa,
       cpf: cpf,
       active: true,
       canEdit: perfil === "administrativo",
@@ -1777,6 +1793,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     try { await secundario.signOut(); } catch(e4){}
 
     state.ultimaCredencial = {
+      nome: nomePessoa,
       username: usuarioDoEmail(email),
       email: email,
       password: senha,
@@ -1791,7 +1808,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var c = state.ultimaCredencial;
     if(!c) return;
     copiar(
-      "RA Detran-SP\nUsuário: " + c.username +
+      "RA Detran-SP\nNome: " + c.nome +
+      "\nUsuário: " + c.username +
       "\nE-mail: " + c.email +
       "\nPerfil: " + c.perfil +
       "\nSenha temporária: " + c.password,
