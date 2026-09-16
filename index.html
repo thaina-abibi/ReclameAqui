@@ -226,6 +226,14 @@
   }
   .btn-mais:hover{border-color:var(--amber); color:var(--amber-deep);}
 
+  .abas{display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap;}
+  .aba{
+    background:var(--paper); border:1px solid var(--line-strong); color:var(--ink-soft);
+    padding:9px 16px; border-radius:100px; font-size:13.5px; font-weight:600; cursor:pointer;
+  }
+  .aba:hover{color:var(--ink); border-color:var(--olive);}
+  .aba.on{background:var(--amber); border-color:var(--amber); color:#1a1c05;}
+
   .painel-totais{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px;}
   @media (max-width:520px){ .painel-totais{grid-template-columns:1fr;} }
   .total-item{
@@ -431,6 +439,12 @@
         "assunto": {
           ".validate": "newData.isString() && newData.val().matches(/^(CNH|VEÍCULOS|MULTAS|PORTAL|CREDENCIADOS|ANÁLISE|OUTROS)$/)"
         },
+        "situacao": {
+          ".validate": "newData.isString() && newData.val().matches(/^(RESPONDIDA|NÃO RESPONDIDA)$/)"
+        },
+        "nota": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10"
+        },
         "$outro": {
           ".validate": false
         }
@@ -460,13 +474,25 @@ function categorizarAssunto(titulo){
  return "OUTROS";
 }
 function varrer(){
- var novos=0,texto=document.body.innerText||"";
- var reCard=/ID:\s*(\d{6,})[\s\S]*?\n([^\n]+)\n[\s\S]*?(\d{2}\/\d{2}\/\d{2,4})/g,m;
- while((m=reCard.exec(texto))!==null){
-  var id=m[1].trim(),titulo=m[2].trim(),data=m[3].trim();
-  if(titulo.length>3&&!vistos[id]){
-   vistos[id]=true;itens.push({data:data,id:id,assunto:categorizarAssunto(titulo),titulo:titulo});novos++;
-  }
+ var texto=document.body.innerText||"",novos=0;
+ var re=/ID:\s*(\d{6,})/g,m,pontos=[];
+ while((m=re.exec(texto))!==null)pontos.push({id:m[1],ini:m.index,fim:re.lastIndex});
+ for(var k=0;k<pontos.length;k++){
+  var ponto=pontos[k];
+  if(vistos[ponto.id])continue;
+  var antes=texto.slice(Math.max(0,ponto.ini-90),ponto.ini);
+  var limite=(k+1<pontos.length)?pontos[k+1].ini:Math.min(texto.length,ponto.fim+900);
+  var depois=texto.slice(ponto.fim,limite);
+  var linhas=depois.split("\n").map(function(l){return l.trim();}).filter(function(l){return l.length>3;});
+  var titulo=linhas.length?linhas[0]:"";
+  var data=(depois.match(/(\d{2}\/\d{2}\/\d{2,4})/)||[])[1]||"";
+  if(!titulo||!data)continue;
+  var situacao="NÃO RESPONDIDA";
+  if(!/n[ãa]o\s+respondida/i.test(antes) && /respondida|resolvida|r[ée]plica/i.test(antes))situacao="RESPONDIDA";
+  var registro={data:data,id:ponto.id,assunto:categorizarAssunto(titulo),situacao:situacao,titulo:titulo};
+  var nota=depois.match(/(\d{1,2})\s*★?\s*(?:n[ãa]o\s+)?voltar[áa]\s+a\s+fazer\s+neg[óo]cio/i);
+  if(nota)registro.nota=Number(nota[1]);
+  vistos[ponto.id]=true;itens.push(registro);novos++;
  }
  if(novos)salvar();return novos;
 }
@@ -488,7 +514,7 @@ function botao(rotulo,principal){
  caixa.appendChild(b);return b;
 }
 var topo=document.createElement("div");topo.style.cssText="display:flex;align-items:center;justify-content:space-between;gap:8px";
-var tit=document.createElement("strong");tit.textContent="Coletor Detran (Data/ID/Assunto)";
+var tit=document.createElement("strong");tit.textContent="Coletor Detran (Data/ID/Assunto/Situação/Nota)";
 var x=document.createElement("button");x.textContent="\u00d7";x.setAttribute("aria-label","Fechar coletor");
 x.style.cssText="background:none;border:none;color:#a3a89a;font-size:18px;line-height:1;cursor:pointer";
 topo.appendChild(tit);topo.appendChild(x);caixa.appendChild(topo);
@@ -513,8 +539,8 @@ function auto(ativo){
  }else if(!ativo){clearTimeout(espera);if(observador)observador.disconnect();observador=null;}
 }
 bColetar.onclick=function(){var n=varrer();status(n?n+" novo(s) nesta página.":"Nenhum dado novo nesta página.");};
-bCSV.onclick=function(){if(!itens.length)return status("A lista está vazia.");copiar("DATA;ID;ASSUNTO\n"+itens.map(function(i){return i.data+";"+i.id+";"+i.assunto;}).join("\n"),itens.length+" linha(s) em CSV copiadas!");};
-bTexto.onclick=function(){if(!itens.length)return status("A lista está vazia.");copiar(itens.map(function(i){return "Data: "+i.data+" | ID: "+i.id+" | Assunto: "+i.assunto;}).join("\n"),itens.length+" item(ns) copiado(s).");};
+bCSV.onclick=function(){if(!itens.length)return status("A lista está vazia.");copiar("DATA;ID;ASSUNTO;SITUAÇÃO;NOTA\n"+itens.map(function(i){return i.data+";"+i.id+";"+i.assunto+";"+(i.situacao||"NÃO RESPONDIDA")+";"+(i.nota===undefined?"":i.nota);}).join("\n"),itens.length+" linha(s) em CSV copiadas!");};
+bTexto.onclick=function(){if(!itens.length)return status("A lista está vazia.");copiar(itens.map(function(i){return "Data: "+i.data+" | ID: "+i.id+" | Assunto: "+i.assunto+" | Situação: "+(i.situacao||"NÃO RESPONDIDA")+(i.nota===undefined?"":" | Nota: "+i.nota);}).join("\n"),itens.length+" item(ns) copiado(s).");};
 bLimpar.onclick=function(){itens=[];vistos=Object.create(null);salvar();status("Lista zerada.");};
 chk.onchange=function(){auto(chk.checked);};x.onclick=function(){auto(false);caixa.remove();};
 document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
@@ -567,6 +593,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     criandoPrimeiro:false,
     ocupadoUso:false,
     coleta:[],
+    coletaAba:"pendentes",
     tema:"escuro"
   };
 
@@ -1217,12 +1244,21 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
   function blocoColeta(){
     var admin = ehAdministrativo();
-    var linhas = state.coleta.map(function(item, indice){
+    var aba = state.coletaAba === "respondidas" ? "respondidas" : "pendentes";
+    var respondidas = state.coleta.filter(function(i){ return i.situacao === "RESPONDIDA"; });
+    var pendentes = state.coleta.filter(function(i){ return i.situacao !== "RESPONDIDA"; });
+    var lista = (aba === "respondidas") ? respondidas : pendentes;
+    var colunas = (aba === "respondidas") ? 8 : 7;
+
+    var linhas = lista.map(function(item){
       var assunto = admin
-        ? '<select class="coleta-assunto" data-indice="' + indice + '">' +
+        ? '<select class="coleta-assunto" data-id="' + esc(item.id) + '">' +
             ASSUNTOS.map(function(op){ return '<option' + (op === item.assunto ? ' selected' : '') + '>' + op + '</option>'; }).join('') +
           '</select>'
         : esc(item.assunto || "—");
+      var nota = (item.nota === undefined || item.nota === null)
+        ? '<td class="celula-vazia">—</td>'
+        : '<td class="mono">' + esc(item.nota) + '</td>';
       return '<tr>' +
         '<td>' + esc(item.data || "—") + '</td>' +
         '<td class="mono">' + esc(item.id || "—") + '</td>' +
@@ -1231,18 +1267,21 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         '<td class="celula-vazia">—</td>' +
         '<td class="celula-vazia">—</td>' +
         '<td class="celula-vazia">—</td>' +
+        (aba === "respondidas" ? nota : '') +
       '</tr>';
     }).join('');
 
-    var colunas = 7;
-
     return '<div class="cartao" id="area-coleta">' +
       '<h2>Dados coletados</h2>' +
-      '<div style="margin:8px 0 12px;color:var(--ink-soft)"><strong style="color:var(--ink)">' + state.coleta.length + '</strong> registro(s)</div>' +
+      '<div class="abas">' +
+        '<button class="aba' + (aba === "pendentes" ? " on" : "") + '" data-coleta-aba="pendentes">Não respondidas (' + pendentes.length + ')</button>' +
+        '<button class="aba' + (aba === "respondidas" ? " on" : "") + '" data-coleta-aba="respondidas">Respondidas (' + respondidas.length + ')</button>' +
+      '</div>' +
       '<div class="rolagem"><table class="tabela-coleta"><thead><tr>' +
         '<th>DATA</th><th>ID</th><th>ASSUNTO</th><th>DADOS</th><th>NOME</th><th>DESCRIÇÕES</th><th>OBSERVAÇÃO</th>' +
+        (aba === "respondidas" ? '<th>NOTA</th>' : '') +
       '</tr></thead><tbody>' +
-        (linhas || '<tr><td colspan="' + colunas + '" class="vazio">Nenhuma coleta importada.</td></tr>') +
+        (linhas || '<tr><td colspan="' + colunas + '" class="vazio">Nenhum registro nesta aba.</td></tr>') +
       '</tbody></table></div>' +
     '</div>';
   }
@@ -1250,7 +1289,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   function prepararColeta(){
     if(document.getElementById("popup-coleta"))return;
     var d=document.createElement("dialog");d.id="popup-coleta";d.setAttribute("aria-labelledby","titulo-coleta");
-    d.innerHTML='<div class="coleta-topo"><h2 id="titulo-coleta">Coleta • Reclame Aqui</h2><div class="acoes"><button class="btn btn-neutro btn-mini" id="minimizar-coleta" aria-label="Minimizar coleta" title="Minimizar">−</button><button class="btn btn-neutro btn-mini" id="fechar-coleta" aria-label="Fechar coleta" title="Fechar">×</button></div></div><div class="coleta-miolo"><p>Copie o código e execute no Reclame Aqui. No coletor, clique em “Copiar como CSV (Excel)” e cole o resultado abaixo.</p><button class="btn btn-neutro btn-largo" id="popup-copiar-codigo">COPIAR CÓDIGO</button><div class="campo" style="margin-top:20px"><label for="coleta-dados">Dados para importar — DATA, ID e ASSUNTO</label><textarea id="coleta-dados" placeholder="DATA;ID;ASSUNTO&#10;11/09/2026;258814369;VEÍCULOS" spellcheck="false"></textarea></div><button class="btn btn-principal" id="popup-importar">IMPORTAR DADOS</button><div id="coleta-feedback" role="status" aria-live="polite"></div></div>';
+    d.innerHTML='<div class="coleta-topo"><h2 id="titulo-coleta">Coleta • Reclame Aqui</h2><div class="acoes"><button class="btn btn-neutro btn-mini" id="minimizar-coleta" aria-label="Minimizar coleta" title="Minimizar">−</button><button class="btn btn-neutro btn-mini" id="fechar-coleta" aria-label="Fechar coleta" title="Fechar">×</button></div></div><div class="coleta-miolo"><p>Copie o código e execute no Reclame Aqui. No coletor, clique em “Copiar como CSV (Excel)” e cole o resultado abaixo.</p><button class="btn btn-neutro btn-largo" id="popup-copiar-codigo">COPIAR CÓDIGO</button><div class="campo" style="margin-top:20px"><label for="coleta-dados">Dados para importar — DATA, ID, ASSUNTO, SITUAÇÃO e NOTA</label><textarea id="coleta-dados" placeholder="DATA;ID;ASSUNTO;SITUAÇÃO;NOTA&#10;11/09/2026;258814369;VEÍCULOS;RESPONDIDA;10" spellcheck="false"></textarea></div><button class="btn btn-principal" id="popup-importar">IMPORTAR DADOS</button><div id="coleta-feedback" role="status" aria-live="polite"></div></div>';
     document.body.appendChild(d);
     var dock=document.createElement("button");dock.id="coleta-dock";dock.className="btn";dock.textContent="COLETA — Restaurar";dock.hidden=true;document.body.appendChild(dock);
     document.getElementById("popup-copiar-codigo").onclick=copiarCodigoColetor;
@@ -1371,14 +1410,14 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var mapa=new Map(),erros=[];
     texto.split(/\r?\n/).forEach(function(linha,n){
       if(!linha.trim() || /^\uFEFF?DATA[;\t]/i.test(linha.trim()))return;
-      var detalhada=linha.match(/^Data:\s*(.*?)\s*\|\s*ID:\s*(\d+)\s*\|\s*Assunto:\s*(.*?)\s*$/i);
-      var p=detalhada?detalhada.slice(1):linha.split(/[;\t]/).map(function(x){return x.trim();});
+      var detalhada=linha.match(/^Data:\s*(.*?)\s*\|\s*ID:\s*(\d+)\s*\|\s*Assunto:\s*([^|]*?)\s*(?:\|\s*Situa[çc][ãa]o:\s*([^|]*?)\s*)?(?:\|\s*Nota:\s*(\d{1,2})\s*)?$/i);
+      var p=detalhada?[detalhada[1],detalhada[2],detalhada[3],detalhada[4]||"",detalhada[5]||""]:linha.split(/[;\t]/).map(function(x){return x.trim();});
       try{
-        if(p.length!==3)throw new Error("Esperadas três colunas");
-        var i=normalizarItem({data:p[0],id:p[1],assunto:p[2].toUpperCase()});mapa.set(i.id,i);
+        if(p.length<3 || p.length>5)throw new Error("Colunas fora do padrão");
+        var i=normalizarItem({data:p[0],id:p[1],assunto:(p[2]||"").toUpperCase(),situacao:(p[3]||"").toUpperCase(),nota:p[4]});mapa.set(i.id,i);
       }catch(e){erros.push(n+1);}
     });
-    if(erros.length){feedback.textContent="Revise as linhas "+erros.join(", ")+". Nada foi importado. Use DATA;ID;ASSUNTO.";return;}
+    if(erros.length){feedback.textContent="Revise as linhas "+erros.join(", ")+". Nada foi importado. Use DATA;ID;ASSUNTO;SITUAÇÃO;NOTA.";return;}
     var itens=Array.from(mapa.values());
     if(!itens.length){feedback.textContent="Nenhum registro encontrado.";return;}
     botao.disabled=true;feedback.textContent="Importando…";
@@ -1572,8 +1611,13 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     cada(".coleta-assunto", function(sel){
       sel.addEventListener("change", function(){
         if(!ehAdministrativo())return toast("Somente o administrador pode alterar o assunto.");
-        var item=state.coleta[Number(this.getAttribute("data-indice"))];
-        db.ref("coleta/"+item.id+"/assunto").set(this.value).catch(function(){toast("Falha ao salvar assunto.");});
+        db.ref("coleta/"+this.getAttribute("data-id")+"/assunto").set(this.value).catch(function(){toast("Falha ao salvar assunto.");});
+      });
+    });
+    cada("[data-coleta-aba]", function(b){
+      b.addEventListener("click", function(){
+        state.coletaAba = b.getAttribute("data-coleta-aba");
+        render();
       });
     });
     liga("btn-mais", "click", abrirManutencao);
@@ -1967,14 +2011,28 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     if(!i || !/^\d{6,15}$/.test(String(i.id)) || !/^\d{2}\/\d{2}\/(?:\d{2}|\d{4})$/.test(i.data||"") || !ASSUNTOS.includes(i.assunto))throw new Error("Registro inválido");
     var d=i.data.split("/").map(Number),ano=d[2]<100?2000+d[2]:d[2],dt=new Date(Date.UTC(ano,d[1]-1,d[0]));
     if(dt.getUTCFullYear()!==ano || dt.getUTCMonth()!==d[1]-1 || dt.getUTCDate()!==d[0])throw new Error("Data inválida");
-    return {id:String(i.id),data:i.data,assunto:i.assunto};
+    var item={id:String(i.id),data:i.data,assunto:i.assunto,situacao:"NÃO RESPONDIDA"};
+    var sit=String(i.situacao||"").trim().toUpperCase();
+    if(sit && !/^N[ÃA]O/.test(sit)) item.situacao="RESPONDIDA";
+    var nota=String(i.nota===undefined||i.nota===null?"":i.nota).trim();
+    if(nota!==""){
+      var n=Number(nota);
+      if(isNaN(n) || n<0 || n>10)throw new Error("Nota inválida");
+      item.nota=n;
+    }
+    return item;
   }
   async function gravarColeta(itens){
     if(!auth.currentUser || !state.currentUser)throw new Error("Entre no app.");
     var limpos=itens.map(normalizarItem);
     for(var i=0;i<limpos.length;i++){
       var item=limpos[i];
-      await db.ref("coleta/"+item.id).transaction(function(atual){return atual || item;},undefined,false);
+      await db.ref("coleta/"+item.id).transaction(function(atual){
+        if(!atual)return item;
+        atual.situacao=item.situacao;
+        if(item.nota!==undefined)atual.nota=item.nota;
+        return atual;
+      },undefined,false);
     }
   }
 
