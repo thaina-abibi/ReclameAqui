@@ -303,6 +303,15 @@
   #coleta-feedback{margin:14px 0 0;font-size:14px;white-space:pre-wrap;}
   #coleta-dock{position:fixed;right:24px;bottom:24px;z-index:100;background:var(--amber);color:#1a1c05;box-shadow:0 8px 24px #0005;}
 
+  #popup-editar{width:min(480px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;margin:auto;padding:0;border:1px solid var(--line-strong);border-radius:14px;background:var(--surface);color:var(--ink);box-shadow:0 24px 80px #0008;}
+  #popup-editar::backdrop{background:rgba(0,0,0,.55);}
+  .editar-topo{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 24px;border-bottom:1px solid var(--line);}
+  .editar-topo h2{font-size:19px;}
+  .editar-miolo{padding:24px;}
+  .editar-fixo{font-family:var(--font-mono);font-size:13px;color:var(--ink-soft);margin:0 0 18px;}
+  #editar-feedback{margin:14px 0 0;font-size:13.5px;}
+  .editar-acoes{display:flex;gap:10px;margin-top:18px;}
+
   #popup-manutencao{width:min(420px,calc(100vw - 32px));margin:auto;padding:0;border:1px solid var(--line-strong);border-radius:14px;background:var(--surface);color:var(--ink);box-shadow:0 24px 80px #0008;}
   #popup-manutencao::backdrop{background:rgba(0,0,0,.55);}
   .manutencao-miolo{padding:30px 26px;text-align:center;display:flex;flex-direction:column;gap:18px;align-items:center;}
@@ -876,7 +885,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   }
 
   function digitandoNoFormulario(){
-    var ids = ["coleta-dados","novo-nome","novo-usuario","novo-cpf","login-usuario","conta-senha1","senha-nova"];
+    var ids = ["editar-nome","editar-cpf","coleta-dados","novo-nome","novo-usuario","novo-cpf","login-usuario","conta-senha1","senha-nova"];
     for(var i=0;i<ids.length;i++){
       var campo = document.getElementById(ids[i]);
       if(campo && campo.value) return true;
@@ -900,7 +909,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         ligarBase();
       } else {
         desligarBase();
-        ["popup-coleta","coleta-dock","popup-manutencao"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
+        ["popup-coleta","coleta-dock","popup-manutencao","popup-editar"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
         state.users = [];
         state.logs = [];
         state.currentUser = null;
@@ -1251,6 +1260,89 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     d.addEventListener("cancel",function(){dock.hidden=true;});
     dock.onclick=abrirColeta;
   }
+  var editandoUsuario = null;
+
+  function abrirEdicao(username){
+    if(!ehAdministrativo()) return toast("Só o perfil administrativo pode alterar dados.");
+    var user = acharUsuario(username);
+    if(!user) return;
+    editandoUsuario = user.username;
+
+    var d = document.getElementById("popup-editar");
+    if(!d){
+      d = document.createElement("dialog");
+      d.id = "popup-editar";
+      d.setAttribute("aria-labelledby","titulo-editar");
+      d.innerHTML = '<div class="editar-topo"><h2 id="titulo-editar">Alterar dados</h2>' +
+          '<button class="btn btn-neutro btn-mini" id="fechar-editar" aria-label="Fechar" title="Fechar">×</button></div>' +
+        '<div class="editar-miolo">' +
+          '<p class="editar-fixo" id="editar-identificacao"></p>' +
+          '<div class="campo"><label for="editar-nome">Nome</label>' +
+            '<input type="text" id="editar-nome" placeholder="Nome e sobrenome"></div>' +
+          '<div class="campo"><label for="editar-cpf">CPF</label>' +
+            '<input type="text" id="editar-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>' +
+          '<div id="editar-feedback"></div>' +
+          '<div class="editar-acoes">' +
+            '<button class="btn btn-principal" id="salvar-edicao">Salvar</button>' +
+            '<button class="btn btn-neutro" id="cancelar-edicao">Cancelar</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(d);
+      d.querySelector("#fechar-editar").onclick = fecharEdicao;
+      d.querySelector("#cancelar-edicao").onclick = fecharEdicao;
+      d.querySelector("#salvar-edicao").onclick = salvarEdicao;
+      d.querySelector("#editar-cpf").addEventListener("input", function(){ this.value = formatCPF(this.value); });
+      d.addEventListener("cancel", function(){ editandoUsuario = null; });
+    }
+
+    d.querySelector("#editar-identificacao").textContent = user.username + " · " + (user.email || "sem e-mail");
+    d.querySelector("#editar-nome").value = user.nome || "";
+    d.querySelector("#editar-cpf").value = user.cpf ? formatCPF(user.cpf) : "";
+    d.querySelector("#editar-feedback").innerHTML = "";
+    if(!d.open) d.showModal();
+    d.querySelector("#editar-nome").focus();
+  }
+
+  function fecharEdicao(){
+    var d = document.getElementById("popup-editar");
+    editandoUsuario = null;
+    if(d && d.open) d.close();
+  }
+
+  async function salvarEdicao(){
+    if(!ehAdministrativo()) return toast("Só o perfil administrativo pode alterar dados.");
+    var user = acharUsuario(editandoUsuario);
+    var feedback = document.getElementById("editar-feedback");
+    if(!user){ feedback.innerHTML = '<div class="aviso aviso-erro">Acesso não encontrado.</div>'; return; }
+
+    var nome = (document.getElementById("editar-nome").value || "").trim();
+    var cpf = digitos(document.getElementById("editar-cpf").value || "");
+
+    if(!nome){ feedback.innerHTML = '<div class="aviso aviso-erro">Informe o nome da pessoa.</div>'; return; }
+    if(cpf.length !== 11){ feedback.innerHTML = '<div class="aviso aviso-erro">O CPF precisa ter 11 dígitos.</div>'; return; }
+
+    var antesNome = user.nome, antesCpf = user.cpf;
+    user.nome = nome;
+    user.cpf = cpf;
+
+    var botao = document.getElementById("salvar-edicao");
+    botao.disabled = true;
+    var ok = await salvarUsuarios();
+    botao.disabled = false;
+
+    if(!ok){
+      user.nome = antesNome;
+      user.cpf = antesCpf;
+      feedback.innerHTML = '<div class="aviso aviso-erro">Não foi possível salvar.</div>';
+      return;
+    }
+
+    registrar("Dados alterados", user.username);
+    toast("Dados alterados.");
+    fecharEdicao();
+    render();
+  }
+
   function abrirManutencao(){
     var d = document.getElementById("popup-manutencao");
     if(!d){
@@ -1328,9 +1420,11 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         : '<span class="selo selo-ativo">Ativo</span>';
       if(u.tempPassword) status += '<span class="selo selo-temp">Senha temporária</span>';
 
+      var editar = '<button class="btn btn-neutro btn-mini" data-acao="editar" data-alvo="' + esc(u.username) + '">Editar</button>';
+
       var acoes = ehVoce(u.username)
-        ? '<span class="voce">Seu próprio acesso</span>'
-        : (u.uid === ADMIN_UID
+        ? '<span class="voce">Seu próprio acesso</span>' + editar
+        : editar + (u.uid === ADMIN_UID
             ? '<span class="voce">Administrador principal</span>'
             : '<button class="btn btn-neutro btn-mini" data-acao="perfil" data-alvo="' + esc(u.username) + '">' +
                 (ehAdministrativo(u) ? "Passar para colaborativo" : "Tornar administrativo") + '</button>') +
@@ -1501,7 +1595,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       b.addEventListener("click", function(){
         var acao = b.getAttribute("data-acao");
         var alvo = b.getAttribute("data-alvo");
-        if(acao === "perfil") mudarPerfil(alvo);
+        if(acao === "editar") abrirEdicao(alvo);
+        else if(acao === "perfil") mudarPerfil(alvo);
         else if(acao === "resetar") resetarSenha(alvo);
         else if(acao === "status") mudarStatus(alvo);
       });
@@ -1863,7 +1958,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
   async function sair(){
     state.error = "";
-    ["popup-coleta","coleta-dock","popup-manutencao"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
+    ["popup-coleta","coleta-dock","popup-manutencao","popup-editar"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
     if(ehMinhaSessao()) await finalizarUso(true);
     if(auth) auth.signOut();
   }
