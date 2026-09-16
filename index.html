@@ -226,6 +226,18 @@
   }
   .btn-mais:hover{border-color:var(--amber); color:var(--amber-deep);}
 
+  .painel-totais.quatro{grid-template-columns:repeat(4,minmax(0,1fr));}
+  @media (max-width:820px){ .painel-totais.quatro{grid-template-columns:repeat(2,minmax(0,1fr));} }
+  .barra-linha{display:grid; grid-template-columns:128px minmax(0,1fr) 52px; align-items:center; gap:12px; margin-bottom:10px;}
+  .barra-linha:last-child{margin-bottom:0;}
+  .barra-rotulo{font-size:12.5px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .barra-trilho{height:12px; border-radius:100px; background:var(--paper); border:1px solid var(--line); overflow:hidden;}
+  .barra-cheia{height:100%; background:var(--amber); border-radius:100px;}
+  .barra-cheia.verde{background:var(--sage);}
+  .barra-cheia.vermelha{background:var(--rust);}
+  .barra-valor{font-family:var(--font-mono); font-size:13px; text-align:right; color:var(--ink);}
+  @media (max-width:520px){ .barra-linha{grid-template-columns:92px minmax(0,1fr) 44px; gap:8px;} }
+
   .cartao-topo{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; flex-wrap:wrap;}
   .cartao-topo h2{margin-bottom:0;}
 
@@ -605,6 +617,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   var IC_PESSOAS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3.4"/><path d="M22 20v-2a4 4 0 0 0-3-3.87"/><path d="M16.5 3.6a4 4 0 0 1 0 6.8"/></svg>';
   var IC_REGISTRO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><line x1="9" y1="13" x2="16" y2="13"/><line x1="9" y1="17" x2="14" y2="17"/></svg>';
   var IC_INICIO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.4 12 4l9 7.4"/><path d="M5 10v9.5a.5.5 0 0 0 .5.5H10v-6h4v6h4.5a.5.5 0 0 0 .5-.5V10"/></svg>';
+  var IC_GRAFICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v17a1 1 0 0 0 1 1h16"/><rect x="7" y="12" width="3" height="6"/><rect x="12.5" y="8" width="3" height="10"/><rect x="18" y="4.5" width="3" height="13.5"/></svg>';
   var IC_CONTA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>';
   var IC_MENU = '<svg viewBox="0 0 30 20" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><line x1="2" y1="3" x2="28" y2="3"/><line x1="2" y1="10" x2="28" y2="10"/><line x1="2" y1="17" x2="28" y2="17"/></svg>';
   var IC_SOL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><line x1="12" y1="1.8" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22.2"/><line x1="1.8" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22.2" y2="12"/><line x1="4.8" y1="4.8" x2="6.4" y2="6.4"/><line x1="17.6" y1="17.6" x2="19.2" y2="19.2"/><line x1="4.8" y1="19.2" x2="6.4" y2="17.6"/><line x1="17.6" y1="6.4" x2="19.2" y2="4.8"/></svg>';
@@ -1168,6 +1181,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     }
 
     var nav = itemNav("inicio", "Início", IC_INICIO, state.painelAba === "inicio");
+    nav += itemNav("dash", "Painel", IC_GRAFICO, state.painelAba === "dash");
     if(admin){
       nav += itemNav("usuarios", "Usuários", IC_PESSOAS, state.painelAba === "usuarios");
       nav += itemNav("registro", "Registro", IC_REGISTRO, state.painelAba === "registro");
@@ -1185,7 +1199,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       '</div>';
 
     var conteudo;
-    if(state.painelAba === "conta") conteudo = blocoConta(u);
+    if(state.painelAba === "dash") conteudo = blocoDash();
+    else if(state.painelAba === "conta") conteudo = blocoConta(u);
     else if(state.painelAba === "usuarios" && admin) conteudo = blocoUsuarios();
     else if(state.painelAba === "registro" && admin) conteudo = blocoRegistro();
     else conteudo = blocoInicio();
@@ -1243,6 +1258,97 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
           painelTotais() +
         '</div>' +
       '</div>' + blocoColeta();
+  }
+
+  function barra(rotulo, valor, maximo, cor){
+    var pct = maximo > 0 ? Math.round((valor / maximo) * 100) : 0;
+    return '<div class="barra-linha">' +
+      '<span class="barra-rotulo">' + esc(rotulo) + '</span>' +
+      '<div class="barra-trilho"><div class="barra-cheia' + (cor ? " " + cor : "") + '" style="width:' + pct + '%"></div></div>' +
+      '<span class="barra-valor">' + valor + '</span>' +
+    '</div>';
+  }
+
+  function chaveData(d){
+    var p = String(d || "").split("/");
+    if(p.length !== 3) return "";
+    var ano = p[2].length === 2 ? "20" + p[2] : p[2];
+    return ano + p[1] + p[0];
+  }
+
+  function blocoDash(){
+    var total = state.coleta.length;
+    var respondidas = state.coleta.filter(function(i){ return i.situacao === "RESPONDIDA"; }).length;
+    var pendentes = total - respondidas;
+    var percentual = total > 0 ? Math.round((respondidas / total) * 100) + "%" : "—";
+
+    var notas = state.coleta.filter(function(i){ return typeof i.nota === "number"; });
+    var soma = notas.reduce(function(acc, i){ return acc + i.nota; }, 0);
+    var media = notas.length ? (soma / notas.length).toFixed(1).replace(".", ",") : "—";
+    var promotoras = notas.filter(function(i){ return i.nota >= 9; }).length;
+    var detratoras = notas.filter(function(i){ return i.nota <= 6; }).length;
+
+    var grupos = totaisColeta();
+    var maiorGrupo = Math.max(grupos.veiculos, grupos.cnh, grupos.outros, 1);
+
+    var porAssunto = {};
+    ASSUNTOS.forEach(function(a){ porAssunto[a] = 0; });
+    state.coleta.forEach(function(i){ if(porAssunto[i.assunto] !== undefined) porAssunto[i.assunto]++; });
+    var maiorAssunto = Math.max.apply(null, ASSUNTOS.map(function(a){ return porAssunto[a]; }).concat([1]));
+
+    var porDia = {};
+    state.coleta.forEach(function(i){
+      var d = i.data || "—";
+      porDia[d] = (porDia[d] || 0) + 1;
+    });
+    var dias = Object.keys(porDia).sort(function(a,b){ return chaveData(b).localeCompare(chaveData(a)); }).slice(0,10);
+    var maiorDia = Math.max.apply(null, dias.map(function(d){ return porDia[d]; }).concat([1]));
+
+    var cartaoNotas = notas.length
+      ? barra("Nota 9 e 10", promotoras, notas.length, "verde") +
+        barra("Nota 7 e 8", notas.length - promotoras - detratoras, notas.length) +
+        barra("Nota 0 a 6", detratoras, notas.length, "vermelha")
+      : '<div class="vazio">Nenhuma avaliação registrada ainda.</div>';
+
+    return '' +
+    '<div class="cartao">' +
+      '<div class="cartao-topo">' +
+        '<h2>Painel</h2>' +
+        '<button class="btn btn-neutro btn-mini" id="btn-atualizar">Atualizar dados</button>' +
+      '</div>' +
+      '<div class="painel-totais quatro">' +
+        '<div class="total-item"><span>Não respondidas</span><b>' + pendentes + '</b></div>' +
+        '<div class="total-item"><span>Respondidas</span><b>' + respondidas + '</b></div>' +
+        '<div class="total-item"><span>% respondidas</span><b>' + percentual + '</b></div>' +
+        '<div class="total-item destaque"><span>Total</span><b>' + total + '</b></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="cartao">' +
+      '<h2>Por grupo</h2>' +
+      barra("Veículos", grupos.veiculos, maiorGrupo) +
+      barra("CNH", grupos.cnh, maiorGrupo) +
+      barra("Outros", grupos.outros, maiorGrupo) +
+    '</div>' +
+    '<div class="cartao">' +
+      '<h2>Por assunto</h2>' +
+      ASSUNTOS.map(function(a){ return barra(a, porAssunto[a], maiorAssunto); }).join('') +
+    '</div>' +
+    '<div class="cartao">' +
+      '<h2>Avaliações</h2>' +
+      '<div class="painel-totais quatro" style="margin-bottom:20px">' +
+        '<div class="total-item"><span>Nota média</span><b>' + media + '</b></div>' +
+        '<div class="total-item"><span>Avaliadas</span><b>' + notas.length + '</b></div>' +
+        '<div class="total-item"><span>Nota 9 e 10</span><b>' + promotoras + '</b></div>' +
+        '<div class="total-item"><span>Nota 0 a 6</span><b>' + detratoras + '</b></div>' +
+      '</div>' +
+      cartaoNotas +
+    '</div>' +
+    '<div class="cartao">' +
+      '<h2>Por data</h2>' +
+      (dias.length
+        ? dias.map(function(d){ return barra(d, porDia[d], maiorDia); }).join('')
+        : '<div class="vazio">Nenhum registro importado ainda.</div>') +
+    '</div>';
   }
 
   function blocoColeta(){
