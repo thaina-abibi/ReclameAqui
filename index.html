@@ -335,6 +335,24 @@
   #editar-feedback{margin:14px 0 0;font-size:13.5px;}
   .editar-acoes{display:flex;gap:10px;margin-top:18px;}
 
+  #popup-atendimento{width:min(640px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;margin:auto;padding:0;border:1px solid var(--line-strong);border-radius:14px;background:var(--surface);color:var(--ink);box-shadow:0 24px 80px #0008;}
+  #popup-atendimento::backdrop{background:rgba(0,0,0,.55);}
+  .at-topo{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 24px;border-bottom:1px solid var(--line);}
+  .at-topo h2{font-size:19px;}
+  .at-miolo{padding:24px;}
+  .at-id{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+  .at-id span{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);}
+  .at-id b{font-family:var(--font-mono);font-size:20px;color:var(--amber-deep);}
+  .assuntos-grade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:18px;}
+  @media (max-width:520px){ .assuntos-grade{grid-template-columns:1fr;} }
+  .assunto-opcao{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid var(--line-strong);border-radius:9px;cursor:pointer;font-size:13.5px;background:var(--paper);}
+  .assunto-opcao input{width:auto;}
+  .at-acoes{display:flex;gap:10px;margin-top:20px;}
+  .at-acoes .btn{flex:1;width:auto;}
+  #at-feedback{margin-top:14px;font-size:13.5px;}
+  #at-observacao{min-height:90px;resize:vertical;}
+  #atendimento-dock{position:fixed;right:24px;bottom:84px;z-index:100;background:var(--amber);color:#1a1c05;box-shadow:0 8px 24px #0005;}
+
   #popup-manutencao{width:min(420px,calc(100vw - 32px));margin:auto;padding:0;border:1px solid var(--line-strong);border-radius:14px;background:var(--surface);color:var(--ink);box-shadow:0 24px 80px #0008;}
   #popup-manutencao::backdrop{background:rgba(0,0,0,.55);}
   .manutencao-miolo{padding:30px 26px;text-align:center;display:flex;flex-direction:column;gap:18px;align-items:center;}
@@ -459,6 +477,33 @@
         },
         "nota": {
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10"
+        },
+        "cpf": {
+          ".validate": "newData.isString() && newData.val().matches(/^([0-9]{11})?$/)"
+        },
+        "placa": {
+          ".validate": "newData.isString() && newData.val().length <= 10"
+        },
+        "descricao": {
+          ".validate": "newData.isString() && newData.val().matches(/^(RESPONDIDO|NÃO LOCALIZADO|AGUARDANDO)?$/)"
+        },
+        "observacao": {
+          ".validate": "newData.isString() && newData.val().length <= 600"
+        },
+        "sac": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "sustentacao": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "nome": {
+          ".validate": "newData.isString() && newData.val().length <= 80"
+        },
+        "responsavel": {
+          ".validate": "newData.isString() && newData.val().length <= 80"
+        },
+        "atualizadoEm": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
         },
         "$outro": {
           ".validate": false
@@ -608,7 +653,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     criandoPrimeiro:false,
     ocupadoUso:false,
     coleta:[],
-    coletaAba:"pendentes",
+    coletaAba:"naoRespondidas",
     tema:"escuro"
   };
 
@@ -952,7 +997,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         ligarBase();
       } else {
         desligarBase();
-        ["popup-coleta","coleta-dock","popup-manutencao","popup-editar"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
+        ["popup-coleta","coleta-dock","popup-atendimento","atendimento-dock","popup-editar"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
         state.users = [];
         state.logs = [];
         state.currentUser = null;
@@ -1252,12 +1297,30 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         '<div class="inicio-grade">' +
           '<div class="controle">' +
             botao +
-            (meu ? '<button class="btn-mais" id="btn-mais" aria-label="Abrir aviso" title="Abrir">+</button>' : '') +
+            (meu ? '<button class="btn-mais" id="btn-mais" aria-label="Abrir atendimento" title="Abrir atendimento">+</button>' : '') +
             (estado ? '<div class="controle-estado">' + estado + '</div>' : '') +
           '</div>' +
           painelTotais() +
         '</div>' +
       '</div>' + blocoColeta();
+  }
+
+  function estadoColeta(item){
+    var d = item.descricao || "";
+    if(d === "RESPONDIDO" || d === "NÃO LOCALIZADO") return "respondidas";
+    if(d === "AGUARDANDO" || item.responsavel) return "pendentes";
+    return item.situacao === "RESPONDIDA" ? "respondidas" : "naoRespondidas";
+  }
+
+  function rotuloDescricao(d){
+    if(d === "RESPONDIDO") return "Respondido";
+    if(d === "NÃO LOCALIZADO") return "Não localizado";
+    if(d === "AGUARDANDO") return "Aguardando";
+    return "";
+  }
+
+  function pedePlaca(assunto){
+    return assunto === "VEÍCULOS" || assunto === "MULTAS";
   }
 
   function barra(rotulo, valor, maximo, cor){
@@ -1278,8 +1341,11 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
   function blocoDash(){
     var total = state.coleta.length;
-    var respondidas = state.coleta.filter(function(i){ return i.situacao === "RESPONDIDA"; }).length;
-    var pendentes = total - respondidas;
+    var tratadas = state.coleta.filter(function(i){ return i.descricao === "RESPONDIDO"; }).length;
+    var naoLocalizadas = state.coleta.filter(function(i){ return i.descricao === "NÃO LOCALIZADO"; }).length;
+    var aguardando = state.coleta.filter(function(i){ return estadoColeta(i) === "pendentes"; }).length;
+    var respondidas = state.coleta.filter(function(i){ return estadoColeta(i) === "respondidas"; }).length;
+    var pendentes = total - respondidas - aguardando;
     var percentual = total > 0 ? Math.round((respondidas / total) * 100) + "%" : "—";
 
     var notas = state.coleta.filter(function(i){ return typeof i.nota === "number"; });
@@ -1318,9 +1384,15 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       '</div>' +
       '<div class="painel-totais quatro">' +
         '<div class="total-item"><span>Não respondidas</span><b>' + pendentes + '</b></div>' +
+        '<div class="total-item"><span>Pendentes</span><b>' + aguardando + '</b></div>' +
         '<div class="total-item"><span>Respondidas</span><b>' + respondidas + '</b></div>' +
-        '<div class="total-item"><span>% respondidas</span><b>' + percentual + '</b></div>' +
         '<div class="total-item destaque"><span>Total</span><b>' + total + '</b></div>' +
+      '</div>' +
+      '<div class="painel-totais quatro" style="margin-top:12px">' +
+        '<div class="total-item"><span>Tratadas · respondido</span><b>' + tratadas + '</b></div>' +
+        '<div class="total-item"><span>Não localizados</span><b>' + naoLocalizadas + '</b></div>' +
+        '<div class="total-item"><span>% respondidas</span><b>' + percentual + '</b></div>' +
+        '<div class="total-item"><span>Avaliadas</span><b>' + state.coleta.filter(function(i){ return typeof i.nota === "number"; }).length + '</b></div>' +
       '</div>' +
     '</div>' +
     '<div class="cartao">' +
@@ -1353,10 +1425,11 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
   function blocoColeta(){
     var admin = ehAdministrativo();
-    var aba = state.coletaAba === "respondidas" ? "respondidas" : "pendentes";
-    var respondidas = state.coleta.filter(function(i){ return i.situacao === "RESPONDIDA"; });
-    var pendentes = state.coleta.filter(function(i){ return i.situacao !== "RESPONDIDA"; });
-    var lista = (aba === "respondidas") ? respondidas : pendentes;
+    var grupos = {naoRespondidas:[], pendentes:[], respondidas:[]};
+    state.coleta.forEach(function(i){ grupos[estadoColeta(i)].push(i); });
+
+    var aba = grupos[state.coletaAba] ? state.coletaAba : "naoRespondidas";
+    var lista = grupos[aba];
     var colunas = (aba === "respondidas") ? 8 : 7;
 
     var linhas = lista.map(function(item){
@@ -1365,20 +1438,42 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
             ASSUNTOS.map(function(op){ return '<option' + (op === item.assunto ? ' selected' : '') + '>' + op + '</option>'; }).join('') +
           '</select>'
         : esc(item.assunto || "—");
+
+      var dados = [];
+      if(item.cpf) dados.push(formatCPF(item.cpf));
+      if(item.placa) dados.push(item.placa);
+      var celulaDados = dados.length
+        ? '<td class="mono">' + esc(dados.join(" · ")) + '</td>'
+        : '<td class="celula-vazia">—</td>';
+
+      var descricao = [];
+      if(item.descricao) descricao.push(rotuloDescricao(item.descricao));
+      if(item.sac) descricao.push("SAC " + item.sac);
+      if(item.sustentacao) descricao.push("Sust. " + item.sustentacao);
+      var celulaDescricao = descricao.length
+        ? '<td>' + esc(descricao.join(" · ")) + '</td>'
+        : '<td class="celula-vazia">—</td>';
+
       var nota = (item.nota === undefined || item.nota === null)
         ? '<td class="celula-vazia">—</td>'
         : '<td class="mono">' + esc(item.nota) + '</td>';
+
       return '<tr>' +
         '<td>' + esc(item.data || "—") + '</td>' +
         '<td class="mono">' + esc(item.id || "—") + '</td>' +
         '<td>' + assunto + '</td>' +
-        '<td class="celula-vazia">—</td>' +
-        '<td class="celula-vazia">—</td>' +
-        '<td class="celula-vazia">—</td>' +
-        '<td class="celula-vazia">—</td>' +
+        celulaDados +
+        (item.nome ? '<td>' + esc(item.nome) + '</td>' : '<td class="celula-vazia">—</td>') +
+        celulaDescricao +
+        (item.observacao ? '<td>' + esc(item.observacao) + '</td>' : '<td class="celula-vazia">—</td>') +
         (aba === "respondidas" ? nota : '') +
       '</tr>';
     }).join('');
+
+    function botaoAba(chave, rotulo){
+      return '<button class="aba' + (aba === chave ? " on" : "") + '" data-coleta-aba="' + chave + '">' +
+        rotulo + ' (' + grupos[chave].length + ')</button>';
+    }
 
     return '<div class="cartao" id="area-coleta">' +
       '<div class="cartao-topo">' +
@@ -1386,8 +1481,9 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         '<button class="btn btn-neutro btn-mini" id="btn-atualizar">Atualizar dados</button>' +
       '</div>' +
       '<div class="abas">' +
-        '<button class="aba' + (aba === "pendentes" ? " on" : "") + '" data-coleta-aba="pendentes">Não respondidas (' + pendentes.length + ')</button>' +
-        '<button class="aba' + (aba === "respondidas" ? " on" : "") + '" data-coleta-aba="respondidas">Respondidas (' + respondidas.length + ')</button>' +
+        botaoAba("naoRespondidas", "Não respondidas") +
+        botaoAba("pendentes", "Pendentes") +
+        botaoAba("respondidas", "Respondidas") +
       '</div>' +
       '<div class="rolagem"><table class="tabela-coleta"><thead><tr>' +
         '<th>DATA</th><th>ID</th><th>ASSUNTO</th><th>DADOS</th><th>NOME</th><th>DESCRIÇÕES</th><th>OBSERVAÇÃO</th>' +
@@ -1525,18 +1621,231 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     }
   }
 
-  function abrirManutencao(){
-    var d = document.getElementById("popup-manutencao");
-    if(!d){
-      d = document.createElement("dialog");
-      d.id = "popup-manutencao";
-      d.setAttribute("aria-labelledby","titulo-manutencao");
-      d.innerHTML = '<div class="manutencao-miolo"><h2 id="titulo-manutencao">Em manutenção</h2>' +
-        '<button class="btn btn-neutro" id="fechar-manutencao">Fechar</button></div>';
-      document.body.appendChild(d);
-      d.querySelector("#fechar-manutencao").onclick = function(){ d.close(); };
-    }
+  var atendimento = { assuntos: [], item: null };
+
+  function ordenarCasos(lista){
+    return lista.slice().sort(function(a,b){
+      var da = chaveData(a.data), dbb = chaveData(b.data);
+      if(da !== dbb) return da.localeCompare(dbb);
+      return String(a.id).localeCompare(String(b.id));
+    });
+  }
+
+  function meusPendentes(){
+    var meu = ((state.currentUser && state.currentUser.username) || "").toLowerCase();
+    if(!meu) return [];
+    return ordenarCasos(state.coleta.filter(function(i){
+      return String(i.responsavel || "").toLowerCase() === meu && estadoColeta(i) === "pendentes";
+    }));
+  }
+
+  function proximoCaso(){
+    var fila = meusPendentes();
+    if(fila.length) return fila[0];
+    var novos = state.coleta.filter(function(i){
+      if(estadoColeta(i) !== "naoRespondidas") return false;
+      return !atendimento.assuntos.length || atendimento.assuntos.indexOf(i.assunto) !== -1;
+    });
+    novos = ordenarCasos(novos);
+    return novos.length ? novos[0] : null;
+  }
+
+  function abrirAtendimento(){
+    prepararAtendimento();
+    var dock = document.getElementById("atendimento-dock");
+    if(dock) dock.hidden = true;
+    var d = document.getElementById("popup-atendimento");
     if(!d.open) d.showModal();
+    renderAtendimento();
+  }
+
+  function prepararAtendimento(){
+    if(document.getElementById("popup-atendimento")) return;
+    var d = document.createElement("dialog");
+    d.id = "popup-atendimento";
+    d.setAttribute("aria-labelledby","titulo-atendimento");
+    d.innerHTML = '<div class="at-topo"><h2 id="titulo-atendimento" class="at-titulo">Atendimento</h2>' +
+        '<div class="acoes">' +
+          '<button class="btn btn-neutro btn-mini" id="minimizar-atendimento" aria-label="Minimizar" title="Minimizar">−</button>' +
+          '<button class="btn btn-neutro btn-mini" id="fechar-atendimento" aria-label="Fechar" title="Fechar">×</button>' +
+        '</div></div>' +
+      '<div class="at-miolo"></div>';
+    document.body.appendChild(d);
+
+    var dock = document.createElement("button");
+    dock.id = "atendimento-dock";
+    dock.className = "btn";
+    dock.hidden = true;
+    document.body.appendChild(dock);
+
+    document.getElementById("minimizar-atendimento").onclick = function(){
+      d.close();
+      dock.textContent = atendimento.item ? ("ATENDIMENTO — ID " + atendimento.item.id) : "ATENDIMENTO";
+      dock.hidden = false;
+    };
+    document.getElementById("fechar-atendimento").onclick = function(){ d.close(); dock.hidden = true; };
+    d.addEventListener("cancel", function(){ dock.hidden = true; });
+    dock.onclick = abrirAtendimento;
+  }
+
+  function renderAtendimento(){
+    var d = document.getElementById("popup-atendimento");
+    if(!d) return;
+    var corpo = d.querySelector(".at-miolo");
+    var titulo = d.querySelector(".at-titulo");
+
+    if(!atendimento.item){
+      titulo.textContent = "Escolher assuntos";
+      corpo.innerHTML = telaAssuntos();
+    } else {
+      titulo.textContent = "Atendimento";
+      corpo.innerHTML = telaCaso(atendimento.item);
+    }
+    ligarAtendimento();
+  }
+
+  function telaAssuntos(){
+    return '<div class="assuntos-grade">' +
+      ASSUNTOS.map(function(op){
+        var marcado = atendimento.assuntos.indexOf(op) !== -1 ? ' checked' : '';
+        return '<label class="assunto-opcao"><input type="checkbox" class="assunto-check" value="' + esc(op) + '"' + marcado + '>' + esc(op) + '</label>';
+      }).join('') +
+    '</div>' +
+    '<div id="at-feedback"></div>' +
+    '<button class="btn btn-principal" id="at-comecar">ABRIR CASO</button>';
+  }
+
+  function telaCaso(item){
+    var placaVisivel = pedePlaca(item.assunto);
+    var aguardando = item.descricao === "AGUARDANDO";
+
+    return '' +
+    '<div class="at-id"><span>Protocolo</span><b id="at-numero">' + esc(item.id) + '</b>' +
+      '<button class="btn btn-neutro btn-mini" id="at-copiar">Copiar</button></div>' +
+    '<div class="linha-dado" style="margin-bottom:16px"><span>Aberto em</span><span>' + esc(item.data || "—") + '</span></div>' +
+    '<div class="grade-2">' +
+      '<div class="campo"><label for="at-assunto">Assunto</label>' +
+        '<select id="at-assunto">' +
+          ASSUNTOS.map(function(op){ return '<option' + (op === item.assunto ? ' selected' : '') + '>' + op + '</option>'; }).join('') +
+        '</select></div>' +
+      '<div class="campo"><label for="at-cpf">CPF</label>' +
+        '<input type="text" id="at-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" value="' + esc(item.cpf ? formatCPF(item.cpf) : "") + '"></div>' +
+    '</div>' +
+    '<div class="campo" id="at-placa-campo" style="display:' + (placaVisivel ? "block" : "none") + '">' +
+      '<label for="at-placa">Placa</label>' +
+      '<input type="text" id="at-placa" maxlength="10" placeholder="ABC1D23" value="' + esc(item.placa || "") + '"></div>' +
+    '<div class="campo"><label for="at-descricao">Descrição</label>' +
+      '<select id="at-descricao">' +
+        '<option value=""' + (item.descricao ? '' : ' selected') + '>Selecione</option>' +
+        '<option value="RESPONDIDO"' + (item.descricao === "RESPONDIDO" ? ' selected' : '') + '>Respondido</option>' +
+        '<option value="NÃO LOCALIZADO"' + (item.descricao === "NÃO LOCALIZADO" ? ' selected' : '') + '>Não localizado</option>' +
+        '<option value="AGUARDANDO"' + (aguardando ? ' selected' : '') + '>Aguardando …</option>' +
+      '</select></div>' +
+    '<div class="grade-2" id="at-aguardando" style="display:' + (aguardando ? "grid" : "none") + '">' +
+      '<div class="campo"><label for="at-sac">SAC</label>' +
+        '<input type="text" id="at-sac" maxlength="40" placeholder="SAC001234" value="' + esc(item.sac || "") + '"></div>' +
+      '<div class="campo"><label for="at-sustentacao">Sustentação</label>' +
+        '<input type="text" id="at-sustentacao" maxlength="40" placeholder="STRY01234" value="' + esc(item.sustentacao || "") + '"></div>' +
+    '</div>' +
+    '<div class="campo"><label for="at-observacao">Observação</label>' +
+      '<textarea id="at-observacao" maxlength="600">' + esc(item.observacao || "") + '</textarea></div>' +
+    '<div id="at-feedback"></div>' +
+    '<div class="at-acoes">' +
+      '<button class="btn btn-principal" id="at-salvar">SALVAR</button>' +
+      '<button class="btn btn-neutro" id="at-atribuir">ATRIBUIR</button>' +
+    '</div>';
+  }
+
+  function ligarAtendimento(){
+    liga("at-comecar", "click", function(){
+      atendimento.assuntos = [];
+      cada(".assunto-check", function(c){ if(c.checked) atendimento.assuntos.push(c.value); });
+      var feedback = document.getElementById("at-feedback");
+      if(!atendimento.assuntos.length){
+        feedback.innerHTML = '<div class="aviso aviso-erro">Escolha pelo menos um assunto.</div>';
+        return;
+      }
+      var caso = proximoCaso();
+      if(!caso){
+        feedback.innerHTML = '<div class="aviso aviso-erro">Nenhum caso disponível nesses assuntos.</div>';
+        return;
+      }
+      atendimento.item = caso;
+      renderAtendimento();
+    });
+
+    liga("at-copiar", "click", function(){
+      if(atendimento.item) copiar(String(atendimento.item.id), "Protocolo copiado.");
+    });
+
+    liga("at-cpf", "input", function(){ this.value = formatCPF(this.value); });
+    liga("at-placa", "input", function(){ this.value = this.value.toUpperCase(); });
+
+    liga("at-assunto", "change", function(){
+      var campo = document.getElementById("at-placa-campo");
+      if(campo) campo.style.display = pedePlaca(this.value) ? "block" : "none";
+    });
+
+    liga("at-descricao", "change", function(){
+      var bloco = document.getElementById("at-aguardando");
+      if(bloco) bloco.style.display = (this.value === "AGUARDANDO") ? "grid" : "none";
+    });
+
+    liga("at-salvar", "click", function(){ salvarAtendimento(false); });
+    liga("at-atribuir", "click", function(){ salvarAtendimento(true); });
+  }
+
+  async function salvarAtendimento(atribuir){
+    var item = atendimento.item;
+    if(!item) return;
+    var feedback = document.getElementById("at-feedback");
+
+    var assunto = document.getElementById("at-assunto").value;
+    var cpf = digitos(document.getElementById("at-cpf").value || "");
+    var placa = (document.getElementById("at-placa").value || "").trim().toUpperCase();
+    var descricao = document.getElementById("at-descricao").value;
+    var sac = (document.getElementById("at-sac").value || "").trim().toUpperCase();
+    var sustentacao = (document.getElementById("at-sustentacao").value || "").trim().toUpperCase();
+    var observacao = (document.getElementById("at-observacao").value || "").trim();
+
+    if(!atribuir){
+      if(!descricao){ feedback.innerHTML = '<div class="aviso aviso-erro">Escolha a descrição.</div>'; return; }
+      if(cpf.length !== 11){ feedback.innerHTML = '<div class="aviso aviso-erro">O CPF precisa ter 11 dígitos.</div>'; return; }
+    }
+
+    var fica = atribuir || descricao === "AGUARDANDO";
+    var dados = {
+      assunto: assunto,
+      cpf: cpf,
+      placa: pedePlaca(assunto) ? placa : "",
+      descricao: atribuir ? (descricao || "AGUARDANDO") : descricao,
+      observacao: observacao,
+      sac: fica ? sac : "",
+      sustentacao: fica ? sustentacao : "",
+      nome: nomeExibido(state.currentUser),
+      responsavel: fica ? ((state.currentUser && state.currentUser.username) || "") : "",
+      atualizadoEm: new Date().toISOString()
+    };
+
+    var salvar = document.getElementById("at-salvar");
+    var atribui = document.getElementById("at-atribuir");
+    salvar.disabled = true; atribui.disabled = true;
+
+    try {
+      await db.ref("coleta/" + item.id).update(dados);
+      for(var k in dados){ if(Object.prototype.hasOwnProperty.call(dados,k)) item[k] = dados[k]; }
+      toast(atribuir ? "Caso atribuído a você." : "Caso salvo.");
+    } catch(err){
+      salvar.disabled = false; atribui.disabled = false;
+      feedback.innerHTML = '<div class="aviso aviso-erro">' + esc(msgBanco(err)) + '</div>';
+      return;
+    }
+
+    var seguinte = proximoCaso();
+    atendimento.item = (seguinte && seguinte.id !== item.id) ? seguinte : null;
+    renderAtendimento();
+    render();
+    if(!atendimento.item) toast("Não há mais casos nesses assuntos.");
   }
 
   function abrirColeta(){
@@ -1764,7 +2073,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         render();
       });
     });
-    liga("btn-mais", "click", abrirManutencao);
+    liga("btn-mais", "click", abrirAtendimento);
     liga("alternar-tema", "click", alternarTema);
 
     liga("form-novo", "submit", criarAcesso);
@@ -1832,7 +2141,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     if(ehMinhaSessao()) await finalizarUso(false);
     else {
       await iniciarUso();
-      if(ehMinhaSessao()) abrirManutencao();
+      if(ehMinhaSessao()) abrirAtendimento();
     }
   }
 
@@ -2146,7 +2455,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
   async function sair(){
     state.error = "";
-    ["popup-coleta","coleta-dock","popup-manutencao","popup-editar"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
+    ["popup-coleta","coleta-dock","popup-atendimento","atendimento-dock","popup-editar"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
     if(ehMinhaSessao()) await finalizarUso(true);
     if(auth) auth.signOut();
   }
