@@ -351,22 +351,31 @@
   .at-acoes .btn{flex:1;width:auto;}
   #at-feedback{margin-top:14px;font-size:13.5px;}
   #at-observacao{min-height:90px;resize:vertical;}
-  #atendimento-dock{position:fixed;right:24px;bottom:84px;z-index:100;background:var(--amber);color:#1a1c05;box-shadow:0 8px 24px #0005;}
+  .at-cabeca{display:flex;align-items:center;gap:10px;min-width:0;}
+  .at-cabeca h2{font-family:var(--font-mono);font-size:21px;letter-spacing:0;color:var(--amber-deep);word-break:break-all;}
+  .at-copiar{background:none;border:1px solid var(--line-strong);color:var(--ink-soft);border-radius:7px;padding:5px 6px;cursor:pointer;display:flex;align-items:center;}
+  .at-copiar:hover{color:var(--amber-deep);border-color:var(--amber);}
+  .at-copiar svg{width:16px;height:16px;}
+  .doca-atendimento{position:fixed;left:18px;bottom:18px;z-index:100;display:flex;flex-direction:column;gap:8px;max-width:220px;}
+  .doca-atendimento button{
+    background:var(--amber);color:#1a1c05;border:none;border-radius:9px;padding:9px 14px;
+    font:600 12.5px var(--font-mono);cursor:pointer;box-shadow:0 8px 24px #0005;text-align:left;
+  }
+  .doca-atendimento button:hover{background:var(--amber-deep);}
+  .id-link{
+    background:none;border:none;padding:0;cursor:pointer;
+    font-family:var(--font-mono);font-size:13px;color:var(--olive-soft);
+    text-decoration:underline;text-underline-offset:3px;
+  }
+  .id-link:hover{color:var(--amber-deep);}
 
-  #popup-manutencao{width:min(420px,calc(100vw - 32px));margin:auto;padding:0;border:1px solid var(--line-strong);border-radius:14px;background:var(--surface);color:var(--ink);box-shadow:0 24px 80px #0008;}
-  #popup-manutencao::backdrop{background:rgba(0,0,0,.55);}
-  .manutencao-miolo{padding:30px 26px;text-align:center;display:flex;flex-direction:column;gap:18px;align-items:center;}
-  .manutencao-miolo h2{font-size:22px;}
-
-  .trilho-pe{margin-top:auto; width:204px;}
   .btn-tema{
-    display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+    display:inline-flex; align-items:center; gap:10px; width:auto; text-align:left; position:relative; z-index:1;
     background:rgba(242,240,228,0.08); border:1px solid rgba(242,240,228,0.16); color:#D7DAC9;
     padding:10px 12px; border-radius:8px; font-size:13.5px; font-weight:500; cursor:pointer; white-space:nowrap;
   }
   .btn-tema:hover{background:rgba(242,240,228,0.16); color:#F2F0E4;}
   .btn-tema svg{width:17px; height:17px; flex-shrink:0;}
-  @media (max-width:820px){ .trilho-pe{width:168px;} }
 
   html.tema-claro{
     --olive-deep:#e8eae4;
@@ -406,8 +415,8 @@
   html.tema-claro .selo-edicao{background:#eef3e2; color:#4a6320;}
   html.tema-claro .cartao, html.tema-claro .cabecalho{box-shadow:0 1px 2px rgba(20,22,26,0.04);}
   html.tema-claro .aviso-flutuante{box-shadow:0 12px 28px rgba(20,22,26,0.18);}
-  html.tema-claro #popup-coleta, html.tema-claro #popup-manutencao{box-shadow:0 24px 80px rgba(20,22,26,0.25);}
-  html.tema-claro #popup-coleta::backdrop, html.tema-claro #popup-manutencao::backdrop{background:rgba(20,22,26,0.35);}
+  html.tema-claro #popup-coleta, html.tema-claro #popup-atendimento{box-shadow:0 24px 80px rgba(20,22,26,0.25);}
+  html.tema-claro #popup-coleta::backdrop, html.tema-claro #popup-atendimento::backdrop{background:rgba(20,22,26,0.35);}
   html.tema-claro #coleta-dock{box-shadow:0 8px 24px rgba(20,22,26,0.2);}
 
 </style>
@@ -665,6 +674,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   var IC_GRAFICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v17a1 1 0 0 0 1 1h16"/><rect x="7" y="12" width="3" height="6"/><rect x="12.5" y="8" width="3" height="10"/><rect x="18" y="4.5" width="3" height="13.5"/></svg>';
   var IC_CONTA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>';
   var IC_MENU = '<svg viewBox="0 0 30 20" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><line x1="2" y1="3" x2="28" y2="3"/><line x1="2" y1="10" x2="28" y2="10"/><line x1="2" y1="17" x2="28" y2="17"/></svg>';
+  var IC_COPIAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11.5" height="11.5" rx="2.4"/><path d="M5.5 15H4.4A2.4 2.4 0 0 1 2 12.6V4.4A2.4 2.4 0 0 1 4.4 2h8.2A2.4 2.4 0 0 1 15 4.4v1.1"/></svg>';
   var IC_SOL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><line x1="12" y1="1.8" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22.2"/><line x1="1.8" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22.2" y2="12"/><line x1="4.8" y1="4.8" x2="6.4" y2="6.4"/><line x1="17.6" y1="17.6" x2="19.2" y2="19.2"/><line x1="4.8" y1="19.2" x2="6.4" y2="17.6"/><line x1="17.6" y1="6.4" x2="19.2" y2="4.8"/></svg>';
   var IC_LUA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.2A8.6 8.6 0 0 1 9.8 3.5a8.6 8.6 0 1 0 10.7 10.7z"/></svg>';
 
@@ -997,7 +1007,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         ligarBase();
       } else {
         desligarBase();
-        ["popup-coleta","coleta-dock","popup-atendimento","atendimento-dock","popup-editar"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
+        ["popup-coleta","coleta-dock","popup-atendimento","doca-atendimento","popup-editar"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
+        atendimento = { assuntos: [], item: null, minimizados: [] };
         state.users = [];
         state.logs = [];
         state.currentUser = null;
@@ -1108,7 +1119,12 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         '<div class="arte-topo">' +
           '<h2 class="arte-titulo">' + titulo + '</h2>' +
         '</div>' +
-        '<div class="arte-topo"></div>' +
+        '<div class="arte-topo">' +
+          '<button class="btn-tema" id="alternar-tema">' +
+            (state.tema === "claro" ? IC_LUA : IC_SOL) +
+            (state.tema === "claro" ? "Tema escuro" : "Tema claro") +
+          '</button>' +
+        '</div>' +
       '</div>' +
       '<div class="entrada-form">' +
         '<div class="form-bloco">' + conteudo + '</div>' +
@@ -1179,12 +1195,6 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     '<div class="shell' + (state.trilhoAberto ? ' aberto' : '') + '">' +
       '<aside class="trilho">' +
         '<nav class="trilho-nav">' + nav + '</nav>' +
-        '<div class="trilho-pe">' +
-          '<button class="btn-tema" id="alternar-tema">' +
-            (state.tema === "claro" ? IC_LUA : IC_SOL) +
-            (state.tema === "claro" ? "Tema escuro" : "Tema claro") +
-          '</button>' +
-        '</div>' +
       '</aside>' +
       '<div class="principal">' +
         '<header class="cabecalho">' + cabecalho + '</header>' +
@@ -1460,7 +1470,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
       return '<tr>' +
         '<td>' + esc(item.data || "—") + '</td>' +
-        '<td class="mono">' + esc(item.id || "—") + '</td>' +
+        '<td><button class="id-link" data-abrir-caso="' + esc(item.id) + '">' + esc(item.id || "—") + '</button></td>' +
         '<td>' + assunto + '</td>' +
         celulaDados +
         (item.nome ? '<td>' + esc(item.nome) + '</td>' : '<td class="celula-vazia">—</td>') +
@@ -1621,7 +1631,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     }
   }
 
-  var atendimento = { assuntos: [], item: null };
+  var atendimento = { assuntos: [], item: null, minimizados: [] };
 
   function ordenarCasos(lista){
     return lista.slice().sort(function(a,b){
@@ -1631,32 +1641,70 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     });
   }
 
-  function meusPendentes(){
-    var meu = ((state.currentUser && state.currentUser.username) || "").toLowerCase();
-    if(!meu) return [];
-    return ordenarCasos(state.coleta.filter(function(i){
-      return String(i.responsavel || "").toLowerCase() === meu && estadoColeta(i) === "pendentes";
-    }));
+  function casoAberto(id){
+    if(atendimento.item && String(atendimento.item.id) === String(id)) return true;
+    for(var i=0;i<atendimento.minimizados.length;i++){
+      if(String(atendimento.minimizados[i].id) === String(id)) return true;
+    }
+    return false;
   }
 
   function proximoCaso(){
-    var fila = meusPendentes();
-    if(fila.length) return fila[0];
     var novos = state.coleta.filter(function(i){
       if(estadoColeta(i) !== "naoRespondidas") return false;
+      if(casoAberto(i.id)) return false;
       return !atendimento.assuntos.length || atendimento.assuntos.indexOf(i.assunto) !== -1;
     });
     novos = ordenarCasos(novos);
     return novos.length ? novos[0] : null;
   }
 
-  function abrirAtendimento(){
+  function abrirAtendimento(caso){
     prepararAtendimento();
-    var dock = document.getElementById("atendimento-dock");
-    if(dock) dock.hidden = true;
+
+    if(caso){
+      atendimento.minimizados = atendimento.minimizados.filter(function(i){ return String(i.id) !== String(caso.id); });
+      if(atendimento.item && String(atendimento.item.id) !== String(caso.id)) guardarNaDoca(atendimento.item);
+      atendimento.item = caso;
+    } else if(!atendimento.item && atendimento.assuntos.length){
+      atendimento.item = proximoCaso();
+    }
+
+    renderDoca();
     var d = document.getElementById("popup-atendimento");
     if(!d.open) d.showModal();
     renderAtendimento();
+  }
+
+  function guardarNaDoca(item){
+    if(!item) return;
+    for(var i=0;i<atendimento.minimizados.length;i++){
+      if(String(atendimento.minimizados[i].id) === String(item.id)) return;
+    }
+    atendimento.minimizados.push(item);
+  }
+
+  function renderDoca(){
+    var doca = document.getElementById("doca-atendimento");
+    if(!doca){
+      doca = document.createElement("div");
+      doca.id = "doca-atendimento";
+      doca.className = "doca-atendimento";
+      document.body.appendChild(doca);
+    }
+    doca.innerHTML = atendimento.minimizados.map(function(i){
+      return '<button data-doca="' + esc(i.id) + '">' + esc(i.id) + '</button>';
+    }).join("");
+    Array.prototype.forEach.call(doca.querySelectorAll("[data-doca]"), function(b){
+      b.addEventListener("click", function(){
+        var alvo = b.getAttribute("data-doca");
+        var caso = null;
+        for(var k=0;k<atendimento.minimizados.length;k++){
+          if(String(atendimento.minimizados[k].id) === alvo) caso = atendimento.minimizados[k];
+        }
+        if(caso) abrirAtendimento(caso);
+      });
+    });
   }
 
   function prepararAtendimento(){
@@ -1664,7 +1712,11 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var d = document.createElement("dialog");
     d.id = "popup-atendimento";
     d.setAttribute("aria-labelledby","titulo-atendimento");
-    d.innerHTML = '<div class="at-topo"><h2 id="titulo-atendimento" class="at-titulo">Atendimento</h2>' +
+    d.innerHTML = '<div class="at-topo">' +
+        '<div class="at-cabeca">' +
+          '<h2 id="titulo-atendimento" class="at-titulo">Atendimento</h2>' +
+          '<button class="at-copiar" id="at-copiar" aria-label="Copiar ID" title="Copiar ID" hidden>' + IC_COPIAR + '</button>' +
+        '</div>' +
         '<div class="acoes">' +
           '<button class="btn btn-neutro btn-mini" id="minimizar-atendimento" aria-label="Minimizar" title="Minimizar">−</button>' +
           '<button class="btn btn-neutro btn-mini" id="fechar-atendimento" aria-label="Fechar" title="Fechar">×</button>' +
@@ -1672,20 +1724,20 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       '<div class="at-miolo"></div>';
     document.body.appendChild(d);
 
-    var dock = document.createElement("button");
-    dock.id = "atendimento-dock";
-    dock.className = "btn";
-    dock.hidden = true;
-    document.body.appendChild(dock);
-
-    document.getElementById("minimizar-atendimento").onclick = function(){
-      d.close();
-      dock.textContent = atendimento.item ? ("ATENDIMENTO — ID " + atendimento.item.id) : "ATENDIMENTO";
-      dock.hidden = false;
+    document.getElementById("at-copiar").onclick = function(){
+      if(atendimento.item) copiar(String(atendimento.item.id), "ID copiado.");
     };
-    document.getElementById("fechar-atendimento").onclick = function(){ d.close(); dock.hidden = true; };
-    d.addEventListener("cancel", function(){ dock.hidden = true; });
-    dock.onclick = abrirAtendimento;
+    document.getElementById("minimizar-atendimento").onclick = function(){
+      guardarNaDoca(atendimento.item);
+      atendimento.item = null;
+      renderDoca();
+      d.close();
+    };
+    document.getElementById("fechar-atendimento").onclick = function(){
+      atendimento.item = null;
+      d.close();
+    };
+    d.addEventListener("cancel", function(){ atendimento.item = null; });
   }
 
   function renderAtendimento(){
@@ -1693,19 +1745,28 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     if(!d) return;
     var corpo = d.querySelector(".at-miolo");
     var titulo = d.querySelector(".at-titulo");
+    var copiarBtn = d.querySelector("#at-copiar");
 
     if(!atendimento.item){
       titulo.textContent = "Escolher assuntos";
+      titulo.style.fontFamily = "var(--font-display)";
+      titulo.style.color = "var(--ink)";
+      copiarBtn.hidden = true;
       corpo.innerHTML = telaAssuntos();
     } else {
-      titulo.textContent = "Atendimento";
+      titulo.textContent = atendimento.item.id;
+      titulo.style.fontFamily = "var(--font-mono)";
+      titulo.style.color = "var(--amber-deep)";
+      copiarBtn.hidden = false;
       corpo.innerHTML = telaCaso(atendimento.item);
     }
     ligarAtendimento();
   }
 
   function telaAssuntos(){
+    var todos = atendimento.assuntos.length === ASSUNTOS.length;
     return '<div class="assuntos-grade">' +
+      '<label class="assunto-opcao"><input type="checkbox" id="assunto-todos"' + (todos ? ' checked' : '') + '>TODOS</label>' +
       ASSUNTOS.map(function(op){
         var marcado = atendimento.assuntos.indexOf(op) !== -1 ? ' checked' : '';
         return '<label class="assunto-opcao"><input type="checkbox" class="assunto-check" value="' + esc(op) + '"' + marcado + '>' + esc(op) + '</label>';
@@ -1720,8 +1781,6 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var aguardando = item.descricao === "AGUARDANDO";
 
     return '' +
-    '<div class="at-id"><span>Protocolo</span><b id="at-numero">' + esc(item.id) + '</b>' +
-      '<button class="btn btn-neutro btn-mini" id="at-copiar">Copiar</button></div>' +
     '<div class="linha-dado" style="margin-bottom:16px"><span>Aberto em</span><span>' + esc(item.data || "—") + '</span></div>' +
     '<div class="grade-2">' +
       '<div class="campo"><label for="at-assunto">Assunto</label>' +
@@ -1757,6 +1816,21 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   }
 
   function ligarAtendimento(){
+    liga("assunto-todos", "change", function(){
+      var marcar = this.checked;
+      cada(".assunto-check", function(c){ c.checked = marcar; });
+    });
+
+    cada(".assunto-check", function(c){
+      c.addEventListener("change", function(){
+        var todos = document.getElementById("assunto-todos");
+        if(!todos) return;
+        var marcados = 0;
+        cada(".assunto-check", function(x){ if(x.checked) marcados++; });
+        todos.checked = marcados === ASSUNTOS.length;
+      });
+    });
+
     liga("at-comecar", "click", function(){
       atendimento.assuntos = [];
       cada(".assunto-check", function(c){ if(c.checked) atendimento.assuntos.push(c.value); });
@@ -1772,10 +1846,6 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       }
       atendimento.item = caso;
       renderAtendimento();
-    });
-
-    liga("at-copiar", "click", function(){
-      if(atendimento.item) copiar(String(atendimento.item.id), "Protocolo copiado.");
     });
 
     liga("at-cpf", "input", function(){ this.value = formatCPF(this.value); });
@@ -1841,11 +1911,12 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       return;
     }
 
-    var seguinte = proximoCaso();
-    atendimento.item = (seguinte && seguinte.id !== item.id) ? seguinte : null;
+    atendimento.minimizados = atendimento.minimizados.filter(function(i){ return String(i.id) !== String(item.id); });
+    atendimento.item = proximoCaso();
+    renderDoca();
     renderAtendimento();
     render();
-    if(!atendimento.item) toast("Não há mais casos nesses assuntos.");
+    if(!atendimento.item) toast("Não há mais casos novos nesses assuntos.");
   }
 
   function abrirColeta(){
@@ -2065,6 +2136,14 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       sel.addEventListener("change", function(){
         if(!ehAdministrativo())return toast("Somente o administrador pode alterar o assunto.");
         db.ref("coleta/"+this.getAttribute("data-id")+"/assunto").set(this.value).catch(function(){toast("Falha ao salvar assunto.");});
+      });
+    });
+    cada("[data-abrir-caso]", function(b){
+      b.addEventListener("click", function(){
+        var alvo = b.getAttribute("data-abrir-caso");
+        var caso = null;
+        for(var i=0;i<state.coleta.length;i++){ if(String(state.coleta[i].id) === alvo) caso = state.coleta[i]; }
+        if(caso) abrirAtendimento(caso);
       });
     });
     cada("[data-coleta-aba]", function(b){
@@ -2455,7 +2534,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
   async function sair(){
     state.error = "";
-    ["popup-coleta","coleta-dock","popup-atendimento","atendimento-dock","popup-editar"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
+    ["popup-coleta","coleta-dock","popup-atendimento","doca-atendimento","popup-editar"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
+        atendimento = { assuntos: [], item: null, minimizados: [] };
     if(ehMinhaSessao()) await finalizarUso(true);
     if(auth) auth.signOut();
   }
