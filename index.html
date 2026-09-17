@@ -1555,7 +1555,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         : esc(item.assunto || "—");
 
       var dados = [];
-      if(item.cpf) dados.push(formatCPF(item.cpf));
+      if(item.cpf) dados.push(digitos(item.cpf));
       if(item.placa) dados.push(item.placa);
       var celulaDados = dados.length
         ? '<td class="mono">' + esc(dados.join(" · ")) + '</td>'
