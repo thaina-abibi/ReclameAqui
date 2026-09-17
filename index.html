@@ -335,8 +335,12 @@
   #editar-feedback{margin:14px 0 0;font-size:13.5px;}
   .editar-acoes{display:flex;gap:10px;margin-top:18px;}
 
-  #popup-atendimento{width:min(640px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;margin:auto;padding:0;border:1px solid var(--line-strong);border-radius:14px;background:var(--surface);color:var(--ink);box-shadow:0 24px 80px #0008;}
-  #popup-atendimento::backdrop{background:rgba(0,0,0,.55);}
+  #popup-atendimento{
+    position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:90;
+    width:min(640px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); overflow:auto;
+    margin:0; padding:0; border:1px solid var(--line-strong); border-radius:14px;
+    background:var(--surface); color:var(--ink); box-shadow:0 24px 80px #0008;
+  }
   .at-topo{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 24px;border-bottom:1px solid var(--line);}
   .at-topo h2{font-size:19px;}
   .at-miolo{padding:24px;}
@@ -1662,6 +1666,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   function abrirAtendimento(caso){
     prepararAtendimento();
 
+    if(caso && !caso.id) caso = null;
+
     if(caso){
       atendimento.minimizados = atendimento.minimizados.filter(function(i){ return String(i.id) !== String(caso.id); });
       if(atendimento.item && String(atendimento.item.id) !== String(caso.id)) guardarNaDoca(atendimento.item);
@@ -1672,7 +1678,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
     renderDoca();
     var d = document.getElementById("popup-atendimento");
-    if(!d.open) d.showModal();
+    if(!d.open) d.show();
     renderAtendimento();
   }
 
@@ -2152,7 +2158,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         render();
       });
     });
-    liga("btn-mais", "click", abrirAtendimento);
+    liga("btn-mais", "click", function(){ abrirAtendimento(); });
     liga("alternar-tema", "click", alternarTema);
 
     liga("form-novo", "submit", criarAcesso);
