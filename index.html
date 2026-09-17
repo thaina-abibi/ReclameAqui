@@ -1276,9 +1276,9 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     return shell(nav, cabecalho, conteudo);
   }
 
-  function totaisColeta(){
+  function totaisColeta(lista){
     var t = {veiculos:0, cnh:0, outros:0, total:0};
-    state.coleta.forEach(function(item){
+    (lista || state.coleta).forEach(function(item){
       var a = item.assunto;
       if(a === "VEÍCULOS" || a === "MULTAS") t.veiculos++;
       else if(a === "CNH" || a === "PORTAL") t.cnh++;
@@ -1289,7 +1289,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   }
 
   function painelTotais(){
-    var t = totaisColeta();
+    var t = totaisColeta(state.coleta.filter(function(i){ return estadoColeta(i) === "naoRespondidas"; }));
     return '<div class="painel-totais">' +
       '<div class="total-item"><span>Veículos</span><b>' + t.veiculos + '</b></div>' +
       '<div class="total-item"><span>CNH</span><b>' + t.cnh + '</b></div>' +
