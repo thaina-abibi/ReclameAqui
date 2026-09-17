@@ -366,6 +366,9 @@
     font:600 12.5px var(--font-mono);cursor:pointer;box-shadow:0 8px 24px #0005;text-align:left;
   }
   .doca-atendimento button:hover{background:var(--amber-deep);}
+  #base-dados{min-height:260px;resize:vertical;font-family:var(--font-mono);font-size:13.5px;}
+  #base-feedback{margin-top:14px;font-size:13.5px;white-space:pre-wrap;}
+
   .id-link{
     background:none;border:none;padding:0;cursor:pointer;
     font-family:var(--font-mono);font-size:13px;color:var(--olive-soft);
@@ -675,6 +678,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   var IC_PESSOAS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3.4"/><path d="M22 20v-2a4 4 0 0 0-3-3.87"/><path d="M16.5 3.6a4 4 0 0 1 0 6.8"/></svg>';
   var IC_REGISTRO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><line x1="9" y1="13" x2="16" y2="13"/><line x1="9" y1="17" x2="14" y2="17"/></svg>';
   var IC_INICIO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.4 12 4l9 7.4"/><path d="M5 10v9.5a.5.5 0 0 0 .5.5H10v-6h4v6h4.5a.5.5 0 0 0 .5-.5V10"/></svg>';
+  var IC_IMPORTAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="m7.5 9.5 4.5 4.5 4.5-4.5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>';
   var IC_GRAFICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v17a1 1 0 0 0 1 1h16"/><rect x="7" y="12" width="3" height="6"/><rect x="12.5" y="8" width="3" height="10"/><rect x="18" y="4.5" width="3" height="13.5"/></svg>';
   var IC_CONTA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>';
   var IC_MENU = '<svg viewBox="0 0 30 20" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><line x1="2" y1="3" x2="28" y2="3"/><line x1="2" y1="10" x2="28" y2="10"/><line x1="2" y1="17" x2="28" y2="17"/></svg>';
@@ -987,7 +991,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   }
 
   function digitandoNoFormulario(){
-    var ids = ["editar-nome","editar-cpf","coleta-dados","novo-nome","novo-usuario","novo-cpf","login-usuario","conta-senha1","senha-nova"];
+    var ids = ["base-dados","editar-nome","editar-cpf","coleta-dados","novo-nome","novo-usuario","novo-cpf","login-usuario","conta-senha1","senha-nova"];
     for(var i=0;i<ids.length;i++){
       var campo = document.getElementById(ids[i]);
       if(campo && campo.value) return true;
@@ -1235,7 +1239,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var u = state.currentUser || {};
     var admin = ehAdministrativo(u);
 
-    if(!admin && (state.painelAba === "usuarios" || state.painelAba === "registro")){
+    if(!admin && (state.painelAba === "usuarios" || state.painelAba === "registro" || state.painelAba === "importar")){
       state.painelAba = "inicio";
     }
 
@@ -1244,6 +1248,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     if(admin){
       nav += itemNav("usuarios", "Usuários", IC_PESSOAS, state.painelAba === "usuarios");
       nav += itemNav("registro", "Registro", IC_REGISTRO, state.painelAba === "registro");
+      nav += itemNav("importar", "Importar", IC_IMPORTAR, state.painelAba === "importar");
     }
     nav += itemNav("conta", "Minha conta", IC_CONTA, state.painelAba === "conta");
 
@@ -1262,6 +1267,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     else if(state.painelAba === "conta") conteudo = blocoConta(u);
     else if(state.painelAba === "usuarios" && admin) conteudo = blocoUsuarios();
     else if(state.painelAba === "registro" && admin) conteudo = blocoRegistro();
+    else if(state.painelAba === "importar" && admin) conteudo = blocoImportar();
     else conteudo = blocoInicio();
 
     return shell(nav, cabecalho, conteudo);
@@ -1435,6 +1441,101 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         ? dias.map(function(d){ return barra(d, porDia[d], maiorDia); }).join('')
         : '<div class="vazio">Nenhum registro importado ainda.</div>') +
     '</div>';
+  }
+
+  function blocoImportar(){
+    return '<div class="cartao">' +
+      '<h2>Importar base</h2>' +
+      '<div class="campo">' +
+        '<label for="base-dados">DATA;ID;ASSUNTO;DADOS;NOME;DESCRIÇÃO;OBSERVAÇÃO;NOTA</label>' +
+        '<textarea id="base-dados" spellcheck="false" placeholder="16/09/2026;259238631;CNH;123.456.789-00;Maria Silva;Respondido;sem pendência;10"></textarea>' +
+      '</div>' +
+      '<button class="btn btn-principal" style="width:auto;" id="base-importar">IMPORTAR</button>' +
+      '<div id="base-feedback" role="status" aria-live="polite"></div>' +
+    '</div>';
+  }
+
+  function padronizarDescricao(valor){
+    var v = String(valor || "").trim().toUpperCase();
+    if(!v) return "";
+    if(v.indexOf("RESP") === 0) return "RESPONDIDO";
+    if(v.indexOf("AGUARD") === 0) return "AGUARDANDO";
+    if(v.indexOf("N") === 0 && v.indexOf("LOCALIZ") !== -1) return "NÃO LOCALIZADO";
+    return "";
+  }
+
+  function normalizarLinhaBase(p){
+    var item = normalizarItem({ data:p[0], id:p[1], assunto:String(p[2]||"").trim().toUpperCase(), nota:p[7] });
+
+    item.cpf = "";
+    item.placa = "";
+    String(p[3] || "").split(/[^0-9A-Za-zÀ-ú.\-]+/).forEach(function(t){
+      if(!t) return;
+      var d = digitos(t);
+      var limpo = t.replace(/-/g, "").toUpperCase();
+      if(d.length === 11 && !item.cpf) item.cpf = d;
+      else if(/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(limpo) && !item.placa) item.placa = limpo;
+    });
+
+    item.nome = String(p[4] || "").trim().slice(0,80);
+    item.descricao = padronizarDescricao(p[5]);
+    item.observacao = String(p[6] || "").trim().slice(0,600);
+    item.responsavel = "";
+    item.sac = "";
+    item.sustentacao = "";
+    item.situacao = (item.descricao === "RESPONDIDO" || item.descricao === "NÃO LOCALIZADO" || item.nota !== undefined)
+      ? "RESPONDIDA" : "NÃO RESPONDIDA";
+    return item;
+  }
+
+  async function importarBase(){
+    if(!ehAdministrativo()) return toast("Só o perfil administrativo pode importar.");
+    var campo = document.getElementById("base-dados");
+    var feedback = document.getElementById("base-feedback");
+    var botao = document.getElementById("base-importar");
+    if(botao.disabled) return;
+
+    var texto = (campo.value || "").trim();
+    if(!texto){ feedback.textContent = "Cole os dados antes de importar."; campo.focus(); return; }
+
+    var mapa = new Map(), erros = [];
+    texto.split(/\r?\n/).forEach(function(linha, n){
+      var bruta = linha.trim();
+      if(!bruta || /^\uFEFF?DATA[;\t]/i.test(bruta)) return;
+      var p = bruta.split(/[;\t]/).map(function(x){ return x.trim(); });
+      try {
+        if(p.length < 3 || p.length > 8) throw new Error("Colunas fora do padrão");
+        while(p.length < 8) p.push("");
+        var item = normalizarLinhaBase(p);
+        mapa.set(item.id, item);
+      } catch(e){ erros.push(n + 1); }
+    });
+
+    if(erros.length){
+      feedback.textContent = "Revise as linhas " + erros.join(", ") + ". Nada foi importado.";
+      return;
+    }
+
+    var itens = Array.from(mapa.values());
+    if(!itens.length){ feedback.textContent = "Nenhum registro encontrado."; return; }
+
+    botao.disabled = true;
+    var gravados = 0;
+    try {
+      for(var i=0;i<itens.length;i++){
+        await db.ref("coleta/" + itens[i].id).update(itens[i]);
+        gravados++;
+        if(gravados % 25 === 0) feedback.textContent = gravados + " de " + itens.length + " gravados…";
+      }
+      campo.value = "";
+      feedback.textContent = gravados + " registro(s) importado(s).";
+      registrar("Base importada (" + gravados + " registros)", "coleta");
+      toast("Base importada.");
+    } catch(err){
+      feedback.textContent = gravados + " de " + itens.length + " gravados antes do erro: " + msgBanco(err);
+    } finally {
+      botao.disabled = false;
+    }
   }
 
   function blocoColeta(){
@@ -2129,6 +2230,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     liga("btn-uso", "click", alternarUso);
     liga("btn-coleta", "click", abrirColeta);
     liga("btn-atualizar", "click", atualizarDados);
+    liga("base-importar", "click", importarBase);
     liga("copiar-coletor", "click", copiarCodigoColetor);
     liga("importar-coleta", "click", importarColeta);
     liga("limpar-coleta-app", "click", function(){
