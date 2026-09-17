@@ -670,6 +670,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     ocupadoUso:false,
     coleta:[],
     coletaAba:"naoRespondidas",
+    filtroMes:"",
     tema:"escuro"
   };
 
@@ -1538,10 +1539,44 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     }
   }
 
+  function mesAtual(){
+    var d = new Date();
+    var m = String(d.getMonth() + 1);
+    return String(d.getFullYear()) + (m.length === 1 ? "0" + m : m);
+  }
+
+  function mesDoItem(item){
+    return chaveData(item.data).slice(0,6);
+  }
+
+  function rotuloMes(chave){
+    if(chave.length !== 6) return chave;
+    return chave.slice(4,6) + "/" + chave.slice(0,4);
+  }
+
   function blocoColeta(){
     var admin = ehAdministrativo();
+    var filtro = state.filtroMes || mesAtual();
+
+    var meses = {};
+    state.coleta.forEach(function(i){
+      var m = mesDoItem(i);
+      if(m.length === 6) meses[m] = (meses[m] || 0) + 1;
+    });
+    meses[mesAtual()] = meses[mesAtual()] || 0;
+    var listaMeses = Object.keys(meses).sort().reverse();
+
+    var visiveis = (filtro === "todos")
+      ? state.coleta
+      : state.coleta.filter(function(i){ return mesDoItem(i) === filtro; });
+
+    var opcoesMes = '<option value="todos"' + (filtro === "todos" ? " selected" : "") + '>Todos os meses</option>' +
+      listaMeses.map(function(m){
+        return '<option value="' + m + '"' + (m === filtro ? " selected" : "") + '>' + rotuloMes(m) + ' (' + meses[m] + ')</option>';
+      }).join("");
+
     var grupos = {naoRespondidas:[], pendentes:[], respondidas:[]};
-    state.coleta.forEach(function(i){ grupos[estadoColeta(i)].push(i); });
+    visiveis.forEach(function(i){ grupos[estadoColeta(i)].push(i); });
 
     var aba = grupos[state.coletaAba] ? state.coletaAba : "naoRespondidas";
     var lista = grupos[aba];
@@ -1594,6 +1629,10 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       '<div class="cartao-topo">' +
         '<h2>Dados coletados</h2>' +
         '<button class="btn btn-neutro btn-mini" id="btn-atualizar">Atualizar dados</button>' +
+      '</div>' +
+      '<div class="campo" style="max-width:260px">' +
+        '<label for="filtro-mes">Mês</label>' +
+        '<select id="filtro-mes">' + opcoesMes + '</select>' +
       '</div>' +
       '<div class="abas">' +
         botaoAba("naoRespondidas", "Não respondidas") +
@@ -2231,6 +2270,10 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     liga("btn-coleta", "click", abrirColeta);
     liga("btn-atualizar", "click", atualizarDados);
     liga("base-importar", "click", importarBase);
+    liga("filtro-mes", "change", function(){
+      state.filtroMes = this.value;
+      render();
+    });
     liga("copiar-coletor", "click", copiarCodigoColetor);
     liga("importar-coleta", "click", importarColeta);
     liga("limpar-coleta-app", "click", function(){
