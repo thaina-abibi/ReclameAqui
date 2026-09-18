@@ -360,6 +360,18 @@
   .at-copiar{background:none;border:1px solid var(--line-strong);color:var(--ink-soft);border-radius:7px;padding:5px 6px;cursor:pointer;display:flex;align-items:center;}
   .at-copiar:hover{color:var(--amber-deep);border-color:var(--amber);}
   .at-copiar svg{width:16px;height:16px;}
+  .repetidos{
+    margin:0 0 16px;padding:12px 14px;border:1px dashed var(--gold);border-radius:9px;
+    background:var(--amber-soft);display:flex;flex-direction:column;gap:7px;
+  }
+  .repetidos .repetidos-titulo{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);}
+  .repetidos button{
+    background:none;border:none;padding:0;cursor:pointer;text-align:left;
+    font-family:var(--font-mono);font-size:13px;color:var(--olive-soft);
+    text-decoration:underline;text-underline-offset:3px;
+  }
+  .repetidos button:hover{color:var(--amber-deep);}
+
   .doca-atendimento{position:fixed;left:18px;bottom:18px;z-index:100;display:flex;flex-direction:column;gap:8px;max-width:220px;}
   .doca-atendimento button{
     background:var(--amber);color:#1a1c05;border:none;border-radius:9px;padding:9px 14px;
@@ -2159,6 +2171,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     '<div class="campo" id="at-placa-campo" style="display:' + (placaVisivel ? "block" : "none") + '">' +
       '<label for="at-placa">Placa</label>' +
       '<input type="text" id="at-placa" maxlength="10" placeholder="ABC1D23" value="' + esc(item.placa || "") + '"></div>' +
+    '<div id="at-repetidos"></div>' +
     '<div class="campo"><label for="at-descricao">Descrição</label>' +
       '<select id="at-descricao">' +
         '<option value=""' + (item.descricao ? '' : ' selected') + '>Selecione</option>' +
@@ -2215,8 +2228,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       renderAtendimento();
     });
 
-    liga("at-cpf", "input", function(){ this.value = formatCPF(this.value); });
-    liga("at-placa", "input", function(){ this.value = this.value.toUpperCase(); });
+    liga("at-cpf", "input", function(){ this.value = formatCPF(this.value); atualizarRepetidos(); });
+    liga("at-placa", "input", function(){ this.value = this.value.toUpperCase(); atualizarRepetidos(); });
 
     liga("at-assunto", "change", function(){
       var campo = document.getElementById("at-placa-campo");
@@ -2230,6 +2243,52 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
     liga("at-salvar", "click", function(){ salvarAtendimento(false); });
     liga("at-atribuir", "click", function(){ salvarAtendimento(true); });
+
+    atualizarRepetidos();
+  }
+
+  function atualizarRepetidos(){
+    var area = document.getElementById("at-repetidos");
+    if(!area || !atendimento.item) return;
+
+    var campoCpf = document.getElementById("at-cpf");
+    var campoPlaca = document.getElementById("at-placa");
+    var cpf = digitos(campoCpf ? campoCpf.value : "");
+    var placa = ((campoPlaca ? campoPlaca.value : "") || "").trim().toUpperCase().replace(/-/g, "");
+
+    var achados = [];
+    if(cpf.length === 11 || placa.length >= 6){
+      state.coleta.forEach(function(i){
+        if(String(i.id) === String(atendimento.item.id)) return;
+        var mesmoCpf = cpf.length === 11 && digitos(i.cpf) === cpf;
+        var mesmaPlaca = placa.length >= 6 && String(i.placa || "").toUpperCase().replace(/-/g, "") === placa;
+        if(mesmoCpf || mesmaPlaca) achados.push({item:i, cpf:mesmoCpf});
+      });
+    }
+
+    if(!achados.length){ area.innerHTML = ""; return; }
+
+    achados.sort(function(a,b){ return chaveData(b.item.data).localeCompare(chaveData(a.item.data)); });
+
+    area.innerHTML = '<div class="repetidos">' +
+      '<span class="repetidos-titulo">' + achados.length + ' protocolo(s) com ' +
+        (achados[0].cpf ? "esse CPF" : "essa placa") + '</span>' +
+      achados.map(function(a){
+        var partes = [a.item.id, a.item.data || "—", a.item.assunto || "—"];
+        if(a.item.descricao) partes.push(capitalizar(a.item.descricao));
+        if(a.item.nome) partes.push(a.item.nome);
+        return '<button data-repetido="' + esc(a.item.id) + '">' + esc(partes.join(" · ")) + '</button>';
+      }).join('') +
+    '</div>';
+
+    cada("[data-repetido]", function(b){
+      b.addEventListener("click", function(){
+        var alvo = b.getAttribute("data-repetido");
+        for(var i=0;i<state.coleta.length;i++){
+          if(String(state.coleta[i].id) === alvo){ abrirAtendimento(state.coleta[i]); return; }
+        }
+      });
+    });
   }
 
   async function salvarAtendimento(atribuir){
