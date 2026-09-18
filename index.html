@@ -473,6 +473,10 @@
       ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
       ".write": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)"
     },
+    "listas": {
+      ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
+      ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true)"
+    },
     "coleta": {
       ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
       ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true)",
@@ -486,7 +490,7 @@
           ".validate": "newData.isString() && newData.val().matches(/^[0-9]{2}\\/[0-9]{2}\\/([0-9]{2}|[0-9]{4})$/)"
         },
         "assunto": {
-          ".validate": "newData.isString() && newData.val().matches(/^(CNH|VEÍCULOS|MULTAS|PORTAL|CREDENCIADOS|ANÁLISE|OUTROS)$/)"
+          ".validate": "newData.isString() && newData.val().length <= 40"
         },
         "situacao": {
           ".validate": "newData.isString() && newData.val().matches(/^(RESPONDIDA|NÃO RESPONDIDA)$/)"
@@ -501,7 +505,7 @@
           ".validate": "newData.isString() && newData.val().length <= 10"
         },
         "descricao": {
-          ".validate": "newData.isString() && newData.val().matches(/^(RESPONDIDO|NÃO LOCALIZADO|AGUARDANDO)?$/)"
+          ".validate": "newData.isString() && newData.val().length <= 40"
         },
         "observacao": {
           ".validate": "newData.isString() && newData.val().length <= 600"
@@ -652,7 +656,20 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
   var ADMIN_UID = "SEFaMdmhNNNtXdSuUvOhjFNiXDJ3";
   var coletaRef=null;
-  var ASSUNTOS = ["CNH","VEÍCULOS","MULTAS","PORTAL","CREDENCIADOS","ANÁLISE","OUTROS"];
+  var ASSUNTOS_PADRAO = [
+    {nome:"CNH", grupo:"cnh", placa:false},
+    {nome:"VEÍCULOS", grupo:"veiculos", placa:true},
+    {nome:"MULTAS", grupo:"veiculos", placa:true},
+    {nome:"PORTAL", grupo:"cnh", placa:false},
+    {nome:"CREDENCIADOS", grupo:"outros", placa:false},
+    {nome:"ANÁLISE", grupo:"outros", placa:false},
+    {nome:"OUTROS", grupo:"outros", placa:false}
+  ];
+  var DESCRICOES_PADRAO = [
+    {nome:"RESPONDIDO", tipo:"finaliza"},
+    {nome:"NÃO LOCALIZADO", tipo:"finaliza"},
+    {nome:"AGUARDANDO", tipo:"pendente"}
+  ];
   var state = {
     booted:false,
     users:[],
@@ -672,6 +689,9 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     coletaAba:"naoRespondidas",
     filtroInicio:"",
     filtroFim:"",
+    assuntos:ASSUNTOS_PADRAO.slice(),
+    descricoes:DESCRICOES_PADRAO.slice(),
+    editListas:null,
     tema:"escuro"
   };
 
@@ -680,6 +700,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   var IC_PESSOAS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3.4"/><path d="M22 20v-2a4 4 0 0 0-3-3.87"/><path d="M16.5 3.6a4 4 0 0 1 0 6.8"/></svg>';
   var IC_REGISTRO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><line x1="9" y1="13" x2="16" y2="13"/><line x1="9" y1="17" x2="14" y2="17"/></svg>';
   var IC_INICIO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.4 12 4l9 7.4"/><path d="M5 10v9.5a.5.5 0 0 0 .5.5H10v-6h4v6h4.5a.5.5 0 0 0 .5-.5V10"/></svg>';
+  var IC_LISTAS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="7" r="2.2"/><circle cx="15" cy="12" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>';
   var IC_IMPORTAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="m7.5 9.5 4.5 4.5 4.5-4.5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>';
   var IC_GRAFICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v17a1 1 0 0 0 1 1h16"/><rect x="7" y="12" width="3" height="6"/><rect x="12.5" y="8" width="3" height="10"/><rect x="18" y="4.5" width="3" height="13.5"/></svg>';
   var IC_CONTA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>';
@@ -873,10 +894,19 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       (state.currentUser.username||"").toLowerCase() === (username||"").toLowerCase());
   }
 
-  var refUsuarios = null, refLogs = null, refSessao = null, refUso = null, aoCair = null;
+  var refUsuarios = null, refLogs = null, refSessao = null, refUso = null, refListas = null, aoCair = null;
 
   function ligarBase(){
     if(refUsuarios) return;
+    refListas = db.ref("listas");
+    refListas.on("value", function(snap){
+      var v = snap.val() || {};
+      var assuntos = toArray(v.assuntos).filter(function(a){ return a && a.nome; });
+      var descricoes = toArray(v.descricoes).filter(function(d){ return d && d.nome; });
+      state.assuntos = assuntos.length ? assuntos : ASSUNTOS_PADRAO.slice();
+      state.descricoes = descricoes.length ? descricoes : DESCRICOES_PADRAO.slice();
+      if(state.screen === "painel" && !digitandoNoFormulario()) render();
+    }, function(){});
     coletaRef=db.ref("coleta");
     coletaRef.on("value",function(snap){
       var v=snap.val()||{};
@@ -911,6 +941,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
   function desligarBase(){
     if(coletaRef){coletaRef.off();coletaRef=null;} state.coleta=[];
+    if(refListas){refListas.off(); refListas=null;}
     if(refUsuarios){ refUsuarios.off(); refUsuarios = null; }
     if(refLogs){ refLogs.off(); refLogs = null; }
     if(refSessao){ refSessao.off(); refSessao = null; }
@@ -993,6 +1024,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   }
 
   function digitandoNoFormulario(){
+    if(state.painelAba === "listas" && document.getElementById("area-listas")) return true;
     var ids = ["base-dados","editar-nome","editar-cpf","coleta-dados","novo-nome","novo-usuario","novo-cpf","login-usuario","conta-senha1","senha-nova"];
     for(var i=0;i<ids.length;i++){
       var campo = document.getElementById(ids[i]);
@@ -1242,7 +1274,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var u = state.currentUser || {};
     var admin = ehAdministrativo(u);
 
-    if(!admin && (state.painelAba === "usuarios" || state.painelAba === "registro" || state.painelAba === "importar")){
+    if(!admin && (state.painelAba === "usuarios" || state.painelAba === "registro" || state.painelAba === "importar" || state.painelAba === "listas")){
       state.painelAba = "inicio";
     }
 
@@ -1252,6 +1284,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       nav += itemNav("usuarios", "Usuários", IC_PESSOAS, state.painelAba === "usuarios");
       nav += itemNav("registro", "Registro", IC_REGISTRO, state.painelAba === "registro");
       nav += itemNav("importar", "Importar", IC_IMPORTAR, state.painelAba === "importar");
+      nav += itemNav("listas", "Edições Admin", IC_LISTAS, state.painelAba === "listas");
     }
     nav += itemNav("conta", "Minha conta", IC_CONTA, state.painelAba === "conta");
 
@@ -1271,6 +1304,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     else if(state.painelAba === "usuarios" && admin) conteudo = blocoUsuarios();
     else if(state.painelAba === "registro" && admin) conteudo = blocoRegistro();
     else if(state.painelAba === "importar" && admin) conteudo = blocoImportar();
+    else if(state.painelAba === "listas" && admin) conteudo = blocoListas();
     else conteudo = blocoInicio();
 
     return shell(nav, cabecalho, conteudo);
@@ -1279,9 +1313,9 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   function totaisColeta(lista){
     var t = {veiculos:0, cnh:0, outros:0, total:0};
     (lista || state.coleta).forEach(function(item){
-      var a = item.assunto;
-      if(a === "VEÍCULOS" || a === "MULTAS") t.veiculos++;
-      else if(a === "CNH" || a === "PORTAL") t.cnh++;
+      var g = grupoAssunto(item.assunto);
+      if(g === "veiculos") t.veiculos++;
+      else if(g === "cnh") t.cnh++;
       else t.outros++;
       t.total++;
     });
@@ -1328,21 +1362,58 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       '</div>' + blocoFiltro() + blocoColeta();
   }
 
+  function nomesAssuntos(){
+    return state.assuntos.map(function(a){ return a.nome; });
+  }
+
+  function assuntoInfo(nome){
+    for(var i=0;i<state.assuntos.length;i++){
+      if(state.assuntos[i].nome === nome) return state.assuntos[i];
+    }
+    return null;
+  }
+
+  function grupoAssunto(nome){
+    var info = assuntoInfo(nome);
+    if(info && info.grupo) return info.grupo;
+    if(nome === "VEÍCULOS" || nome === "MULTAS") return "veiculos";
+    if(nome === "CNH" || nome === "PORTAL") return "cnh";
+    return "outros";
+  }
+
+  function descricaoInfo(nome){
+    for(var i=0;i<state.descricoes.length;i++){
+      if(state.descricoes[i].nome === nome) return state.descricoes[i];
+    }
+    return null;
+  }
+
+  function ehPendente(descricao){
+    var info = descricaoInfo(descricao);
+    if(info) return info.tipo === "pendente";
+    return descricao === "AGUARDANDO";
+  }
+
+  function capitalizar(texto){
+    var t = String(texto || "");
+    if(!t) return "";
+    return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+  }
+
   function estadoColeta(item){
     var d = item.descricao || "";
-    if(d === "RESPONDIDO" || d === "NÃO LOCALIZADO") return "respondidas";
-    if(d === "AGUARDANDO" || item.responsavel) return "pendentes";
+    if(d) return ehPendente(d) ? "pendentes" : "respondidas";
+    if(item.responsavel) return "pendentes";
     return item.situacao === "RESPONDIDA" ? "respondidas" : "naoRespondidas";
   }
 
   function rotuloDescricao(d){
-    if(d === "RESPONDIDO") return "Respondido";
-    if(d === "NÃO LOCALIZADO") return "Não localizado";
-    if(d === "AGUARDANDO") return "Aguardando";
-    return "";
+    return capitalizar(d);
   }
 
   function pedePlaca(assunto){
+    var info = assuntoInfo(assunto);
+    if(info) return !!info.placa;
     return assunto === "VEÍCULOS" || assunto === "MULTAS";
   }
 
@@ -1364,8 +1435,12 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
   function blocoDash(){
     var total = state.coleta.length;
-    var tratadas = state.coleta.filter(function(i){ return i.descricao === "RESPONDIDO"; }).length;
-    var naoLocalizadas = state.coleta.filter(function(i){ return i.descricao === "NÃO LOCALIZADO"; }).length;
+    var tratadas = state.coleta.filter(function(i){ return !!i.descricao && !ehPendente(i.descricao); }).length;
+    var porDescricao = {};
+    state.descricoes.forEach(function(d){ porDescricao[d.nome] = 0; });
+    state.coleta.forEach(function(i){ if(i.descricao && porDescricao[i.descricao] !== undefined) porDescricao[i.descricao]++; });
+    var nomesDescricao = Object.keys(porDescricao);
+    var maiorDescricao = Math.max.apply(null, nomesDescricao.map(function(n){ return porDescricao[n]; }).concat([1]));
     var aguardando = state.coleta.filter(function(i){ return estadoColeta(i) === "pendentes"; }).length;
     var respondidas = state.coleta.filter(function(i){ return estadoColeta(i) === "respondidas"; }).length;
     var pendentes = total - respondidas - aguardando;
@@ -1381,9 +1456,9 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var maiorGrupo = Math.max(grupos.veiculos, grupos.cnh, grupos.outros, 1);
 
     var porAssunto = {};
-    ASSUNTOS.forEach(function(a){ porAssunto[a] = 0; });
+    nomesAssuntos().forEach(function(a){ porAssunto[a] = 0; });
     state.coleta.forEach(function(i){ if(porAssunto[i.assunto] !== undefined) porAssunto[i.assunto]++; });
-    var maiorAssunto = Math.max.apply(null, ASSUNTOS.map(function(a){ return porAssunto[a]; }).concat([1]));
+    var maiorAssunto = Math.max.apply(null, nomesAssuntos().map(function(a){ return porAssunto[a]; }).concat([1]));
 
     var porDia = {};
     state.coleta.forEach(function(i){
@@ -1412,11 +1487,17 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         '<div class="total-item destaque"><span>Total</span><b>' + total + '</b></div>' +
       '</div>' +
       '<div class="painel-totais quatro" style="margin-top:12px">' +
-        '<div class="total-item"><span>Tratadas · respondido</span><b>' + tratadas + '</b></div>' +
-        '<div class="total-item"><span>Não localizados</span><b>' + naoLocalizadas + '</b></div>' +
+        '<div class="total-item"><span>Tratadas</span><b>' + tratadas + '</b></div>' +
         '<div class="total-item"><span>% respondidas</span><b>' + percentual + '</b></div>' +
         '<div class="total-item"><span>Avaliadas</span><b>' + state.coleta.filter(function(i){ return typeof i.nota === "number"; }).length + '</b></div>' +
+        '<div class="total-item"><span>Assuntos</span><b>' + state.assuntos.length + '</b></div>' +
       '</div>' +
+    '</div>' +
+    '<div class="cartao">' +
+      '<h2>Por descrição</h2>' +
+      (nomesDescricao.length
+        ? nomesDescricao.map(function(n){ return barra(capitalizar(n), porDescricao[n], maiorDescricao); }).join('')
+        : '<div class="vazio">Nenhuma descrição cadastrada.</div>') +
     '</div>' +
     '<div class="cartao">' +
       '<h2>Por grupo</h2>' +
@@ -1426,7 +1507,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     '</div>' +
     '<div class="cartao">' +
       '<h2>Por assunto</h2>' +
-      ASSUNTOS.map(function(a){ return barra(a, porAssunto[a], maiorAssunto); }).join('') +
+      nomesAssuntos().map(function(a){ return barra(a, porAssunto[a], maiorAssunto); }).join('') +
     '</div>' +
     '<div class="cartao">' +
       '<h2>Avaliações</h2>' +
@@ -1446,6 +1527,129 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     '</div>';
   }
 
+  function listasEmEdicao(){
+    if(!state.editListas){
+      state.editListas = {
+        assuntos: state.assuntos.map(function(a){ return {nome:a.nome, grupo:a.grupo || "outros", placa:!!a.placa}; }),
+        descricoes: state.descricoes.map(function(d){ return {nome:d.nome, tipo:d.tipo || "finaliza"}; })
+      };
+    }
+    return state.editListas;
+  }
+
+  function coletarListasDoDOM(){
+    var assuntos = [], descricoes = [];
+    cada(".linha-assunto", function(l){
+      assuntos.push({
+        nome: (l.querySelector(".assunto-nome").value || "").trim().toUpperCase(),
+        grupo: l.querySelector(".assunto-grupo").value,
+        placa: l.querySelector(".assunto-placa").checked
+      });
+    });
+    cada(".linha-descricao", function(l){
+      descricoes.push({
+        nome: (l.querySelector(".descricao-nome").value || "").trim().toUpperCase(),
+        tipo: l.querySelector(".descricao-tipo").value
+      });
+    });
+    return {assuntos:assuntos, descricoes:descricoes};
+  }
+
+  function blocoListas(){
+    var edit = listasEmEdicao();
+
+    var linhasAssunto = edit.assuntos.map(function(a, i){
+      return '<tr class="linha-assunto">' +
+        '<td><input type="text" class="assunto-nome" value="' + esc(a.nome) + '" placeholder="NOME DO ASSUNTO"></td>' +
+        '<td><select class="assunto-grupo">' +
+          '<option value="veiculos"' + (a.grupo === "veiculos" ? " selected" : "") + '>Veículos</option>' +
+          '<option value="cnh"' + (a.grupo === "cnh" ? " selected" : "") + '>CNH</option>' +
+          '<option value="outros"' + (a.grupo === "outros" ? " selected" : "") + '>Outros</option>' +
+        '</select></td>' +
+        '<td style="text-align:center"><input type="checkbox" class="assunto-placa"' + (a.placa ? " checked" : "") + '></td>' +
+        '<td><button class="btn btn-risco btn-mini" data-remover-assunto="' + i + '">Remover</button></td>' +
+      '</tr>';
+    }).join('');
+
+    var linhasDescricao = edit.descricoes.map(function(d, i){
+      return '<tr class="linha-descricao">' +
+        '<td><input type="text" class="descricao-nome" value="' + esc(d.nome) + '" placeholder="NOME DA DESCRIÇÃO"></td>' +
+        '<td><select class="descricao-tipo">' +
+          '<option value="finaliza"' + (d.tipo === "finaliza" ? " selected" : "") + '>Finaliza — vai para Respondidas</option>' +
+          '<option value="pendente"' + (d.tipo === "pendente" ? " selected" : "") + '>Pendente — vai para Pendentes</option>' +
+        '</select></td>' +
+        '<td><button class="btn btn-risco btn-mini" data-remover-descricao="' + i + '">Remover</button></td>' +
+      '</tr>';
+    }).join('');
+
+    return '<div id="area-listas">' +
+      '<div class="cartao">' +
+        '<div class="cartao-topo">' +
+          '<h2>Assuntos</h2>' +
+          '<button class="btn btn-neutro btn-mini" id="listas-add-assunto">Adicionar assunto</button>' +
+        '</div>' +
+        '<div class="rolagem"><table><thead><tr>' +
+          '<th>NOME</th><th>GRUPO NO TOTAL</th><th>PEDE PLACA</th><th></th>' +
+        '</tr></thead><tbody>' +
+          (linhasAssunto || '<tr><td colspan="4" class="vazio">Nenhum assunto.</td></tr>') +
+        '</tbody></table></div>' +
+      '</div>' +
+      '<div class="cartao">' +
+        '<div class="cartao-topo">' +
+          '<h2>Descrições</h2>' +
+          '<button class="btn btn-neutro btn-mini" id="listas-add-descricao">Adicionar descrição</button>' +
+        '</div>' +
+        '<div class="rolagem"><table><thead><tr>' +
+          '<th>NOME</th><th>COMPORTAMENTO</th><th></th>' +
+        '</tr></thead><tbody>' +
+          (linhasDescricao || '<tr><td colspan="3" class="vazio">Nenhuma descrição.</td></tr>') +
+        '</tbody></table></div>' +
+      '</div>' +
+      '<div class="cartao">' +
+        '<div id="listas-feedback"></div>' +
+        '<div class="acoes">' +
+          '<button class="btn btn-principal" style="width:auto;" id="listas-salvar">Salvar listas</button>' +
+          '<button class="btn btn-neutro" id="listas-restaurar">Restaurar padrão</button>' +
+          '<button class="btn btn-neutro" id="listas-descartar">Descartar alterações</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  async function salvarListas(){
+    if(!ehAdministrativo()) return toast("Só o perfil administrativo pode alterar as listas.");
+    var feedback = document.getElementById("listas-feedback");
+    var dados = coletarListasDoDOM();
+    state.editListas = dados;
+
+    var vazio = dados.assuntos.some(function(a){ return !a.nome; }) || dados.descricoes.some(function(d){ return !d.nome; });
+    if(vazio){ feedback.innerHTML = '<div class="aviso aviso-erro">Preencha o nome de todos os itens.</div>'; return; }
+    if(!dados.assuntos.length || !dados.descricoes.length){
+      feedback.innerHTML = '<div class="aviso aviso-erro">As duas listas precisam de pelo menos um item.</div>'; return;
+    }
+
+    var nomes = {};
+    var repetido = dados.assuntos.some(function(a){ if(nomes[a.nome]) return true; nomes[a.nome] = 1; return false; });
+    nomes = {};
+    repetido = repetido || dados.descricoes.some(function(d){ if(nomes[d.nome]) return true; nomes[d.nome] = 1; return false; });
+    if(repetido){ feedback.innerHTML = '<div class="aviso aviso-erro">Há nomes repetidos.</div>'; return; }
+
+    var botao = document.getElementById("listas-salvar");
+    botao.disabled = true;
+    try {
+      await db.ref("listas").set(dados);
+      state.assuntos = dados.assuntos;
+      state.descricoes = dados.descricoes;
+      state.editListas = null;
+      registrar("Listas de assunto e descrição alteradas", "listas");
+      toast("Listas salvas.");
+      render();
+    } catch(err){
+      botao.disabled = false;
+      feedback.innerHTML = '<div class="aviso aviso-erro">' + esc(msgBanco(err)) + '</div>';
+    }
+  }
+
   function blocoImportar(){
     return '<div class="cartao">' +
       '<h2>Importar base</h2>' +
@@ -1458,12 +1662,22 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     '</div>';
   }
 
+  function descricaoPendentePadrao(){
+    for(var i=0;i<state.descricoes.length;i++){
+      if(state.descricoes[i].tipo === "pendente") return state.descricoes[i].nome;
+    }
+    return "AGUARDANDO";
+  }
+
   function padronizarDescricao(valor){
     var v = String(valor || "").trim().toUpperCase();
     if(!v) return "";
+    for(var i=0;i<state.descricoes.length;i++){
+      if(state.descricoes[i].nome.toUpperCase() === v) return state.descricoes[i].nome;
+    }
     if(v.indexOf("RESP") === 0) return "RESPONDIDO";
-    if(v.indexOf("AGUARD") === 0) return "AGUARDANDO";
-    if(v.indexOf("N") === 0 && v.indexOf("LOCALIZ") !== -1) return "NÃO LOCALIZADO";
+    if(v.indexOf("AGUARD") === 0) return descricaoPendentePadrao();
+    if(v.charAt(0) === "N" && v.indexOf("LOCALIZ") !== -1) return "NÃO LOCALIZADO";
     return "";
   }
 
@@ -1486,7 +1700,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     item.responsavel = "";
     item.sac = "";
     item.sustentacao = "";
-    item.situacao = (item.descricao === "RESPONDIDO" || item.descricao === "NÃO LOCALIZADO" || item.nota !== undefined)
+    item.situacao = ((item.descricao && !ehPendente(item.descricao)) || item.nota !== undefined)
       ? "RESPONDIDA" : "NÃO RESPONDIDA";
     return item;
   }
@@ -1595,7 +1809,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var linhas = lista.map(function(item){
       var assunto = admin
         ? '<select class="coleta-assunto" data-id="' + esc(item.id) + '">' +
-            ASSUNTOS.map(function(op){ return '<option' + (op === item.assunto ? ' selected' : '') + '>' + op + '</option>'; }).join('') +
+            nomesAssuntos().map(function(op){ return '<option' + (op === item.assunto ? ' selected' : '') + '>' + esc(op) + '</option>'; }).join('') +
           '</select>'
         : esc(item.assunto || "—");
 
@@ -1916,10 +2130,10 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   }
 
   function telaAssuntos(){
-    var todos = atendimento.assuntos.length === ASSUNTOS.length;
+    var todos = atendimento.assuntos.length === state.assuntos.length;
     return '<div class="assuntos-grade">' +
       '<label class="assunto-opcao"><input type="checkbox" id="assunto-todos"' + (todos ? ' checked' : '') + '>TODOS</label>' +
-      ASSUNTOS.map(function(op){
+      nomesAssuntos().map(function(op){
         var marcado = atendimento.assuntos.indexOf(op) !== -1 ? ' checked' : '';
         return '<label class="assunto-opcao"><input type="checkbox" class="assunto-check" value="' + esc(op) + '"' + marcado + '>' + esc(op) + '</label>';
       }).join('') +
@@ -1930,14 +2144,14 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
   function telaCaso(item){
     var placaVisivel = pedePlaca(item.assunto);
-    var aguardando = item.descricao === "AGUARDANDO";
+    var aguardando = !!item.descricao && ehPendente(item.descricao);
 
     return '' +
     '<div class="linha-dado" style="margin-bottom:16px"><span>Aberto em</span><span>' + esc(item.data || "—") + '</span></div>' +
     '<div class="grade-2">' +
       '<div class="campo"><label for="at-assunto">Assunto</label>' +
         '<select id="at-assunto">' +
-          ASSUNTOS.map(function(op){ return '<option' + (op === item.assunto ? ' selected' : '') + '>' + op + '</option>'; }).join('') +
+          nomesAssuntos().map(function(op){ return '<option' + (op === item.assunto ? ' selected' : '') + '>' + esc(op) + '</option>'; }).join('') +
         '</select></div>' +
       '<div class="campo"><label for="at-cpf">CPF</label>' +
         '<input type="text" id="at-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" value="' + esc(item.cpf ? formatCPF(item.cpf) : "") + '"></div>' +
@@ -1948,9 +2162,10 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     '<div class="campo"><label for="at-descricao">Descrição</label>' +
       '<select id="at-descricao">' +
         '<option value=""' + (item.descricao ? '' : ' selected') + '>Selecione</option>' +
-        '<option value="RESPONDIDO"' + (item.descricao === "RESPONDIDO" ? ' selected' : '') + '>Respondido</option>' +
-        '<option value="NÃO LOCALIZADO"' + (item.descricao === "NÃO LOCALIZADO" ? ' selected' : '') + '>Não localizado</option>' +
-        '<option value="AGUARDANDO"' + (aguardando ? ' selected' : '') + '>Aguardando …</option>' +
+        state.descricoes.map(function(d){
+          return '<option value="' + esc(d.nome) + '"' + (item.descricao === d.nome ? ' selected' : '') + '>' +
+            esc(capitalizar(d.nome)) + (d.tipo === "pendente" ? " …" : "") + '</option>';
+        }).join('') +
       '</select></div>' +
     '<div class="grade-2" id="at-aguardando" style="display:' + (aguardando ? "grid" : "none") + '">' +
       '<div class="campo"><label for="at-sac">SAC</label>' +
@@ -1979,7 +2194,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         if(!todos) return;
         var marcados = 0;
         cada(".assunto-check", function(x){ if(x.checked) marcados++; });
-        todos.checked = marcados === ASSUNTOS.length;
+        todos.checked = marcados === state.assuntos.length;
       });
     });
 
@@ -2010,7 +2225,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
     liga("at-descricao", "change", function(){
       var bloco = document.getElementById("at-aguardando");
-      if(bloco) bloco.style.display = (this.value === "AGUARDANDO") ? "grid" : "none";
+      if(bloco) bloco.style.display = (this.value && ehPendente(this.value)) ? "grid" : "none";
     });
 
     liga("at-salvar", "click", function(){ salvarAtendimento(false); });
@@ -2035,12 +2250,12 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       if(cpf.length !== 11){ feedback.innerHTML = '<div class="aviso aviso-erro">O CPF precisa ter 11 dígitos.</div>'; return; }
     }
 
-    var fica = atribuir || descricao === "AGUARDANDO";
+    var fica = atribuir || (!!descricao && ehPendente(descricao));
     var dados = {
       assunto: assunto,
       cpf: cpf,
       placa: pedePlaca(assunto) ? placa : "",
-      descricao: atribuir ? (descricao || "AGUARDANDO") : descricao,
+      descricao: atribuir ? (descricao || descricaoPendentePadrao()) : descricao,
       observacao: observacao,
       sac: fica ? sac : "",
       sustentacao: fica ? sustentacao : "",
@@ -2276,6 +2491,46 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     liga("btn-coleta", "click", abrirColeta);
     liga("btn-atualizar", "click", atualizarDados);
     liga("base-importar", "click", importarBase);
+    liga("listas-salvar", "click", salvarListas);
+    liga("listas-add-assunto", "click", function(){
+      var dados = coletarListasDoDOM();
+      dados.assuntos.push({nome:"", grupo:"outros", placa:false});
+      state.editListas = dados;
+      render();
+    });
+    liga("listas-add-descricao", "click", function(){
+      var dados = coletarListasDoDOM();
+      dados.descricoes.push({nome:"", tipo:"finaliza"});
+      state.editListas = dados;
+      render();
+    });
+    liga("listas-restaurar", "click", function(){
+      state.editListas = {
+        assuntos: ASSUNTOS_PADRAO.map(function(a){ return {nome:a.nome, grupo:a.grupo, placa:a.placa}; }),
+        descricoes: DESCRICOES_PADRAO.map(function(d){ return {nome:d.nome, tipo:d.tipo}; })
+      };
+      render();
+    });
+    liga("listas-descartar", "click", function(){
+      state.editListas = null;
+      render();
+    });
+    cada("[data-remover-assunto]", function(b){
+      b.addEventListener("click", function(){
+        var dados = coletarListasDoDOM();
+        dados.assuntos.splice(Number(b.getAttribute("data-remover-assunto")), 1);
+        state.editListas = dados;
+        render();
+      });
+    });
+    cada("[data-remover-descricao]", function(b){
+      b.addEventListener("click", function(){
+        var dados = coletarListasDoDOM();
+        dados.descricoes.splice(Number(b.getAttribute("data-remover-descricao")), 1);
+        state.editListas = dados;
+        render();
+      });
+    });
     liga("filtro-inicio", "change", function(){
       state.filtroInicio = this.value;
       render();
@@ -2328,6 +2583,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
     cada("[data-painel]", function(b){
       b.addEventListener("click", function(){
+        if(state.painelAba === "listas" && b.getAttribute("data-painel") !== "listas") state.editListas = null;
         state.painelAba = b.getAttribute("data-painel");
         state.error = "";
         render();
@@ -2707,7 +2963,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   }
 
   function normalizarItem(i){
-    if(!i || !/^\d{6,15}$/.test(String(i.id)) || !/^\d{2}\/\d{2}\/(?:\d{2}|\d{4})$/.test(i.data||"") || !ASSUNTOS.includes(i.assunto))throw new Error("Registro inválido");
+    if(!i || !/^\d{6,15}$/.test(String(i.id)) || !/^\d{2}\/\d{2}\/(?:\d{2}|\d{4})$/.test(i.data||"") || nomesAssuntos().indexOf(i.assunto) === -1)throw new Error("Registro inválido");
     var d=i.data.split("/").map(Number),ano=d[2]<100?2000+d[2]:d[2],dt=new Date(Date.UTC(ano,d[1]-1,d[0]));
     if(dt.getUTCFullYear()!==ano || dt.getUTCMonth()!==d[1]-1 || dt.getUTCDate()!==d[0])throw new Error("Data inválida");
     var item={id:String(i.id),data:i.data,assunto:i.assunto,situacao:"NÃO RESPONDIDA"};
