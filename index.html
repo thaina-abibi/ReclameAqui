@@ -241,13 +241,21 @@
   .cartao-topo{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; flex-wrap:wrap;}
   .cartao-topo h2{margin-bottom:0;}
 
-  .abas{display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap;}
+  .abas{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .abas-linha{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:18px;}
   .aba{
-    background:var(--paper); border:1px solid var(--line-strong); color:var(--ink-soft);
+    --acento:var(--line-strong); --acento-texto:#1a1c05;
+    background:var(--paper); border:1px solid var(--acento); color:var(--acento);
     padding:9px 16px; border-radius:100px; font-size:13.5px; font-weight:600; cursor:pointer;
   }
-  .aba:hover{color:var(--ink); border-color:var(--olive);}
-  .aba.on{background:var(--amber); border-color:var(--amber); color:#1a1c05;}
+  .aba:hover{filter:brightness(1.12);}
+  .aba.on{background:var(--acento); color:var(--acento-texto);}
+  .aba-vermelha{--acento:#f3b6ab; --acento-texto:#3a1a14;}
+  .aba-verde{--acento:#a8e6a1; --acento-texto:#10331a;}
+  .aba-amarela{--acento:#efe08a; --acento-texto:#332b06;}
+  .aba-azul{--acento:#a8cdf0; --acento-texto:#0f2437;}
+  html.tema-claro .aba{color:var(--ink-soft);}
+  html.tema-claro .aba.on{color:var(--acento-texto);}
 
   .painel-totais{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px;}
   @media (max-width:520px){ .painel-totais{grid-template-columns:1fr;} }
@@ -1811,12 +1819,16 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var admin = ehAdministrativo();
     var visiveis = state.coleta.filter(dentroDoPeriodo);
 
-    var grupos = {naoRespondidas:[], pendentes:[], respondidas:[]};
-    visiveis.forEach(function(i){ grupos[estadoColeta(i)].push(i); });
+    var grupos = {naoRespondidas:[], pendentes:[], respondidas:[], avaliadas:[]};
+    visiveis.forEach(function(i){
+      grupos[estadoColeta(i)].push(i);
+      if(estadoColeta(i) === "respondidas" && typeof i.nota === "number") grupos.avaliadas.push(i);
+    });
 
     var aba = grupos[state.coletaAba] ? state.coletaAba : "naoRespondidas";
     var lista = grupos[aba];
-    var colunas = (aba === "respondidas") ? 8 : 7;
+    var comNota = (aba === "respondidas" || aba === "avaliadas");
+    var colunas = comNota ? 8 : 7;
 
     var linhas = lista.map(function(item){
       var assunto = admin
@@ -1852,28 +1864,28 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         (item.nome ? '<td>' + esc(item.nome) + '</td>' : '<td class="celula-vazia">—</td>') +
         celulaDescricao +
         (item.observacao ? '<td>' + esc(item.observacao) + '</td>' : '<td class="celula-vazia">—</td>') +
-        (aba === "respondidas" ? nota : '') +
+        (comNota ? nota : '') +
       '</tr>';
     }).join('');
 
-    function botaoAba(chave, rotulo){
-      return '<button class="aba' + (aba === chave ? " on" : "") + '" data-coleta-aba="' + chave + '">' +
+    function botaoAba(chave, rotulo, cor){
+      return '<button class="aba ' + cor + (aba === chave ? " on" : "") + '" data-coleta-aba="' + chave + '">' +
         rotulo + ' (' + grupos[chave].length + ')</button>';
     }
 
     return '<div class="cartao" id="area-coleta">' +
-      '<div class="cartao-topo">' +
-        '<h2>Dados coletados</h2>' +
+      '<div class="abas-linha">' +
+        '<div class="abas">' +
+          botaoAba("naoRespondidas", "Não respondidas", "aba-vermelha") +
+          botaoAba("respondidas", "Respondidas", "aba-verde") +
+          botaoAba("pendentes", "Pendentes", "aba-amarela") +
+          botaoAba("avaliadas", "Avaliadas", "aba-azul") +
+        '</div>' +
         '<button class="btn btn-neutro btn-mini" id="btn-atualizar">Atualizar dados</button>' +
-      '</div>' +
-      '<div class="abas">' +
-        botaoAba("naoRespondidas", "Não respondidas") +
-        botaoAba("pendentes", "Pendentes") +
-        botaoAba("respondidas", "Respondidas") +
       '</div>' +
       '<div class="rolagem"><table class="tabela-coleta"><thead><tr>' +
         '<th>DATA</th><th>ID</th><th>ASSUNTO</th><th>DADOS</th><th>NOME</th><th>DESCRIÇÕES</th><th>OBSERVAÇÃO</th>' +
-        (aba === "respondidas" ? '<th>NOTA</th>' : '') +
+        (comNota ? '<th>NOTA</th>' : '') +
       '</tr></thead><tbody>' +
         (linhas || '<tr><td colspan="' + colunas + '" class="vazio">Nenhum registro nesta aba.</td></tr>') +
       '</tbody></table></div>' +
