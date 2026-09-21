@@ -392,6 +392,22 @@
   #base-dados{min-height:260px;resize:vertical;font-family:var(--font-mono);font-size:13.5px;}
   #base-feedback{margin-top:14px;font-size:13.5px;white-space:pre-wrap;}
 
+  .btn-filtro{display:inline-flex; align-items:center; gap:7px;}
+  .btn-filtro svg{width:15px; height:15px;}
+  .contador-filtro{background:var(--amber); color:#1a1c05; border-radius:100px; font-size:11px; font-weight:700; padding:1px 7px; line-height:1.5;}
+  #popup-filtros{
+    width:min(720px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); overflow:auto;
+    margin:auto; padding:0; border:1px solid var(--line-strong); border-radius:14px;
+    background:var(--surface); color:var(--ink); box-shadow:0 24px 80px #0008;
+  }
+  #popup-filtros::backdrop{background:rgba(0,0,0,.55);}
+  html.tema-claro #popup-filtros::backdrop{background:rgba(20,22,26,0.35);}
+  .filtros-topo{display:flex; justify-content:space-between; align-items:center; gap:16px; padding:18px 24px; border-bottom:1px solid var(--line);}
+  .filtros-topo h2{font-size:19px; display:flex; align-items:center; gap:10px;}
+  .filtros-topo h2 svg{width:18px; height:18px;}
+  .filtros-miolo{padding:22px 24px;}
+  .dash-topo-acoes{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .aviso-carregando{font-size:13px; color:var(--ink-soft); margin-top:10px; display:flex; align-items:center; gap:8px;}
   .filtro-chips{display:flex; flex-wrap:wrap; gap:8px;}
   .filtro-chips .assunto-opcao{padding:8px 12px; font-size:13px;}
   .pesquisa-acoes{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:4px;}
@@ -732,14 +748,14 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     ocupadoUso:false,
     coleta:[],
     coletaAba:"naoRespondidas",
-    filtroInicio:"",
-    filtroFim:"",
+    filtrosInicio:null,
     assuntos:ASSUNTOS_PADRAO.slice(),
     descricoes:DESCRICOES_PADRAO.slice(),
     editListas:null,
     pesquisa:{termo:"", incluirArquivo:true, inicio:"", fim:"", assuntos:[], estados:[], descricao:"", responsavel:"", nome:"", nota:"", resultados:null},
     arquivoIndice:{},
     arquivoCache:null,
+    arquivoCarregando:false,
     arquivoSelecao:{},
     arquivoModo:"respondidas",
     tema:"escuro"
@@ -750,6 +766,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   var IC_PESSOAS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3.4"/><path d="M22 20v-2a4 4 0 0 0-3-3.87"/><path d="M16.5 3.6a4 4 0 0 1 0 6.8"/></svg>';
   var IC_REGISTRO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><line x1="9" y1="13" x2="16" y2="13"/><line x1="9" y1="17" x2="14" y2="17"/></svg>';
   var IC_INICIO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.4 12 4l9 7.4"/><path d="M5 10v9.5a.5.5 0 0 0 .5.5H10v-6h4v6h4.5a.5.5 0 0 0 .5-.5V10"/></svg>';
+  var IC_FILTRO = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3.5" y="2.8" width="17" height="2.8" rx="1.2"/><path d="M4.3 7h15.4l-6.1 7.2V21l-3.2-1.7v-5.1z"/></svg>';
   var IC_BUSCA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20.5" y1="20.5" x2="16" y2="16"/></svg>';
   var IC_ARQUIVO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/><line x1="10" y1="13" x2="14" y2="13"/></svg>';
   var IC_LISTAS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="7" r="2.2"/><circle cx="15" cy="12" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>';
@@ -1085,7 +1102,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
   function digitandoNoFormulario(){
     if(state.painelAba === "listas" && document.getElementById("area-listas")) return true;
-    var ids = ["pesquisa-termo","base-dados","editar-nome","editar-cpf","coleta-dados","novo-nome","novo-usuario","novo-cpf","login-usuario","conta-senha1","senha-nova"];
+    var ids = ["base-dados","editar-nome","editar-cpf","coleta-dados","novo-nome","novo-usuario","novo-cpf","login-usuario","conta-senha1","senha-nova"];
     for(var i=0;i<ids.length;i++){
       var campo = document.getElementById(ids[i]);
       if(campo && campo.value) return true;
@@ -1345,8 +1362,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     }
 
     var nav = itemNav("inicio", "Início", IC_INICIO, state.painelAba === "inicio");
-    nav += itemNav("dash", "Painel", IC_GRAFICO, state.painelAba === "dash");
-    nav += itemNav("pesquisa", "Pesquisa", IC_BUSCA, state.painelAba === "pesquisa");
+    nav += itemNav("dash", "Dashboard", IC_GRAFICO, state.painelAba === "dash" || state.painelAba === "pesquisa");
     if(admin){
       nav += itemNav("usuarios", "Usuários", IC_PESSOAS, state.painelAba === "usuarios");
       nav += itemNav("registro", "Registro", IC_REGISTRO, state.painelAba === "registro");
@@ -1367,8 +1383,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       '</div>';
 
     var conteudo;
-    if(state.painelAba === "dash") conteudo = blocoDash();
-    else if(state.painelAba === "pesquisa") conteudo = blocoPesquisa();
+    if(state.painelAba === "dash" || state.painelAba === "pesquisa") conteudo = blocoDashboard();
     else if(state.painelAba === "arquivo" && admin) conteudo = blocoArquivo();
     else if(state.painelAba === "conta") conteudo = blocoConta(u);
     else if(state.painelAba === "usuarios" && admin) conteudo = blocoUsuarios();
@@ -1429,7 +1444,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
           '</div>' +
           painelTotais() +
         '</div>' +
-      '</div>' + blocoFiltro() + blocoColeta();
+      '</div>' + blocoColeta();
   }
 
   function nomesAssuntos(){
@@ -1473,7 +1488,6 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   function estadoColeta(item){
     var d = item.descricao || "";
     if(d) return ehPendente(d) ? "pendentes" : "respondidas";
-    if(item.responsavel) return "pendentes";
     return item.situacao === "RESPONDIDA" ? "respondidas" : "naoRespondidas";
   }
 
@@ -1503,35 +1517,35 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     return ano + p[1] + p[0];
   }
 
-  function blocoDash(){
-    var total = state.coleta.length;
-    var tratadas = state.coleta.filter(function(i){ return !!i.descricao && !ehPendente(i.descricao); }).length;
+  function graficosDash(itens, cabecalho){
+    var total = itens.length;
+    var tratadas = itens.filter(function(i){ return !!i.descricao && !ehPendente(i.descricao); }).length;
     var porDescricao = {};
     state.descricoes.forEach(function(d){ porDescricao[d.nome] = 0; });
-    state.coleta.forEach(function(i){ if(i.descricao && porDescricao[i.descricao] !== undefined) porDescricao[i.descricao]++; });
+    itens.forEach(function(i){ if(i.descricao && porDescricao[i.descricao] !== undefined) porDescricao[i.descricao]++; });
     var nomesDescricao = Object.keys(porDescricao);
     var maiorDescricao = Math.max.apply(null, nomesDescricao.map(function(n){ return porDescricao[n]; }).concat([1]));
-    var aguardando = state.coleta.filter(function(i){ return estadoColeta(i) === "pendentes"; }).length;
-    var respondidas = state.coleta.filter(function(i){ return estadoColeta(i) === "respondidas"; }).length;
+    var aguardando = itens.filter(function(i){ return estadoColeta(i) === "pendentes"; }).length;
+    var respondidas = itens.filter(function(i){ return estadoColeta(i) === "respondidas"; }).length;
     var pendentes = total - respondidas - aguardando;
     var percentual = total > 0 ? Math.round((respondidas / total) * 100) + "%" : "—";
 
-    var notas = state.coleta.filter(function(i){ return typeof i.nota === "number"; });
+    var notas = itens.filter(function(i){ return typeof i.nota === "number"; });
     var soma = notas.reduce(function(acc, i){ return acc + i.nota; }, 0);
     var media = notas.length ? (soma / notas.length).toFixed(1).replace(".", ",") : "—";
     var promotoras = notas.filter(function(i){ return i.nota >= 9; }).length;
     var detratoras = notas.filter(function(i){ return i.nota <= 6; }).length;
 
-    var grupos = totaisColeta();
+    var grupos = totaisColeta(itens);
     var maiorGrupo = Math.max(grupos.veiculos, grupos.cnh, grupos.outros, 1);
 
     var porAssunto = {};
     nomesAssuntos().forEach(function(a){ porAssunto[a] = 0; });
-    state.coleta.forEach(function(i){ if(porAssunto[i.assunto] !== undefined) porAssunto[i.assunto]++; });
+    itens.forEach(function(i){ if(porAssunto[i.assunto] !== undefined) porAssunto[i.assunto]++; });
     var maiorAssunto = Math.max.apply(null, nomesAssuntos().map(function(a){ return porAssunto[a]; }).concat([1]));
 
     var porDia = {};
-    state.coleta.forEach(function(i){
+    itens.forEach(function(i){
       var d = i.data || "—";
       porDia[d] = (porDia[d] || 0) + 1;
     });
@@ -1546,10 +1560,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
     return '' +
     '<div class="cartao">' +
-      '<div class="cartao-topo">' +
-        '<h2>Painel</h2>' +
-        '<button class="btn btn-neutro btn-mini" id="btn-atualizar">Atualizar dados</button>' +
-      '</div>' +
+      cabecalho +
       '<div class="painel-totais quatro">' +
         '<div class="total-item"><span>Não respondidas</span><b>' + pendentes + '</b></div>' +
         '<div class="total-item"><span>Pendentes</span><b>' + aguardando + '</b></div>' +
@@ -1559,7 +1570,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       '<div class="painel-totais quatro" style="margin-top:12px">' +
         '<div class="total-item"><span>Tratadas</span><b>' + tratadas + '</b></div>' +
         '<div class="total-item"><span>% respondidas</span><b>' + percentual + '</b></div>' +
-        '<div class="total-item"><span>Avaliadas</span><b>' + state.coleta.filter(function(i){ return typeof i.nota === "number"; }).length + '</b></div>' +
+        '<div class="total-item"><span>Avaliadas</span><b>' + itens.filter(function(i){ return typeof i.nota === "number"; }).length + '</b></div>' +
         '<div class="total-item"><span>Assuntos</span><b>' + state.assuntos.length + '</b></div>' +
       '</div>' +
     '</div>' +
@@ -1645,26 +1656,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     return {termo:"", incluirArquivo:true, inicio:"", fim:"", assuntos:[], estados:[], descricao:"", responsavel:"", nome:"", nota:"", resultados:null};
   }
 
-  function lerFiltrosPesquisa(){
-    var p = state.pesquisa;
-    function val(id){ var el = document.getElementById(id); return el ? el.value : ""; }
-    p.termo = val("pesquisa-termo");
-    p.inicio = val("pesquisa-inicio");
-    p.fim = val("pesquisa-fim");
-    p.descricao = val("pesquisa-descricao");
-    p.responsavel = val("pesquisa-responsavel");
-    p.nome = val("pesquisa-nome");
-    p.nota = val("pesquisa-nota");
-    var marca = document.getElementById("pesquisa-arquivo");
-    if(marca) p.incluirArquivo = marca.checked;
-    p.assuntos = [];
-    cada(".pesquisa-assunto", function(c){ if(c.checked) p.assuntos.push(c.value); });
-    p.estados = [];
-    cada(".pesquisa-estado", function(c){ if(c.checked) p.estados.push(c.value); });
-  }
-
-  function passaNosFiltros(item){
-    var f = state.pesquisa;
+  function passaNosFiltros(item, f){
     var ini = chaveISO(f.inicio), fim = chaveISO(f.fim);
     if(ini || fim){
       var c = chaveData(item.data);
@@ -1698,127 +1690,175 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     return true;
   }
 
-  async function executarPesquisa(){
-    lerFiltrosPesquisa();
-    ocupar("pesquisa-buscar", "Buscando…");
-    try {
-      var base = state.coleta.map(function(i){ return {item:i, mes:""}; });
-      if(state.pesquisa.incluirArquivo) base = base.concat(await carregarArquivo());
-      var achados = base.filter(function(r){ return passaNosFiltros(r.item); });
-      achados.sort(function(a,b){ return chaveData(b.item.data).localeCompare(chaveData(a.item.data)); });
-      state.pesquisa.resultados = achados;
-    } catch(err){
-      toast(msgBanco(err));
-    }
-    render();
+  function contarFiltros(f){
+    if(!f) return 0;
+    var n = 0;
+    if(f.termo) n++;
+    if(f.inicio) n++;
+    if(f.fim) n++;
+    if(f.assuntos.length) n++;
+    if(f.estados.length) n++;
+    if(f.descricao) n++;
+    if(f.responsavel) n++;
+    if(f.nome) n++;
+    if(f.nota) n++;
+    return n;
   }
 
-  function valorCsv(v){
-    var t = String(v == null ? "" : v);
-    if(/[;"\n\r]/.test(t)) t = '"' + t.replace(/"/g, '""') + '"';
-    return t;
+  function filtrosDe(alvo){
+    return alvo === "inicio" ? state.filtrosInicio : state.pesquisa;
   }
 
-  function baixarPlanilha(){
-    var r = state.pesquisa.resultados;
-    if(!r || !r.length){ toast("Faça uma pesquisa com resultados antes de baixar."); return; }
-
-    var cab = ["DATA","ID","ASSUNTO","SITUAÇÃO","CPF","PLACA","NOME","ATRIBUÍDO A","DESCRIÇÃO","OBSERVAÇÃO","SAC","SUSTENTAÇÃO","NOTA","LOCAL"];
-    var linhas = r.map(function(x){
-      var i = x.item;
-      return [
-        i.data, i.id, i.assunto, rotuloEstado(i), i.cpf ? digitos(i.cpf) : "", i.placa,
-        i.nome, nomeDoResponsavel(i.responsavel), i.descricao ? capitalizar(i.descricao) : "", i.observacao, i.sac, i.sustentacao,
-        (typeof i.nota === "number" ? i.nota : ""), x.mes ? "Arquivo " + rotuloMes(x.mes) : "Ativo"
-      ].map(valorCsv).join(";");
-    });
-
-    var conteudo = "\uFEFF" + cab.join(";") + "\r\n" + linhas.join("\r\n");
-    var blob = new Blob([conteudo], {type:"text/csv;charset=utf-8"});
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    a.href = url;
-    a.download = "pesquisa_RA_" + iso(new Date()) + ".csv";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
-    toast(r.length + " linha(s) baixada(s).");
+  function botaoFiltro(alvo){
+    var n = contarFiltros(filtrosDe(alvo));
+    return '<button class="btn btn-neutro btn-mini btn-filtro" data-abrir-filtros="' + alvo + '" aria-label="Filtros" title="Filtros">' +
+      IC_FILTRO + (n ? '<span class="contador-filtro">' + n + '</span>' : '') + '</button>';
   }
 
-  function nomeDoResponsavel(username){
-    if(!username) return "";
-    var u = acharUsuario(username);
-    return u ? nomeExibido(u) : username;
-  }
-
-  function blocoPesquisa(){
-    var p = state.pesquisa;
-
-    var opcoesDescricao = '<option value="">Todas</option><option value="__vazio"' + (p.descricao === "__vazio" ? " selected" : "") + '>Sem descrição</option>' +
+  function formularioFiltros(f, alvo){
+    var opcoesDescricao = '<option value="">Todas</option><option value="__vazio"' + (f.descricao === "__vazio" ? " selected" : "") + '>Sem descrição</option>' +
       state.descricoes.map(function(d){
-        return '<option value="' + esc(d.nome) + '"' + (p.descricao === d.nome ? " selected" : "") + '>' + esc(capitalizar(d.nome)) + '</option>';
+        return '<option value="' + esc(d.nome) + '"' + (f.descricao === d.nome ? " selected" : "") + '>' + esc(capitalizar(d.nome)) + '</option>';
       }).join("");
 
     var pessoas = state.users.filter(function(u){ return u && u.username; })
       .sort(function(a,b){ return nomeExibido(a).localeCompare(nomeExibido(b)); });
 
-    var opcoesResponsavel = '<option value="">Qualquer pessoa</option><option value="__ninguem"' + (p.responsavel === "__ninguem" ? " selected" : "") + '>Ninguém</option>' +
+    var opcoesResponsavel = '<option value="">Qualquer pessoa</option><option value="__ninguem"' + (f.responsavel === "__ninguem" ? " selected" : "") + '>Ninguém</option>' +
       pessoas.map(function(u){
-        return '<option value="' + esc(u.username) + '"' + (p.responsavel === u.username ? " selected" : "") + '>' + esc(nomeExibido(u)) + '</option>';
+        return '<option value="' + esc(u.username) + '"' + (f.responsavel === u.username ? " selected" : "") + '>' + esc(nomeExibido(u)) + '</option>';
       }).join("");
 
     var nomes = {};
     pessoas.forEach(function(u){ nomes[nomeExibido(u)] = 1; });
     state.coleta.forEach(function(i){ if(i.nome) nomes[i.nome] = 1; });
-    var opcoesNome = '<option value="">Qualquer pessoa</option><option value="__ninguem"' + (p.nome === "__ninguem" ? " selected" : "") + '>Ninguém</option>' +
+    var opcoesNome = '<option value="">Qualquer pessoa</option><option value="__ninguem"' + (f.nome === "__ninguem" ? " selected" : "") + '>Ninguém</option>' +
       Object.keys(nomes).sort().map(function(n){
-        return '<option value="' + esc(n) + '"' + (p.nome === n ? " selected" : "") + '>' + esc(n) + '</option>';
+        return '<option value="' + esc(n) + '"' + (f.nome === n ? " selected" : "") + '>' + esc(n) + '</option>';
       }).join("");
 
     var chipsAssunto = nomesAssuntos().map(function(a){
-      return '<label class="assunto-opcao"><input type="checkbox" class="pesquisa-assunto" value="' + esc(a) + '"' +
-        (p.assuntos.indexOf(a) !== -1 ? " checked" : "") + '>' + esc(a) + '</label>';
+      return '<label class="assunto-opcao"><input type="checkbox" class="fx-assunto" value="' + esc(a) + '"' +
+        (f.assuntos.indexOf(a) !== -1 ? " checked" : "") + '>' + esc(a) + '</label>';
     }).join("");
 
     var estados = [["naoRespondidas","Não respondidas"],["pendentes","Pendentes"],["respondidas","Respondidas"]];
     var chipsEstado = estados.map(function(e){
-      return '<label class="assunto-opcao"><input type="checkbox" class="pesquisa-estado" value="' + e[0] + '"' +
-        (p.estados.indexOf(e[0]) !== -1 ? " checked" : "") + '>' + e[1] + '</label>';
+      return '<label class="assunto-opcao"><input type="checkbox" class="fx-estado" value="' + e[0] + '"' +
+        (f.estados.indexOf(e[0]) !== -1 ? " checked" : "") + '>' + e[1] + '</label>';
     }).join("");
 
-    var topo = '<div class="cartao">' +
-      '<h2>Pesquisa</h2>' +
-      '<div class="campo"><label for="pesquisa-termo">Texto livre</label>' +
-        '<input type="text" id="pesquisa-termo" placeholder="ID, CPF, placa, nome, observação, SAC…" value="' + esc(p.termo) + '"></div>' +
+    return '' +
+      '<div class="campo"><label for="fx-termo">Texto livre</label>' +
+        '<input type="text" id="fx-termo" placeholder="ID, CPF, placa, nome, observação, SAC…" value="' + esc(f.termo) + '"></div>' +
       '<div class="grade-3">' +
-        '<div class="campo"><label for="pesquisa-inicio">Data de</label><input type="date" id="pesquisa-inicio" value="' + esc(p.inicio) + '"></div>' +
-        '<div class="campo"><label for="pesquisa-fim">Data até</label><input type="date" id="pesquisa-fim" value="' + esc(p.fim) + '"></div>' +
-        '<div class="campo"><label for="pesquisa-descricao">Descrição</label><select id="pesquisa-descricao">' + opcoesDescricao + '</select></div>' +
+        '<div class="campo"><label for="fx-inicio">Data de</label><input type="date" id="fx-inicio" value="' + esc(f.inicio) + '"></div>' +
+        '<div class="campo"><label for="fx-fim">Data até</label><input type="date" id="fx-fim" value="' + esc(f.fim) + '"></div>' +
+        '<div class="campo"><label for="fx-descricao">Descrição</label><select id="fx-descricao">' + opcoesDescricao + '</select></div>' +
       '</div>' +
       '<div class="grade-3">' +
-        '<div class="campo"><label for="pesquisa-responsavel">Atribuído a</label><select id="pesquisa-responsavel">' + opcoesResponsavel + '</select></div>' +
-        '<div class="campo"><label for="pesquisa-nome">Tratado por</label><select id="pesquisa-nome">' + opcoesNome + '</select></div>' +
-        '<div class="campo"><label for="pesquisa-nota">Avaliação</label><select id="pesquisa-nota">' +
+        '<div class="campo"><label for="fx-responsavel">Atribuído a</label><select id="fx-responsavel">' + opcoesResponsavel + '</select></div>' +
+        '<div class="campo"><label for="fx-nome">Tratado por</label><select id="fx-nome">' + opcoesNome + '</select></div>' +
+        '<div class="campo"><label for="fx-nota">Avaliação</label><select id="fx-nota">' +
           '<option value="">Todas</option>' +
-          '<option value="com"' + (p.nota === "com" ? " selected" : "") + '>Com nota</option>' +
-          '<option value="sem"' + (p.nota === "sem" ? " selected" : "") + '>Sem nota</option>' +
+          '<option value="com"' + (f.nota === "com" ? " selected" : "") + '>Com nota</option>' +
+          '<option value="sem"' + (f.nota === "sem" ? " selected" : "") + '>Sem nota</option>' +
         '</select></div>' +
       '</div>' +
       '<div class="campo"><label>Assuntos</label><div class="filtro-chips">' + chipsAssunto + '</div></div>' +
       '<div class="campo"><label>Situação</label><div class="filtro-chips">' + chipsEstado + '</div></div>' +
-      '<div class="pesquisa-acoes">' +
-        '<button class="btn btn-principal" style="width:auto" id="pesquisa-buscar">Buscar</button>' +
-        '<button class="btn btn-neutro" id="pesquisa-limpar">Limpar filtros</button>' +
-        '<label class="opcao-inline"><input type="checkbox" id="pesquisa-arquivo"' + (p.incluirArquivo ? " checked" : "") + '>Incluir arquivo</label>' +
-      '</div>' +
-    '</div>';
+      (alvo === "dash"
+        ? '<label class="opcao-inline" style="padding-top:0"><input type="checkbox" id="fx-arquivo"' + (f.incluirArquivo ? " checked" : "") + '>Incluir arquivo</label>'
+        : '') +
+      '<div class="pesquisa-acoes" style="margin-top:14px">' +
+        '<button class="btn btn-principal" style="width:auto" id="fx-aplicar">Aplicar filtros</button>' +
+        '<button class="btn btn-neutro" id="fx-limpar">Limpar</button>' +
+        (alvo === "inicio" ? '<button class="btn btn-neutro" id="fx-mes">Mês atual</button>' : '') +
+      '</div>';
+  }
 
-    if(!p.resultados) return topo;
+  function abrirFiltros(alvo){
+    var velho = document.getElementById("popup-filtros");
+    if(velho) velho.remove();
 
+    var f = filtrosDe(alvo);
+    var d = document.createElement("dialog");
+    d.id = "popup-filtros";
+    d.setAttribute("aria-labelledby","titulo-filtros");
+    d.innerHTML = '<div class="filtros-topo"><h2 id="titulo-filtros">' + IC_FILTRO + 'Filtros</h2>' +
+        '<button class="btn btn-neutro btn-mini" id="fx-fechar" aria-label="Fechar" title="Fechar">×</button></div>' +
+      '<div class="filtros-miolo">' + formularioFiltros(f, alvo) + '</div>';
+    document.body.appendChild(d);
+
+    function fechar(){ d.close(); d.remove(); }
+    d.querySelector("#fx-fechar").onclick = fechar;
+    d.addEventListener("cancel", function(e){ e.preventDefault(); fechar(); });
+
+    function ler(){
+      var novo = pesquisaPadrao();
+      novo.termo = d.querySelector("#fx-termo").value;
+      novo.inicio = d.querySelector("#fx-inicio").value;
+      novo.fim = d.querySelector("#fx-fim").value;
+      novo.descricao = d.querySelector("#fx-descricao").value;
+      novo.responsavel = d.querySelector("#fx-responsavel").value;
+      novo.nome = d.querySelector("#fx-nome").value;
+      novo.nota = d.querySelector("#fx-nota").value;
+      Array.prototype.forEach.call(d.querySelectorAll(".fx-assunto"), function(c){ if(c.checked) novo.assuntos.push(c.value); });
+      Array.prototype.forEach.call(d.querySelectorAll(".fx-estado"), function(c){ if(c.checked) novo.estados.push(c.value); });
+      var arq = d.querySelector("#fx-arquivo");
+      novo.incluirArquivo = arq ? arq.checked : false;
+      return novo;
+    }
+
+    function aplicar(novo){
+      if(alvo === "inicio") state.filtrosInicio = novo;
+      else state.pesquisa = novo;
+      fechar();
+      render();
+    }
+
+    d.querySelector("#fx-aplicar").onclick = function(){ aplicar(ler()); };
+    d.querySelector("#fx-termo").addEventListener("keydown", function(e){
+      if(e.key === "Enter"){ e.preventDefault(); aplicar(ler()); }
+    });
+    d.querySelector("#fx-limpar").onclick = function(){
+      var limpo = pesquisaPadrao();
+      limpo.incluirArquivo = (alvo === "dash");
+      aplicar(limpo);
+    };
+    var mes = d.querySelector("#fx-mes");
+    if(mes) mes.onclick = function(){ definirPeriodoPadrao(); fechar(); render(); };
+
+    d.showModal();
+  }
+
+  function registrosDash(){
+    var f = state.pesquisa;
+    var base = state.coleta.map(function(i){ return {item:i, mes:""}; });
+    if(f.incluirArquivo){
+      if(state.arquivoCache){
+        base = base.concat(state.arquivoCache);
+      } else if(!state.arquivoCarregando){
+        state.arquivoCarregando = true;
+        carregarArquivo().then(function(){
+          state.arquivoCarregando = false;
+          if(state.painelAba === "dash") render();
+        }).catch(function(err){
+          state.arquivoCarregando = false;
+          state.pesquisa.incluirArquivo = false;
+          toast(msgBanco(err));
+          render();
+        });
+      }
+    }
+    var achados = base.filter(function(r){ return passaNosFiltros(r.item, f); });
+    achados.sort(function(a,b){ return chaveData(b.item.data).localeCompare(chaveData(a.item.data)); });
+    return achados;
+  }
+
+  function tabelaDash(regs){
     var LIMITE = 500;
-    var mostrados = p.resultados.slice(0, LIMITE);
-    var linhas = mostrados.map(function(r){
+    var linhas = regs.slice(0, LIMITE).map(function(r){
       var i = r.item;
       var id = r.mes
         ? '<span class="mono">' + esc(i.id) + '</span>'
@@ -1849,19 +1889,71 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       '</tr>';
     }).join('');
 
-    return topo +
-    '<div class="cartao">' +
+    return '<div class="cartao">' +
       '<div class="cartao-topo">' +
-        '<h2>' + p.resultados.length + ' resultado(s)' + (p.resultados.length > LIMITE ? ' · exibindo os ' + LIMITE + ' mais recentes' : '') + '</h2>' +
-        '<button class="btn btn-neutro btn-mini" id="pesquisa-baixar">Baixar planilha</button>' +
+        '<h2>Planilha' + (regs.length > LIMITE ? ' · exibindo os ' + LIMITE + ' mais recentes de ' + regs.length : '') + '</h2>' +
+        '<button class="btn btn-neutro btn-mini" id="dash-baixar">Baixar planilha</button>' +
       '</div>' +
       '<div class="rolagem"><table class="tabela-pesquisa"><thead><tr>' +
         '<th>DATA</th><th>ID</th><th>ASSUNTO</th><th>SITUAÇÃO</th><th>CPF</th><th>PLACA</th><th>NOME</th><th>ATRIBUÍDO A</th>' +
         '<th>DESCRIÇÃO</th><th>OBSERVAÇÃO</th><th>SAC</th><th>SUSTENTAÇÃO</th><th>NOTA</th><th>LOCAL</th>' +
       '</tr></thead><tbody>' +
-        (linhas || '<tr><td colspan="14" class="vazio">Nada encontrado.</td></tr>') +
+        (linhas || '<tr><td colspan="14" class="vazio">Nada encontrado com esses filtros.</td></tr>') +
       '</tbody></table></div>' +
     '</div>';
+  }
+
+  function blocoDashboard(){
+    var regs = registrosDash();
+    var itens = regs.map(function(r){ return r.item; });
+    var cabecalho = '<div class="cartao-topo">' +
+        '<h2>Dashboard · ' + regs.length + ' registro(s)</h2>' +
+        '<div class="dash-topo-acoes">' +
+          botaoFiltro("dash") +
+          '<button class="btn btn-neutro btn-mini" id="btn-atualizar">Atualizar dados</button>' +
+        '</div>' +
+      '</div>' +
+      (state.arquivoCarregando ? '<div class="aviso-carregando" style="margin:-8px 0 14px"><span class="giro"></span>Carregando arquivo…</div>' : '');
+    return graficosDash(itens, cabecalho) + tabelaDash(regs);
+  }
+
+  function valorCsv(v){
+    var t = String(v == null ? "" : v);
+    if(/[;"\n\r]/.test(t)) t = '"' + t.replace(/"/g, '""') + '"';
+    return t;
+  }
+
+  function baixarPlanilha(){
+    var r = registrosDash();
+    if(!r.length){ toast("Não há registros com esses filtros."); return; }
+
+    var cab = ["DATA","ID","ASSUNTO","SITUAÇÃO","CPF","PLACA","NOME","ATRIBUÍDO A","DESCRIÇÃO","OBSERVAÇÃO","SAC","SUSTENTAÇÃO","NOTA","LOCAL"];
+    var linhas = r.map(function(x){
+      var i = x.item;
+      return [
+        i.data, i.id, i.assunto, rotuloEstado(i), i.cpf ? digitos(i.cpf) : "", i.placa,
+        i.nome, nomeDoResponsavel(i.responsavel), i.descricao ? capitalizar(i.descricao) : "", i.observacao, i.sac, i.sustentacao,
+        (typeof i.nota === "number" ? i.nota : ""), x.mes ? "Arquivo " + rotuloMes(x.mes) : "Ativo"
+      ].map(valorCsv).join(";");
+    });
+
+    var conteudo = "\uFEFF" + cab.join(";") + "\r\n" + linhas.join("\r\n");
+    var blob = new Blob([conteudo], {type:"text/csv;charset=utf-8"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "dashboard_RA_" + iso(new Date()) + ".csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+    toast(r.length + " linha(s) baixada(s).");
+  }
+
+  function nomeDoResponsavel(username){
+    if(!username) return "";
+    var u = acharUsuario(username);
+    return u ? nomeExibido(u) : username;
   }
 
   function blocoArquivo(){
@@ -2242,40 +2334,23 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
   function definirPeriodoPadrao(){
     var hoje = new Date();
-    state.filtroInicio = iso(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
-    state.filtroFim = iso(hoje);
+    state.filtrosInicio = pesquisaPadrao();
+    state.filtrosInicio.incluirArquivo = false;
+    state.filtrosInicio.inicio = iso(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+    state.filtrosInicio.fim = iso(hoje);
   }
 
   function chaveISO(valor){
     return String(valor || "").replace(/-/g, "");
   }
 
-  function dentroDoPeriodo(item){
-    var chave = chaveData(item.data);
-    if(!chave) return false;
-    var ini = chaveISO(state.filtroInicio), fim = chaveISO(state.filtroFim);
-    if(ini && chave < ini) return false;
-    if(fim && chave > fim) return false;
-    return true;
-  }
 
-  function blocoFiltro(){
-    return '<div class="cartao">' +
-      '<h2>Período</h2>' +
-      '<div class="grade-3">' +
-        '<div class="campo"><label for="filtro-inicio">Início</label>' +
-          '<input type="date" id="filtro-inicio" value="' + esc(state.filtroInicio) + '"></div>' +
-        '<div class="campo"><label for="filtro-fim">Fim</label>' +
-          '<input type="date" id="filtro-fim" value="' + esc(state.filtroFim) + '"></div>' +
-        '<div class="campo"><label for="filtro-limpar">&nbsp;</label>' +
-          '<button class="btn btn-neutro btn-largo" id="filtro-limpar">Ver tudo</button></div>' +
-      '</div>' +
-    '</div>';
-  }
+
+
 
   function blocoColeta(){
     var admin = ehAdministrativo();
-    var visiveis = state.coleta.filter(dentroDoPeriodo);
+    var visiveis = state.coleta.filter(function(i){ return passaNosFiltros(i, state.filtrosInicio); });
 
     var grupos = {naoRespondidas:[], pendentes:[], respondidas:[], avaliadas:[]};
     visiveis.forEach(function(i){
@@ -2339,7 +2414,10 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
           botaoAba("pendentes", "Pendentes", "aba-amarela") +
           botaoAba("avaliadas", "Avaliadas", "aba-azul") +
         '</div>' +
-        '<button class="btn btn-neutro btn-mini" id="btn-atualizar">Atualizar dados</button>' +
+        '<div class="acoes">' +
+          botaoFiltro("inicio") +
+          '<button class="btn btn-neutro btn-mini" id="btn-atualizar">Atualizar dados</button>' +
+        '</div>' +
       '</div>' +
       '<div class="rolagem"><table class="tabela-coleta"><thead><tr>' +
         '<th>DATA</th><th>ID</th><th>ASSUNTO</th><th>DADOS</th><th>NOME</th><th>DESCRIÇÕES</th><th>OBSERVAÇÃO</th>' +
@@ -2495,10 +2573,26 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     return false;
   }
 
+  function meuUsuario(){
+    return ((state.currentUser && state.currentUser.username) || "").toLowerCase();
+  }
+
+  function atribuidosAMim(){
+    var eu = meuUsuario();
+    if(!eu) return [];
+    return ordenarCasos(state.coleta.filter(function(i){
+      return estadoColeta(i) === "naoRespondidas" && !casoAberto(i.id) &&
+        String(i.responsavel || "").toLowerCase() === eu;
+    }));
+  }
+
   function proximoCaso(){
+    var meus = atribuidosAMim();
+    if(meus.length) return meus[0];
     var novos = state.coleta.filter(function(i){
       if(estadoColeta(i) !== "naoRespondidas") return false;
       if(casoAberto(i.id)) return false;
+      if(i.responsavel) return false;
       return !atendimento.assuntos.length || atendimento.assuntos.indexOf(i.assunto) !== -1;
     });
     novos = ordenarCasos(novos);
@@ -2514,8 +2608,10 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       atendimento.minimizados = atendimento.minimizados.filter(function(i){ return String(i.id) !== String(caso.id); });
       if(atendimento.item && String(atendimento.item.id) !== String(caso.id)) guardarNaDoca(atendimento.item);
       atendimento.item = caso;
-    } else if(!atendimento.item && atendimento.assuntos.length){
-      atendimento.item = proximoCaso();
+    } else if(!atendimento.item){
+      var meus = atribuidosAMim();
+      if(meus.length) atendimento.item = meus[0];
+      else if(atendimento.assuntos.length) atendimento.item = proximoCaso();
     }
 
     renderDoca();
@@ -2805,13 +2901,14 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       if(cpf.length !== 11){ feedback.innerHTML = '<div class="aviso aviso-erro">O CPF precisa ter 11 dígitos.</div>'; return; }
     }
 
-    var fica = atribuir || (!!descricao && ehPendente(descricao));
+    var fica = !!destino || atribuir || (!!descricao && ehPendente(descricao));
     var alvo = destino ? (acharUsuario(destino) || state.currentUser) : state.currentUser;
+    var descricaoFinal = destino ? "" : (atribuir ? (descricao || descricaoPendentePadrao()) : descricao);
     var dados = {
       assunto: assunto,
       cpf: cpf,
       placa: pedePlaca(assunto) ? placa : "",
-      descricao: atribuir ? (descricao || descricaoPendentePadrao()) : descricao,
+      descricao: descricaoFinal,
       observacao: observacao,
       sac: fica ? sac : "",
       sustentacao: fica ? sustentacao : "",
@@ -3048,15 +3145,10 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     liga("btn-coleta", "click", abrirColeta);
     liga("btn-atualizar", "click", atualizarDados);
     liga("base-importar", "click", importarBase);
-    liga("pesquisa-buscar", "click", executarPesquisa);
-    liga("pesquisa-termo", "keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); executarPesquisa(); } });
-    liga("pesquisa-termo", "input", function(){ state.pesquisa.termo = this.value; });
-    liga("pesquisa-arquivo", "change", function(){ state.pesquisa.incluirArquivo = this.checked; });
-    liga("pesquisa-limpar", "click", function(){
-      state.pesquisa = pesquisaPadrao();
-      render();
+    liga("dash-baixar", "click", baixarPlanilha);
+    cada("[data-abrir-filtros]", function(b){
+      b.addEventListener("click", function(){ abrirFiltros(b.getAttribute("data-abrir-filtros")); });
     });
-    liga("pesquisa-baixar", "click", baixarPlanilha);
     liga("arquivo-arquivar", "click", arquivarSelecionados);
     liga("arquivo-modo", "change", function(){ state.arquivoModo = this.value; });
     cada("[data-arquivar-mes]", function(c){
@@ -3105,19 +3197,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         render();
       });
     });
-    liga("filtro-inicio", "change", function(){
-      state.filtroInicio = this.value;
-      render();
-    });
-    liga("filtro-fim", "change", function(){
-      state.filtroFim = this.value;
-      render();
-    });
-    liga("filtro-limpar", "click", function(){
-      state.filtroInicio = "";
-      state.filtroFim = "";
-      render();
-    });
+
     liga("copiar-coletor", "click", copiarCodigoColetor);
     liga("importar-coleta", "click", importarColeta);
     liga("limpar-coleta-app", "click", function(){
