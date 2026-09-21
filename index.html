@@ -360,6 +360,9 @@
   .assunto-opcao{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid var(--line-strong);border-radius:9px;cursor:pointer;font-size:13.5px;background:var(--paper);}
   .assunto-opcao input{width:auto;}
   .at-acoes{display:flex;gap:10px;margin-top:20px;}
+  .at-outro-linha{margin-top:12px;text-align:right;}
+  .at-outro-linha .link{font-size:12.5px;color:var(--ink-soft);}
+  .at-outro-linha .link:hover{color:var(--amber-deep);}
   .at-acoes .btn{flex:1;width:auto;}
   #at-feedback{margin-top:14px;font-size:13.5px;}
   #at-observacao{min-height:90px;resize:vertical;}
@@ -389,11 +392,12 @@
   #base-dados{min-height:260px;resize:vertical;font-family:var(--font-mono);font-size:13.5px;}
   #base-feedback{margin-top:14px;font-size:13.5px;white-space:pre-wrap;}
 
-  .pesquisa-linha{display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:12px; align-items:end;}
-  @media (max-width:700px){ .pesquisa-linha{grid-template-columns:1fr;} }
+  .filtro-chips{display:flex; flex-wrap:wrap; gap:8px;}
+  .filtro-chips .assunto-opcao{padding:8px 12px; font-size:13px;}
+  .pesquisa-acoes{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:4px;}
   .opcao-inline{display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--ink-soft); cursor:pointer; padding:11px 0; white-space:nowrap;}
   .opcao-inline input{width:auto;}
-  .tabela-pesquisa{min-width:1300px;}
+  .tabela-pesquisa{min-width:1450px;}
   .selo-arquivo{background:var(--paper); color:var(--ink-soft); border:1px dashed var(--line-strong);}
   .selo-ativo-base{background:var(--sage-soft); color:#a3e666; border:1px solid var(--sage);}
   html.tema-claro .selo-ativo-base{color:#1f7a37;}
@@ -413,6 +417,9 @@
   }
   .btn-tema:hover{background:rgba(242,240,228,0.16); color:#F2F0E4;}
   .btn-tema svg{width:17px; height:17px; flex-shrink:0;}
+  .trilho-pe{margin-top:auto; width:204px;}
+  .trilho-pe .btn-tema{width:100%; white-space:nowrap;}
+  @media (max-width:820px){ .trilho-pe{width:168px;} }
 
   html.tema-claro{
     --olive-deep:#e8eae4;
@@ -730,7 +737,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     assuntos:ASSUNTOS_PADRAO.slice(),
     descricoes:DESCRICOES_PADRAO.slice(),
     editListas:null,
-    pesquisa:{termo:"", incluirArquivo:true, resultados:null},
+    pesquisa:{termo:"", incluirArquivo:true, inicio:"", fim:"", assuntos:[], estados:[], descricao:"", responsavel:"", nome:"", nota:"", resultados:null},
     arquivoIndice:{},
     arquivoCache:null,
     arquivoSelecao:{},
@@ -994,7 +1001,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     if(refListas){refListas.off(); refListas=null;}
     if(refIndice){refIndice.off(); refIndice=null;}
     state.arquivoCache = null;
-    state.pesquisa = {termo:"", incluirArquivo:true, resultados:null};
+    state.pesquisa = pesquisaPadrao();
     if(refUsuarios){ refUsuarios.off(); refUsuarios = null; }
     if(refLogs){ refLogs.off(); refLogs = null; }
     if(refSessao){ refSessao.off(); refSessao = null; }
@@ -1291,6 +1298,12 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     '<div class="shell' + (state.trilhoAberto ? ' aberto' : '') + '">' +
       '<aside class="trilho">' +
         '<nav class="trilho-nav">' + nav + '</nav>' +
+        '<div class="trilho-pe">' +
+          '<button class="btn-tema" id="alternar-tema">' +
+            (state.tema === "claro" ? IC_LUA : IC_SOL) +
+            (state.tema === "claro" ? "Tema escuro" : "Tema claro") +
+          '</button>' +
+        '</div>' +
       '</aside>' +
       '<div class="principal">' +
         '<header class="cabecalho">' + cabecalho + '</header>' +
@@ -1628,23 +1641,70 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     return lista;
   }
 
-  async function executarPesquisa(){
-    var campo = document.getElementById("pesquisa-termo");
-    var marca = document.getElementById("pesquisa-arquivo");
-    state.pesquisa.termo = campo ? campo.value : state.pesquisa.termo;
-    state.pesquisa.incluirArquivo = marca ? marca.checked : state.pesquisa.incluirArquivo;
+  function pesquisaPadrao(){
+    return {termo:"", incluirArquivo:true, inicio:"", fim:"", assuntos:[], estados:[], descricao:"", responsavel:"", nome:"", nota:"", resultados:null};
+  }
 
+  function lerFiltrosPesquisa(){
+    var p = state.pesquisa;
+    function val(id){ var el = document.getElementById(id); return el ? el.value : ""; }
+    p.termo = val("pesquisa-termo");
+    p.inicio = val("pesquisa-inicio");
+    p.fim = val("pesquisa-fim");
+    p.descricao = val("pesquisa-descricao");
+    p.responsavel = val("pesquisa-responsavel");
+    p.nome = val("pesquisa-nome");
+    p.nota = val("pesquisa-nota");
+    var marca = document.getElementById("pesquisa-arquivo");
+    if(marca) p.incluirArquivo = marca.checked;
+    p.assuntos = [];
+    cada(".pesquisa-assunto", function(c){ if(c.checked) p.assuntos.push(c.value); });
+    p.estados = [];
+    cada(".pesquisa-estado", function(c){ if(c.checked) p.estados.push(c.value); });
+  }
+
+  function passaNosFiltros(item){
+    var f = state.pesquisa;
+    var ini = chaveISO(f.inicio), fim = chaveISO(f.fim);
+    if(ini || fim){
+      var c = chaveData(item.data);
+      if(!c) return false;
+      if(ini && c < ini) return false;
+      if(fim && c > fim) return false;
+    }
+    if(f.assuntos.length && f.assuntos.indexOf(item.assunto) === -1) return false;
+    if(f.estados.length && f.estados.indexOf(estadoColeta(item)) === -1) return false;
+    if(f.descricao){
+      if(f.descricao === "__vazio"){ if(item.descricao) return false; }
+      else if(item.descricao !== f.descricao) return false;
+    }
+    if(f.responsavel){
+      var resp = String(item.responsavel || "").toLowerCase();
+      if(f.responsavel === "__ninguem"){ if(resp) return false; }
+      else if(resp !== f.responsavel.toLowerCase()) return false;
+    }
+    if(f.nome){
+      if(f.nome === "__ninguem"){ if(item.nome) return false; }
+      else if(String(item.nome || "") !== f.nome) return false;
+    }
+    if(f.nota === "com" && typeof item.nota !== "number") return false;
+    if(f.nota === "sem" && typeof item.nota === "number") return false;
+
+    var partes = normalizarBusca(f.termo).split(/\s+/).filter(Boolean);
+    if(partes.length){
+      var texto = textoBusca(item);
+      if(!partes.every(function(p){ return texto.indexOf(p) !== -1; })) return false;
+    }
+    return true;
+  }
+
+  async function executarPesquisa(){
+    lerFiltrosPesquisa();
     ocupar("pesquisa-buscar", "Buscando…");
     try {
       var base = state.coleta.map(function(i){ return {item:i, mes:""}; });
       if(state.pesquisa.incluirArquivo) base = base.concat(await carregarArquivo());
-
-      var partes = normalizarBusca(state.pesquisa.termo).split(/\s+/).filter(Boolean);
-      var achados = base.filter(function(r){
-        if(!partes.length) return true;
-        var texto = textoBusca(r.item);
-        return partes.every(function(p){ return texto.indexOf(p) !== -1; });
-      });
+      var achados = base.filter(function(r){ return passaNosFiltros(r.item); });
       achados.sort(function(a,b){ return chaveData(b.item.data).localeCompare(chaveData(a.item.data)); });
       state.pesquisa.resultados = achados;
     } catch(err){
@@ -1663,12 +1723,12 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var r = state.pesquisa.resultados;
     if(!r || !r.length){ toast("Faça uma pesquisa com resultados antes de baixar."); return; }
 
-    var cab = ["DATA","ID","ASSUNTO","SITUAÇÃO","CPF","PLACA","NOME","DESCRIÇÃO","OBSERVAÇÃO","SAC","SUSTENTAÇÃO","NOTA","LOCAL"];
+    var cab = ["DATA","ID","ASSUNTO","SITUAÇÃO","CPF","PLACA","NOME","ATRIBUÍDO A","DESCRIÇÃO","OBSERVAÇÃO","SAC","SUSTENTAÇÃO","NOTA","LOCAL"];
     var linhas = r.map(function(x){
       var i = x.item;
       return [
         i.data, i.id, i.assunto, rotuloEstado(i), i.cpf ? digitos(i.cpf) : "", i.placa,
-        i.nome, i.descricao ? capitalizar(i.descricao) : "", i.observacao, i.sac, i.sustentacao,
+        i.nome, nomeDoResponsavel(i.responsavel), i.descricao ? capitalizar(i.descricao) : "", i.observacao, i.sac, i.sustentacao,
         (typeof i.nota === "number" ? i.nota : ""), x.mes ? "Arquivo " + rotuloMes(x.mes) : "Ativo"
       ].map(valorCsv).join(";");
     });
@@ -1686,15 +1746,71 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     toast(r.length + " linha(s) baixada(s).");
   }
 
+  function nomeDoResponsavel(username){
+    if(!username) return "";
+    var u = acharUsuario(username);
+    return u ? nomeExibido(u) : username;
+  }
+
   function blocoPesquisa(){
     var p = state.pesquisa;
+
+    var opcoesDescricao = '<option value="">Todas</option><option value="__vazio"' + (p.descricao === "__vazio" ? " selected" : "") + '>Sem descrição</option>' +
+      state.descricoes.map(function(d){
+        return '<option value="' + esc(d.nome) + '"' + (p.descricao === d.nome ? " selected" : "") + '>' + esc(capitalizar(d.nome)) + '</option>';
+      }).join("");
+
+    var pessoas = state.users.filter(function(u){ return u && u.username; })
+      .sort(function(a,b){ return nomeExibido(a).localeCompare(nomeExibido(b)); });
+
+    var opcoesResponsavel = '<option value="">Qualquer pessoa</option><option value="__ninguem"' + (p.responsavel === "__ninguem" ? " selected" : "") + '>Ninguém</option>' +
+      pessoas.map(function(u){
+        return '<option value="' + esc(u.username) + '"' + (p.responsavel === u.username ? " selected" : "") + '>' + esc(nomeExibido(u)) + '</option>';
+      }).join("");
+
+    var nomes = {};
+    pessoas.forEach(function(u){ nomes[nomeExibido(u)] = 1; });
+    state.coleta.forEach(function(i){ if(i.nome) nomes[i.nome] = 1; });
+    var opcoesNome = '<option value="">Qualquer pessoa</option><option value="__ninguem"' + (p.nome === "__ninguem" ? " selected" : "") + '>Ninguém</option>' +
+      Object.keys(nomes).sort().map(function(n){
+        return '<option value="' + esc(n) + '"' + (p.nome === n ? " selected" : "") + '>' + esc(n) + '</option>';
+      }).join("");
+
+    var chipsAssunto = nomesAssuntos().map(function(a){
+      return '<label class="assunto-opcao"><input type="checkbox" class="pesquisa-assunto" value="' + esc(a) + '"' +
+        (p.assuntos.indexOf(a) !== -1 ? " checked" : "") + '>' + esc(a) + '</label>';
+    }).join("");
+
+    var estados = [["naoRespondidas","Não respondidas"],["pendentes","Pendentes"],["respondidas","Respondidas"]];
+    var chipsEstado = estados.map(function(e){
+      return '<label class="assunto-opcao"><input type="checkbox" class="pesquisa-estado" value="' + e[0] + '"' +
+        (p.estados.indexOf(e[0]) !== -1 ? " checked" : "") + '>' + e[1] + '</label>';
+    }).join("");
+
     var topo = '<div class="cartao">' +
       '<h2>Pesquisa</h2>' +
-      '<div class="pesquisa-linha">' +
-        '<div class="campo" style="margin-bottom:0"><label for="pesquisa-termo">Buscar por qualquer informação</label>' +
-          '<input type="text" id="pesquisa-termo" placeholder="ID, CPF, placa, nome, observação, SAC…" value="' + esc(p.termo) + '"></div>' +
-        '<label class="opcao-inline"><input type="checkbox" id="pesquisa-arquivo"' + (p.incluirArquivo ? " checked" : "") + '>Incluir arquivo</label>' +
+      '<div class="campo"><label for="pesquisa-termo">Texto livre</label>' +
+        '<input type="text" id="pesquisa-termo" placeholder="ID, CPF, placa, nome, observação, SAC…" value="' + esc(p.termo) + '"></div>' +
+      '<div class="grade-3">' +
+        '<div class="campo"><label for="pesquisa-inicio">Data de</label><input type="date" id="pesquisa-inicio" value="' + esc(p.inicio) + '"></div>' +
+        '<div class="campo"><label for="pesquisa-fim">Data até</label><input type="date" id="pesquisa-fim" value="' + esc(p.fim) + '"></div>' +
+        '<div class="campo"><label for="pesquisa-descricao">Descrição</label><select id="pesquisa-descricao">' + opcoesDescricao + '</select></div>' +
+      '</div>' +
+      '<div class="grade-3">' +
+        '<div class="campo"><label for="pesquisa-responsavel">Atribuído a</label><select id="pesquisa-responsavel">' + opcoesResponsavel + '</select></div>' +
+        '<div class="campo"><label for="pesquisa-nome">Tratado por</label><select id="pesquisa-nome">' + opcoesNome + '</select></div>' +
+        '<div class="campo"><label for="pesquisa-nota">Avaliação</label><select id="pesquisa-nota">' +
+          '<option value="">Todas</option>' +
+          '<option value="com"' + (p.nota === "com" ? " selected" : "") + '>Com nota</option>' +
+          '<option value="sem"' + (p.nota === "sem" ? " selected" : "") + '>Sem nota</option>' +
+        '</select></div>' +
+      '</div>' +
+      '<div class="campo"><label>Assuntos</label><div class="filtro-chips">' + chipsAssunto + '</div></div>' +
+      '<div class="campo"><label>Situação</label><div class="filtro-chips">' + chipsEstado + '</div></div>' +
+      '<div class="pesquisa-acoes">' +
         '<button class="btn btn-principal" style="width:auto" id="pesquisa-buscar">Buscar</button>' +
+        '<button class="btn btn-neutro" id="pesquisa-limpar">Limpar filtros</button>' +
+        '<label class="opcao-inline"><input type="checkbox" id="pesquisa-arquivo"' + (p.incluirArquivo ? " checked" : "") + '>Incluir arquivo</label>' +
       '</div>' +
     '</div>';
 
@@ -1723,6 +1839,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         celula(i.cpf ? digitos(i.cpf) : "", true) +
         celula(i.placa, true) +
         celula(i.nome) +
+        celula(nomeDoResponsavel(i.responsavel)) +
         celula(i.descricao ? capitalizar(i.descricao) : "") +
         celula(i.observacao) +
         celula(i.sac, true) +
@@ -1739,10 +1856,10 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         '<button class="btn btn-neutro btn-mini" id="pesquisa-baixar">Baixar planilha</button>' +
       '</div>' +
       '<div class="rolagem"><table class="tabela-pesquisa"><thead><tr>' +
-        '<th>DATA</th><th>ID</th><th>ASSUNTO</th><th>SITUAÇÃO</th><th>CPF</th><th>PLACA</th><th>NOME</th>' +
+        '<th>DATA</th><th>ID</th><th>ASSUNTO</th><th>SITUAÇÃO</th><th>CPF</th><th>PLACA</th><th>NOME</th><th>ATRIBUÍDO A</th>' +
         '<th>DESCRIÇÃO</th><th>OBSERVAÇÃO</th><th>SAC</th><th>SUSTENTAÇÃO</th><th>NOTA</th><th>LOCAL</th>' +
       '</tr></thead><tbody>' +
-        (linhas || '<tr><td colspan="13" class="vazio">Nada encontrado.</td></tr>') +
+        (linhas || '<tr><td colspan="14" class="vazio">Nada encontrado.</td></tr>') +
       '</tbody></table></div>' +
     '</div>';
   }
@@ -2519,11 +2636,11 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
           nomesAssuntos().map(function(op){ return '<option' + (op === item.assunto ? ' selected' : '') + '>' + esc(op) + '</option>'; }).join('') +
         '</select></div>' +
       '<div class="campo"><label for="at-cpf">CPF</label>' +
-        '<input type="text" id="at-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" value="' + esc(item.cpf ? formatCPF(item.cpf) : "") + '"></div>' +
+        '<input type="text" id="at-cpf" inputmode="numeric" maxlength="11" placeholder="00000000000" value="' + esc(item.cpf ? digitos(item.cpf) : "") + '"></div>' +
     '</div>' +
     '<div class="campo" id="at-placa-campo" style="display:' + (placaVisivel ? "block" : "none") + '">' +
       '<label for="at-placa">Placa</label>' +
-      '<input type="text" id="at-placa" maxlength="10" placeholder="ABC1D23" value="' + esc(item.placa || "") + '"></div>' +
+      '<input type="text" id="at-placa" maxlength="7" placeholder="ABC1D23" value="' + esc(String(item.placa || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase()) + '"></div>' +
     '<div id="at-repetidos"></div>' +
     '<div class="campo"><label for="at-descricao">Descrição</label>' +
       '<select id="at-descricao">' +
@@ -2545,7 +2662,24 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     '<div class="at-acoes">' +
       '<button class="btn btn-principal" id="at-salvar">SALVAR</button>' +
       '<button class="btn btn-neutro" id="at-atribuir">ATRIBUIR</button>' +
+    '</div>' +
+    '<div class="at-outro-linha"><button class="link" id="at-mostrar-outro">Atribuir a outra pessoa</button></div>' +
+    '<div id="at-outro" class="grade-2" style="display:none;margin-top:10px;align-items:end">' +
+      '<div class="campo" style="margin-bottom:0"><label for="at-destino">Pessoa</label>' +
+        '<select id="at-destino">' + opcoesDestino() + '</select></div>' +
+      '<div class="campo" style="margin-bottom:0"><button class="btn btn-neutro btn-largo" id="at-confirmar-outro">Confirmar atribuição</button></div>' +
     '</div>';
+  }
+
+  function opcoesDestino(){
+    var eu = ((state.currentUser && state.currentUser.username) || "").toLowerCase();
+    var pessoas = state.users.filter(function(u){
+      return u && u.username && u.active !== false && String(u.username).toLowerCase() !== eu;
+    }).sort(function(a,b){ return nomeExibido(a).localeCompare(nomeExibido(b)); });
+    if(!pessoas.length) return '<option value="">Nenhum outro acesso ativo</option>';
+    return pessoas.map(function(u){
+      return '<option value="' + esc(u.username) + '">' + esc(nomeExibido(u)) + '</option>';
+    }).join("");
   }
 
   function ligarAtendimento(){
@@ -2581,8 +2715,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       renderAtendimento();
     });
 
-    liga("at-cpf", "input", function(){ this.value = formatCPF(this.value); atualizarRepetidos(); });
-    liga("at-placa", "input", function(){ this.value = this.value.toUpperCase(); atualizarRepetidos(); });
+    liga("at-cpf", "input", function(){ this.value = digitos(this.value).slice(0,11); atualizarRepetidos(); });
+    liga("at-placa", "input", function(){ this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0,7); atualizarRepetidos(); });
 
     liga("at-assunto", "change", function(){
       var campo = document.getElementById("at-placa-campo");
@@ -2596,6 +2730,15 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
     liga("at-salvar", "click", function(){ salvarAtendimento(false); });
     liga("at-atribuir", "click", function(){ salvarAtendimento(true); });
+    liga("at-mostrar-outro", "click", function(){
+      var bloco = document.getElementById("at-outro");
+      if(bloco) bloco.style.display = (bloco.style.display === "none") ? "grid" : "none";
+    });
+    liga("at-confirmar-outro", "click", function(){
+      var destino = document.getElementById("at-destino").value;
+      if(!destino){ toast("Não há outra pessoa ativa para atribuir."); return; }
+      salvarAtendimento(true, destino);
+    });
 
     atualizarRepetidos();
   }
@@ -2644,14 +2787,14 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     });
   }
 
-  async function salvarAtendimento(atribuir){
+  async function salvarAtendimento(atribuir, destino){
     var item = atendimento.item;
     if(!item) return;
     var feedback = document.getElementById("at-feedback");
 
     var assunto = document.getElementById("at-assunto").value;
     var cpf = digitos(document.getElementById("at-cpf").value || "");
-    var placa = (document.getElementById("at-placa").value || "").trim().toUpperCase();
+    var placa = (document.getElementById("at-placa").value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
     var descricao = document.getElementById("at-descricao").value;
     var sac = (document.getElementById("at-sac").value || "").trim().toUpperCase();
     var sustentacao = (document.getElementById("at-sustentacao").value || "").trim().toUpperCase();
@@ -2663,6 +2806,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     }
 
     var fica = atribuir || (!!descricao && ehPendente(descricao));
+    var alvo = destino ? (acharUsuario(destino) || state.currentUser) : state.currentUser;
     var dados = {
       assunto: assunto,
       cpf: cpf,
@@ -2671,21 +2815,22 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       observacao: observacao,
       sac: fica ? sac : "",
       sustentacao: fica ? sustentacao : "",
-      nome: nomeExibido(state.currentUser),
-      responsavel: fica ? ((state.currentUser && state.currentUser.username) || "") : "",
+      nome: nomeExibido(alvo),
+      responsavel: fica ? ((alvo && alvo.username) || "") : "",
       atualizadoEm: new Date().toISOString()
     };
 
     var salvar = document.getElementById("at-salvar");
     var atribui = document.getElementById("at-atribuir");
-    salvar.disabled = true; atribui.disabled = true;
+    var outro = document.getElementById("at-confirmar-outro");
+    salvar.disabled = true; atribui.disabled = true; if(outro) outro.disabled = true;
 
     try {
       await db.ref("coleta/" + item.id).update(dados);
       for(var k in dados){ if(Object.prototype.hasOwnProperty.call(dados,k)) item[k] = dados[k]; }
-      toast(atribuir ? "Caso atribuído a você." : "Caso salvo.");
+      toast(destino ? ("Caso atribuído a " + nomeExibido(alvo) + ".") : (atribuir ? "Caso atribuído a você." : "Caso salvo."));
     } catch(err){
-      salvar.disabled = false; atribui.disabled = false;
+      salvar.disabled = false; atribui.disabled = false; if(outro) outro.disabled = false;
       feedback.innerHTML = '<div class="aviso aviso-erro">' + esc(msgBanco(err)) + '</div>';
       return;
     }
@@ -2907,6 +3052,10 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     liga("pesquisa-termo", "keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); executarPesquisa(); } });
     liga("pesquisa-termo", "input", function(){ state.pesquisa.termo = this.value; });
     liga("pesquisa-arquivo", "change", function(){ state.pesquisa.incluirArquivo = this.checked; });
+    liga("pesquisa-limpar", "click", function(){
+      state.pesquisa = pesquisaPadrao();
+      render();
+    });
     liga("pesquisa-baixar", "click", baixarPlanilha);
     liga("arquivo-arquivar", "click", arquivarSelecionados);
     liga("arquivo-modo", "change", function(){ state.arquivoModo = this.value; });
