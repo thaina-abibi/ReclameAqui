@@ -389,6 +389,16 @@
   #base-dados{min-height:260px;resize:vertical;font-family:var(--font-mono);font-size:13.5px;}
   #base-feedback{margin-top:14px;font-size:13.5px;white-space:pre-wrap;}
 
+  .pesquisa-linha{display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:12px; align-items:end;}
+  @media (max-width:700px){ .pesquisa-linha{grid-template-columns:1fr;} }
+  .opcao-inline{display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--ink-soft); cursor:pointer; padding:11px 0; white-space:nowrap;}
+  .opcao-inline input{width:auto;}
+  .tabela-pesquisa{min-width:1300px;}
+  .selo-arquivo{background:var(--paper); color:var(--ink-soft); border:1px dashed var(--line-strong);}
+  .selo-ativo-base{background:var(--sage-soft); color:#a3e666; border:1px solid var(--sage);}
+  html.tema-claro .selo-ativo-base{color:#1f7a37;}
+  .tabela-arquivo input[type="checkbox"]{width:auto;}
+
   .id-link{
     background:none;border:none;padding:0;cursor:pointer;
     font-family:var(--font-mono);font-size:13px;color:var(--olive-soft);
@@ -492,6 +502,14 @@
     "sessaoAtiva": {
       ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
       ".write": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)"
+    },
+    "arquivo": {
+      ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
+      ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true)"
+    },
+    "arquivoIndice": {
+      ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
+      ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true)"
     },
     "listas": {
       ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
@@ -712,6 +730,11 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     assuntos:ASSUNTOS_PADRAO.slice(),
     descricoes:DESCRICOES_PADRAO.slice(),
     editListas:null,
+    pesquisa:{termo:"", incluirArquivo:true, resultados:null},
+    arquivoIndice:{},
+    arquivoCache:null,
+    arquivoSelecao:{},
+    arquivoModo:"respondidas",
     tema:"escuro"
   };
 
@@ -720,6 +743,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   var IC_PESSOAS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3.4"/><path d="M22 20v-2a4 4 0 0 0-3-3.87"/><path d="M16.5 3.6a4 4 0 0 1 0 6.8"/></svg>';
   var IC_REGISTRO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><line x1="9" y1="13" x2="16" y2="13"/><line x1="9" y1="17" x2="14" y2="17"/></svg>';
   var IC_INICIO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.4 12 4l9 7.4"/><path d="M5 10v9.5a.5.5 0 0 0 .5.5H10v-6h4v6h4.5a.5.5 0 0 0 .5-.5V10"/></svg>';
+  var IC_BUSCA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20.5" y1="20.5" x2="16" y2="16"/></svg>';
+  var IC_ARQUIVO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/><line x1="10" y1="13" x2="14" y2="13"/></svg>';
   var IC_LISTAS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="7" r="2.2"/><circle cx="15" cy="12" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>';
   var IC_IMPORTAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="m7.5 9.5 4.5 4.5 4.5-4.5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>';
   var IC_GRAFICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v17a1 1 0 0 0 1 1h16"/><rect x="7" y="12" width="3" height="6"/><rect x="12.5" y="8" width="3" height="10"/><rect x="18" y="4.5" width="3" height="13.5"/></svg>';
@@ -914,10 +939,15 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       (state.currentUser.username||"").toLowerCase() === (username||"").toLowerCase());
   }
 
-  var refUsuarios = null, refLogs = null, refSessao = null, refUso = null, refListas = null, aoCair = null;
+  var refUsuarios = null, refLogs = null, refSessao = null, refUso = null, refListas = null, refIndice = null, aoCair = null;
 
   function ligarBase(){
     if(refUsuarios) return;
+    refIndice = db.ref("arquivoIndice");
+    refIndice.on("value", function(snap){
+      state.arquivoIndice = snap.val() || {};
+      if(state.screen === "painel" && state.painelAba === "arquivo" && !digitandoNoFormulario()) render();
+    }, function(){});
     refListas = db.ref("listas");
     refListas.on("value", function(snap){
       var v = snap.val() || {};
@@ -962,6 +992,9 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   function desligarBase(){
     if(coletaRef){coletaRef.off();coletaRef=null;} state.coleta=[];
     if(refListas){refListas.off(); refListas=null;}
+    if(refIndice){refIndice.off(); refIndice=null;}
+    state.arquivoCache = null;
+    state.pesquisa = {termo:"", incluirArquivo:true, resultados:null};
     if(refUsuarios){ refUsuarios.off(); refUsuarios = null; }
     if(refLogs){ refLogs.off(); refLogs = null; }
     if(refSessao){ refSessao.off(); refSessao = null; }
@@ -1045,7 +1078,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
   function digitandoNoFormulario(){
     if(state.painelAba === "listas" && document.getElementById("area-listas")) return true;
-    var ids = ["base-dados","editar-nome","editar-cpf","coleta-dados","novo-nome","novo-usuario","novo-cpf","login-usuario","conta-senha1","senha-nova"];
+    var ids = ["pesquisa-termo","base-dados","editar-nome","editar-cpf","coleta-dados","novo-nome","novo-usuario","novo-cpf","login-usuario","conta-senha1","senha-nova"];
     for(var i=0;i<ids.length;i++){
       var campo = document.getElementById(ids[i]);
       if(campo && campo.value) return true;
@@ -1294,15 +1327,17 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var u = state.currentUser || {};
     var admin = ehAdministrativo(u);
 
-    if(!admin && (state.painelAba === "usuarios" || state.painelAba === "registro" || state.painelAba === "importar" || state.painelAba === "listas")){
+    if(!admin && (state.painelAba === "usuarios" || state.painelAba === "registro" || state.painelAba === "importar" || state.painelAba === "listas" || state.painelAba === "arquivo")){
       state.painelAba = "inicio";
     }
 
     var nav = itemNav("inicio", "Início", IC_INICIO, state.painelAba === "inicio");
     nav += itemNav("dash", "Painel", IC_GRAFICO, state.painelAba === "dash");
+    nav += itemNav("pesquisa", "Pesquisa", IC_BUSCA, state.painelAba === "pesquisa");
     if(admin){
       nav += itemNav("usuarios", "Usuários", IC_PESSOAS, state.painelAba === "usuarios");
       nav += itemNav("registro", "Registro", IC_REGISTRO, state.painelAba === "registro");
+      nav += itemNav("arquivo", "Arquivo", IC_ARQUIVO, state.painelAba === "arquivo");
       nav += itemNav("importar", "Importar", IC_IMPORTAR, state.painelAba === "importar");
       nav += itemNav("listas", "Edições Admin", IC_LISTAS, state.painelAba === "listas");
     }
@@ -1320,6 +1355,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
     var conteudo;
     if(state.painelAba === "dash") conteudo = blocoDash();
+    else if(state.painelAba === "pesquisa") conteudo = blocoPesquisa();
+    else if(state.painelAba === "arquivo" && admin) conteudo = blocoArquivo();
     else if(state.painelAba === "conta") conteudo = blocoConta(u);
     else if(state.painelAba === "usuarios" && admin) conteudo = blocoUsuarios();
     else if(state.painelAba === "registro" && admin) conteudo = blocoRegistro();
@@ -1545,6 +1582,310 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         ? dias.map(function(d){ return barra(d, porDia[d], maiorDia); }).join('')
         : '<div class="vazio">Nenhum registro importado ainda.</div>') +
     '</div>';
+  }
+
+  function mesDoItem(item){
+    return chaveData(item.data).slice(0,6);
+  }
+
+  function rotuloMes(chave){
+    chave = String(chave || "");
+    if(chave.length !== 6) return chave;
+    return chave.slice(4,6) + "/" + chave.slice(0,4);
+  }
+
+  function rotuloEstado(item){
+    var e = estadoColeta(item);
+    if(e === "respondidas") return "Respondida";
+    if(e === "pendentes") return "Pendente";
+    return "Não respondida";
+  }
+
+  function normalizarBusca(t){
+    return String(t == null ? "" : t).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+
+  function textoBusca(item){
+    return normalizarBusca([
+      item.id, item.data, item.assunto, item.cpf, item.cpf ? formatCPF(item.cpf) : "", item.placa,
+      item.nome, item.descricao, item.observacao, item.sac, item.sustentacao,
+      item.situacao, item.responsavel, (typeof item.nota === "number" ? "nota " + item.nota : "")
+    ].join(" | "));
+  }
+
+  async function carregarArquivo(){
+    if(state.arquivoCache) return state.arquivoCache;
+    var snap = await db.ref("arquivo").once("value");
+    var bruto = snap.val() || {};
+    var lista = [];
+    Object.keys(bruto).forEach(function(mes){
+      var grupo = bruto[mes] || {};
+      Object.keys(grupo).forEach(function(id){
+        if(grupo[id]) lista.push({item:grupo[id], mes:mes});
+      });
+    });
+    state.arquivoCache = lista;
+    return lista;
+  }
+
+  async function executarPesquisa(){
+    var campo = document.getElementById("pesquisa-termo");
+    var marca = document.getElementById("pesquisa-arquivo");
+    state.pesquisa.termo = campo ? campo.value : state.pesquisa.termo;
+    state.pesquisa.incluirArquivo = marca ? marca.checked : state.pesquisa.incluirArquivo;
+
+    ocupar("pesquisa-buscar", "Buscando…");
+    try {
+      var base = state.coleta.map(function(i){ return {item:i, mes:""}; });
+      if(state.pesquisa.incluirArquivo) base = base.concat(await carregarArquivo());
+
+      var partes = normalizarBusca(state.pesquisa.termo).split(/\s+/).filter(Boolean);
+      var achados = base.filter(function(r){
+        if(!partes.length) return true;
+        var texto = textoBusca(r.item);
+        return partes.every(function(p){ return texto.indexOf(p) !== -1; });
+      });
+      achados.sort(function(a,b){ return chaveData(b.item.data).localeCompare(chaveData(a.item.data)); });
+      state.pesquisa.resultados = achados;
+    } catch(err){
+      toast(msgBanco(err));
+    }
+    render();
+  }
+
+  function valorCsv(v){
+    var t = String(v == null ? "" : v);
+    if(/[;"\n\r]/.test(t)) t = '"' + t.replace(/"/g, '""') + '"';
+    return t;
+  }
+
+  function baixarPlanilha(){
+    var r = state.pesquisa.resultados;
+    if(!r || !r.length){ toast("Faça uma pesquisa com resultados antes de baixar."); return; }
+
+    var cab = ["DATA","ID","ASSUNTO","SITUAÇÃO","CPF","PLACA","NOME","DESCRIÇÃO","OBSERVAÇÃO","SAC","SUSTENTAÇÃO","NOTA","LOCAL"];
+    var linhas = r.map(function(x){
+      var i = x.item;
+      return [
+        i.data, i.id, i.assunto, rotuloEstado(i), i.cpf ? digitos(i.cpf) : "", i.placa,
+        i.nome, i.descricao ? capitalizar(i.descricao) : "", i.observacao, i.sac, i.sustentacao,
+        (typeof i.nota === "number" ? i.nota : ""), x.mes ? "Arquivo " + rotuloMes(x.mes) : "Ativo"
+      ].map(valorCsv).join(";");
+    });
+
+    var conteudo = "\uFEFF" + cab.join(";") + "\r\n" + linhas.join("\r\n");
+    var blob = new Blob([conteudo], {type:"text/csv;charset=utf-8"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "pesquisa_RA_" + iso(new Date()) + ".csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+    toast(r.length + " linha(s) baixada(s).");
+  }
+
+  function blocoPesquisa(){
+    var p = state.pesquisa;
+    var topo = '<div class="cartao">' +
+      '<h2>Pesquisa</h2>' +
+      '<div class="pesquisa-linha">' +
+        '<div class="campo" style="margin-bottom:0"><label for="pesquisa-termo">Buscar por qualquer informação</label>' +
+          '<input type="text" id="pesquisa-termo" placeholder="ID, CPF, placa, nome, observação, SAC…" value="' + esc(p.termo) + '"></div>' +
+        '<label class="opcao-inline"><input type="checkbox" id="pesquisa-arquivo"' + (p.incluirArquivo ? " checked" : "") + '>Incluir arquivo</label>' +
+        '<button class="btn btn-principal" style="width:auto" id="pesquisa-buscar">Buscar</button>' +
+      '</div>' +
+    '</div>';
+
+    if(!p.resultados) return topo;
+
+    var LIMITE = 500;
+    var mostrados = p.resultados.slice(0, LIMITE);
+    var linhas = mostrados.map(function(r){
+      var i = r.item;
+      var id = r.mes
+        ? '<span class="mono">' + esc(i.id) + '</span>'
+        : '<button class="id-link" data-abrir-caso="' + esc(i.id) + '">' + esc(i.id) + '</button>';
+      var local = r.mes
+        ? '<span class="selo selo-arquivo">Arquivo ' + esc(rotuloMes(r.mes)) + '</span>'
+        : '<span class="selo selo-ativo-base">Ativo</span>';
+      function celula(v, mono){
+        return (v === undefined || v === null || v === "")
+          ? '<td class="celula-vazia">—</td>'
+          : '<td' + (mono ? ' class="mono"' : '') + '>' + esc(v) + '</td>';
+      }
+      return '<tr>' +
+        celula(i.data) +
+        '<td>' + id + '</td>' +
+        celula(i.assunto) +
+        celula(rotuloEstado(i)) +
+        celula(i.cpf ? digitos(i.cpf) : "", true) +
+        celula(i.placa, true) +
+        celula(i.nome) +
+        celula(i.descricao ? capitalizar(i.descricao) : "") +
+        celula(i.observacao) +
+        celula(i.sac, true) +
+        celula(i.sustentacao, true) +
+        celula(typeof i.nota === "number" ? i.nota : "", true) +
+        '<td>' + local + '</td>' +
+      '</tr>';
+    }).join('');
+
+    return topo +
+    '<div class="cartao">' +
+      '<div class="cartao-topo">' +
+        '<h2>' + p.resultados.length + ' resultado(s)' + (p.resultados.length > LIMITE ? ' · exibindo os ' + LIMITE + ' mais recentes' : '') + '</h2>' +
+        '<button class="btn btn-neutro btn-mini" id="pesquisa-baixar">Baixar planilha</button>' +
+      '</div>' +
+      '<div class="rolagem"><table class="tabela-pesquisa"><thead><tr>' +
+        '<th>DATA</th><th>ID</th><th>ASSUNTO</th><th>SITUAÇÃO</th><th>CPF</th><th>PLACA</th><th>NOME</th>' +
+        '<th>DESCRIÇÃO</th><th>OBSERVAÇÃO</th><th>SAC</th><th>SUSTENTAÇÃO</th><th>NOTA</th><th>LOCAL</th>' +
+      '</tr></thead><tbody>' +
+        (linhas || '<tr><td colspan="13" class="vazio">Nada encontrado.</td></tr>') +
+      '</tbody></table></div>' +
+    '</div>';
+  }
+
+  function blocoArquivo(){
+    var meses = {};
+    state.coleta.forEach(function(i){
+      var m = mesDoItem(i);
+      if(m.length !== 6) return;
+      if(!meses[m]) meses[m] = {total:0, naoRespondidas:0, pendentes:0, respondidas:0};
+      meses[m].total++;
+      meses[m][estadoColeta(i)]++;
+    });
+    var chaves = Object.keys(meses).sort().reverse();
+
+    var linhasAtivos = chaves.map(function(m){
+      var c = meses[m];
+      return '<tr>' +
+        '<td><input type="checkbox" data-arquivar-mes="' + m + '"' + (state.arquivoSelecao[m] ? " checked" : "") + '></td>' +
+        '<td><strong>' + rotuloMes(m) + '</strong></td>' +
+        '<td class="mono">' + c.total + '</td>' +
+        '<td class="mono">' + c.naoRespondidas + '</td>' +
+        '<td class="mono">' + c.pendentes + '</td>' +
+        '<td class="mono">' + c.respondidas + '</td>' +
+      '</tr>';
+    }).join('');
+
+    var arquivados = Object.keys(state.arquivoIndice || {}).sort().reverse();
+    var linhasArquivo = arquivados.map(function(m){
+      return '<tr>' +
+        '<td><strong>' + rotuloMes(m) + '</strong></td>' +
+        '<td class="mono">' + (state.arquivoIndice[m] || 0) + '</td>' +
+        '<td><button class="btn btn-neutro btn-mini" data-restaurar-mes="' + m + '">Restaurar</button></td>' +
+      '</tr>';
+    }).join('');
+
+    return '<div class="cartao">' +
+      '<h2>Base ativa</h2>' +
+      '<div class="rolagem"><table class="tabela-arquivo"><thead><tr>' +
+        '<th></th><th>MÊS</th><th>TOTAL</th><th>NÃO RESPONDIDAS</th><th>PENDENTES</th><th>RESPONDIDAS</th>' +
+      '</tr></thead><tbody>' +
+        (linhasAtivos || '<tr><td colspan="6" class="vazio">Nenhum registro na base ativa.</td></tr>') +
+      '</tbody></table></div>' +
+      '<div class="grade-3" style="margin-top:18px; align-items:end">' +
+        '<div class="campo" style="margin-bottom:0"><label for="arquivo-modo">O que arquivar dos meses marcados</label>' +
+          '<select id="arquivo-modo">' +
+            '<option value="respondidas"' + (state.arquivoModo === "respondidas" ? " selected" : "") + '>Somente respondidas</option>' +
+            '<option value="tudo"' + (state.arquivoModo === "tudo" ? " selected" : "") + '>Tudo do mês</option>' +
+          '</select></div>' +
+        '<div class="campo" style="margin-bottom:0"><button class="btn btn-principal btn-largo" id="arquivo-arquivar">Arquivar selecionados</button></div>' +
+      '</div>' +
+      '<div id="arquivo-feedback" style="margin-top:14px;font-size:13.5px"></div>' +
+    '</div>' +
+    '<div class="cartao">' +
+      '<h2>Arquivado</h2>' +
+      '<div class="rolagem"><table class="tabela-arquivo" style="min-width:420px"><thead><tr>' +
+        '<th>MÊS</th><th>REGISTROS</th><th></th>' +
+      '</tr></thead><tbody>' +
+        (linhasArquivo || '<tr><td colspan="3" class="vazio">Nada arquivado ainda.</td></tr>') +
+      '</tbody></table></div>' +
+    '</div>';
+  }
+
+  function copiaLimpa(item){
+    var c = {};
+    for(var k in item){
+      if(Object.prototype.hasOwnProperty.call(item,k) && item[k] !== undefined) c[k] = item[k];
+    }
+    return c;
+  }
+
+  async function arquivarSelecionados(){
+    if(!ehAdministrativo()) return toast("Só o perfil administrativo pode arquivar.");
+    var feedback = document.getElementById("arquivo-feedback");
+    var meses = Object.keys(state.arquivoSelecao).filter(function(m){ return state.arquivoSelecao[m]; });
+    if(!meses.length){ feedback.textContent = "Marque pelo menos um mês."; return; }
+
+    var modo = state.arquivoModo;
+    var itens = state.coleta.filter(function(i){
+      if(meses.indexOf(mesDoItem(i)) === -1) return false;
+      return modo === "tudo" || estadoColeta(i) === "respondidas";
+    });
+    if(!itens.length){ feedback.textContent = "Nenhum registro se encaixa nessa seleção."; return; }
+    if(casoAberto && itens.some(function(i){ return casoAberto(i.id); })){
+      feedback.textContent = "Há protocolos dessa seleção abertos no atendimento. Feche-os antes de arquivar.";
+      return;
+    }
+    if(!confirm("Arquivar " + itens.length + " registro(s) de " + meses.map(rotuloMes).join(", ") + "?")) return;
+
+    ocupar("arquivo-arquivar", "Arquivando…");
+    var contagem = {}, feitos = 0;
+    try {
+      for(var ini = 0; ini < itens.length; ini += 250){
+        var lote = itens.slice(ini, ini + 250), mudancas = {};
+        lote.forEach(function(i){
+          var m = mesDoItem(i);
+          mudancas["arquivo/" + m + "/" + i.id] = copiaLimpa(i);
+          mudancas["coleta/" + i.id] = null;
+          contagem[m] = (contagem[m] || 0) + 1;
+        });
+        await db.ref().update(mudancas);
+        feitos += lote.length;
+        feedback.textContent = feitos + " de " + itens.length + " arquivados…";
+      }
+      var indice = {};
+      Object.keys(contagem).forEach(function(m){
+        indice["arquivoIndice/" + m] = (Number(state.arquivoIndice[m]) || 0) + contagem[m];
+      });
+      await db.ref().update(indice);
+      state.arquivoCache = null;
+      state.arquivoSelecao = {};
+      registrar("Arquivados " + feitos + " registros", meses.map(rotuloMes).join(", "));
+      toast(feitos + " registro(s) arquivado(s).");
+      render();
+    } catch(err){
+      liberar("arquivo-arquivar");
+      feedback.textContent = feitos + " de " + itens.length + " arquivados antes do erro: " + msgBanco(err);
+    }
+  }
+
+  async function restaurarMes(mes){
+    if(!ehAdministrativo()) return toast("Só o perfil administrativo pode restaurar.");
+    if(!confirm("Devolver " + rotuloMes(mes) + " para a base ativa?")) return;
+    try {
+      var snap = await db.ref("arquivo/" + mes).once("value");
+      var grupo = snap.val() || {};
+      var ids = Object.keys(grupo);
+      for(var ini = 0; ini < ids.length; ini += 250){
+        var mudancas = {};
+        ids.slice(ini, ini + 250).forEach(function(id){
+          mudancas["coleta/" + id] = grupo[id];
+          mudancas["arquivo/" + mes + "/" + id] = null;
+        });
+        await db.ref().update(mudancas);
+      }
+      await db.ref("arquivoIndice/" + mes).remove();
+      state.arquivoCache = null;
+      registrar("Restaurados " + ids.length + " registros", rotuloMes(mes));
+      toast(ids.length + " registro(s) devolvido(s) à base ativa.");
+      render();
+    } catch(err){
+      toast(msgBanco(err));
+    }
   }
 
   function listasEmEdicao(){
@@ -2562,6 +2903,19 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     liga("btn-coleta", "click", abrirColeta);
     liga("btn-atualizar", "click", atualizarDados);
     liga("base-importar", "click", importarBase);
+    liga("pesquisa-buscar", "click", executarPesquisa);
+    liga("pesquisa-termo", "keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); executarPesquisa(); } });
+    liga("pesquisa-termo", "input", function(){ state.pesquisa.termo = this.value; });
+    liga("pesquisa-arquivo", "change", function(){ state.pesquisa.incluirArquivo = this.checked; });
+    liga("pesquisa-baixar", "click", baixarPlanilha);
+    liga("arquivo-arquivar", "click", arquivarSelecionados);
+    liga("arquivo-modo", "change", function(){ state.arquivoModo = this.value; });
+    cada("[data-arquivar-mes]", function(c){
+      c.addEventListener("change", function(){ state.arquivoSelecao[c.getAttribute("data-arquivar-mes")] = c.checked; });
+    });
+    cada("[data-restaurar-mes]", function(b){
+      b.addEventListener("click", function(){ restaurarMes(b.getAttribute("data-restaurar-mes")); });
+    });
     liga("listas-salvar", "click", salvarListas);
     liga("listas-add-assunto", "click", function(){
       var dados = coletarListasDoDOM();
