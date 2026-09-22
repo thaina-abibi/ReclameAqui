@@ -406,6 +406,31 @@
   .filtros-topo h2{font-size:19px; display:flex; align-items:center; gap:10px;}
   .filtros-topo h2 svg{width:18px; height:18px;}
   .filtros-miolo{padding:22px 24px;}
+  #popup-filtros{width:min(1120px,calc(100vw - 32px));}
+  .cond-linha{margin-bottom:10px;}
+  .cond-linha.cond-ou{margin-left:28px;}
+  .cond-conector{display:inline-block; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--amber-deep); background:var(--amber-soft); border:1px solid var(--gold); border-radius:100px; padding:1px 9px; margin-bottom:6px;}
+  .cond-grade{display:grid; grid-template-columns:minmax(150px,1fr) minmax(150px,1fr) minmax(220px,1.7fr) auto; gap:12px; align-items:end; background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:12px 14px;}
+  .cond-grade .campo{margin-bottom:0;}
+  .cond-grade label{font-size:12px;}
+  .cond-botoes{display:flex; gap:6px; align-items:center; padding-bottom:6px;}
+  .cond-btn{background:var(--surface); border:1px solid var(--line-strong); color:var(--ink); border-radius:6px; padding:4px 9px; font-size:12.5px; font-weight:600; cursor:pointer;}
+  .cond-btn:hover{border-color:var(--olive); color:var(--olive-soft);}
+  .cond-lixo{background:none; border:none; color:var(--ink-soft); cursor:pointer; padding:4px; display:flex;}
+  .cond-lixo svg{width:18px; height:18px;}
+  .cond-lixo:hover{color:#e77362;}
+  .cond-lista{min-height:64px; resize:vertical; font-family:var(--font-mono); font-size:13px;}
+  .cond-datas{display:flex; align-items:center; gap:8px;}
+  .cond-datas span{font-size:12.5px; color:var(--ink-soft);}
+  .caixa-chips{display:flex; flex-wrap:wrap; gap:6px; align-items:center; min-height:44px; padding:6px 8px; border:1px solid var(--line-strong); border-radius:8px; background:var(--surface);}
+  .chip-filtro{display:inline-flex; align-items:center; gap:6px; padding:3px 6px 3px 11px; border:1px solid var(--line-strong); border-radius:100px; font-size:12.5px; background:var(--paper);}
+  .chip-filtro button{background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:14px; line-height:1; padding:0 2px;}
+  .chip-filtro button:hover{color:#e77362;}
+  .caixa-chips .chip-add{width:auto; min-width:140px; padding:5px 28px 5px 9px; font-size:12.5px; border-style:dashed;}
+  @media (max-width:820px){
+    .cond-grade{grid-template-columns:1fr;}
+    .cond-linha.cond-ou{margin-left:12px;}
+  }
   .fx-linha{border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:12px; background:var(--paper);}
   .fx-linha .campo{margin-bottom:0;}
   .fx-linha-topo{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; font-size:12.5px; font-weight:600; color:var(--ink-soft);}
@@ -1664,69 +1689,164 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   }
 
   function pesquisaPadrao(){
-    return {termo:"", incluirArquivo:true, inicio:"", fim:"", ids:[], assuntos:[], estados:[], descricao:"", responsavel:"", nome:"", nota:"", resultados:null};
+    return {condicoes:[], incluirArquivo:true};
   }
 
 
-  function passaNosFiltros(item, f){
-    if(f.ids && f.ids.length && f.ids.indexOf(String(item.id)) === -1) return false;
-    var ini = chaveISO(f.inicio), fim = chaveISO(f.fim);
-    if(ini || fim){
-      var c = chaveData(item.data);
-      if(!c) return false;
-      if(ini && c < ini) return false;
-      if(fim && c > fim) return false;
-    }
-    if(f.assuntos.length && f.assuntos.indexOf(item.assunto) === -1) return false;
-    if(f.estados.length && f.estados.indexOf(estadoColeta(item)) === -1) return false;
-    if(f.descricao){
-      if(f.descricao === "__vazio"){ if(item.descricao) return false; }
-      else if(item.descricao !== f.descricao) return false;
-    }
-    if(f.responsavel){
-      var resp = String(item.responsavel || "").toLowerCase();
-      if(f.responsavel === "__ninguem"){ if(resp) return false; }
-      else if(resp !== f.responsavel.toLowerCase()) return false;
-    }
-    if(f.nome){
-      if(f.nome === "__ninguem"){ if(item.nome) return false; }
-      else if(String(item.nome || "") !== f.nome) return false;
-    }
-    if(f.nota === "com" && typeof item.nota !== "number") return false;
-    if(f.nota === "sem" && typeof item.nota === "number") return false;
 
-    var partes = normalizarBusca(f.termo).split(/\s+/).filter(Boolean);
-    if(partes.length){
+
+
+  var CAMPOS_FILTRO = [
+    {chave:"id", rotulo:"Nº do ID", tipo:"lista", ops:["um","nao_um","contem"]},
+    {chave:"data", rotulo:"Data de abertura", tipo:"data", ops:["entre","igual","antes","depois"]},
+    {chave:"assunto", rotulo:"Assunto", tipo:"opcoes", ops:["um","nao_um"]},
+    {chave:"estado", rotulo:"Situação", tipo:"opcoes", ops:["um","nao_um"]},
+    {chave:"descricao", rotulo:"Descrição", tipo:"opcoes", ops:["um","nao_um","vazio","nao_vazio"]},
+    {chave:"responsavel", rotulo:"Atribuído a", tipo:"opcoes", ops:["um","nao_um","vazio","nao_vazio"]},
+    {chave:"nome", rotulo:"Tratado por", tipo:"opcoes", ops:["um","nao_um","vazio","nao_vazio"]},
+    {chave:"cpf", rotulo:"CPF", tipo:"lista", ops:["um","nao_um","contem","vazio","nao_vazio"]},
+    {chave:"placa", rotulo:"Placa", tipo:"lista", ops:["um","nao_um","contem","vazio","nao_vazio"]},
+    {chave:"nota", rotulo:"Nota", tipo:"numero", ops:["igual","maior_igual","menor_igual","vazio","nao_vazio"]},
+    {chave:"observacao", rotulo:"Observação", tipo:"texto", ops:["contem","nao_contem","vazio","nao_vazio"]},
+    {chave:"sac", rotulo:"SAC", tipo:"texto", ops:["contem","vazio","nao_vazio"]},
+    {chave:"sustentacao", rotulo:"Sustentação", tipo:"texto", ops:["contem","vazio","nao_vazio"]},
+    {chave:"qualquer", rotulo:"Qualquer campo", tipo:"texto", ops:["contem"]}
+  ];
+
+  var OPERADORES = {
+    um:"é um dos", nao_um:"não é um dos", contem:"contém", nao_contem:"não contém",
+    vazio:"está vazio", nao_vazio:"não está vazio", entre:"entre", igual:"é",
+    antes:"antes de", depois:"depois de", maior_igual:"maior ou igual a", menor_igual:"menor ou igual a"
+  };
+
+  var IC_LIXEIRA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9.5 7V4.5h5V7"/><path d="M6 7l1 13h10l1-13"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
+
+  function campoFiltro(chave){
+    for(var i=0;i<CAMPOS_FILTRO.length;i++){ if(CAMPOS_FILTRO[i].chave === chave) return CAMPOS_FILTRO[i]; }
+    return null;
+  }
+
+  function pessoasOrdenadas(){
+    return state.users.filter(function(u){ return u && u.username; })
+      .sort(function(a,b){ return nomeExibido(a).localeCompare(nomeExibido(b)); });
+  }
+
+  function opcoesDoCampo(chave){
+    if(chave === "assunto") return nomesAssuntos().map(function(a){ return [a, a]; });
+    if(chave === "estado") return [["naoRespondidas","Não respondida"],["pendentes","Pendente"],["respondidas","Respondida"]];
+    if(chave === "descricao") return state.descricoes.map(function(d){ return [d.nome, capitalizar(d.nome)]; });
+    if(chave === "responsavel") return pessoasOrdenadas().map(function(u){ return [String(u.username).toLowerCase(), nomeExibido(u)]; });
+    if(chave === "nome"){
+      var nomes = {};
+      pessoasOrdenadas().forEach(function(u){ nomes[nomeExibido(u)] = 1; });
+      state.coleta.forEach(function(i){ if(i.nome) nomes[i.nome] = 1; });
+      return Object.keys(nomes).sort().map(function(n){ return [n, n]; });
+    }
+    return [];
+  }
+
+  function normalizarValorCampo(chave, v){
+    if(v === undefined || v === null) return "";
+    if(chave === "cpf" || chave === "id") return digitos(String(v));
+    if(chave === "placa") return String(v).toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if(chave === "responsavel") return String(v).toLowerCase();
+    return String(v);
+  }
+
+  function valorDoItem(item, chave){
+    if(chave === "data") return chaveData(item.data);
+    if(chave === "estado") return estadoColeta(item);
+    if(chave === "nota") return typeof item.nota === "number" ? item.nota : "";
+    return normalizarValorCampo(chave, item[chave]);
+  }
+
+  function valorPadrao(campo, operador){
+    if(!campo || operador === "vazio" || operador === "nao_vazio") return null;
+    if(operador === "entre") return ["", ""];
+    if((campo.tipo === "opcoes" || campo.tipo === "lista") && (operador === "um" || operador === "nao_um")) return [];
+    return "";
+  }
+
+  function testaCondicao(item, c){
+    var campo = campoFiltro(c.campo);
+    if(!campo) return true;
+    var op = c.operador;
+
+    if(c.campo === "qualquer"){
+      var partes = normalizarBusca(c.valor).split(/\s+/).filter(Boolean);
+      if(!partes.length) return true;
       var texto = textoBusca(item);
-      if(!partes.every(function(p){ return texto.indexOf(p) !== -1; })) return false;
+      return partes.every(function(p){ return texto.indexOf(p) !== -1; });
+    }
+
+    var v = valorDoItem(item, c.campo);
+    var vazio = (v === "" || v === null || v === undefined);
+
+    if(op === "vazio") return vazio;
+    if(op === "nao_vazio") return !vazio;
+
+    if(op === "um" || op === "nao_um"){
+      var lista = (c.valor || []).map(function(x){ return normalizarValorCampo(c.campo, x); }).filter(Boolean);
+      if(!lista.length) return true;
+      var dentro = lista.indexOf(String(v)) !== -1;
+      return op === "um" ? dentro : !dentro;
+    }
+
+    if(op === "contem" || op === "nao_contem"){
+      var busca = normalizarBusca(c.campo === "cpf" || c.campo === "id" || c.campo === "placa" ? normalizarValorCampo(c.campo, c.valor) : c.valor);
+      if(!busca) return true;
+      var tem = normalizarBusca(v).indexOf(busca) !== -1;
+      return op === "contem" ? tem : !tem;
+    }
+
+    if(c.campo === "data"){
+      if(op === "entre"){
+        var de = chaveISO(c.valor && c.valor[0]), ate = chaveISO(c.valor && c.valor[1]);
+        if(!de && !ate) return true;
+        if(vazio) return false;
+        if(de && v < de) return false;
+        if(ate && v > ate) return false;
+        return true;
+      }
+      var alvo = chaveISO(c.valor);
+      if(!alvo) return true;
+      if(vazio) return false;
+      if(op === "igual") return v === alvo;
+      if(op === "antes") return v < alvo;
+      if(op === "depois") return v > alvo;
+    }
+
+    if(c.campo === "nota"){
+      if(c.valor === "" || c.valor === null || isNaN(Number(c.valor))) return true;
+      if(vazio) return false;
+      var n = Number(c.valor);
+      if(op === "igual") return v === n;
+      if(op === "maior_igual") return v >= n;
+      if(op === "menor_igual") return v <= n;
     }
     return true;
   }
 
-  var TIPOS_FILTRO = [
-    {chave:"ids", rotulo:"Nº do ID — é um dos"},
-    {chave:"periodo", rotulo:"Data de abertura — entre"},
-    {chave:"assuntos", rotulo:"Assunto — é um dos"},
-    {chave:"estados", rotulo:"Situação — é uma das"},
-    {chave:"descricao", rotulo:"Descrição — é"},
-    {chave:"responsavel", rotulo:"Atribuído a — é"},
-    {chave:"nome", rotulo:"Tratado por — é"},
-    {chave:"nota", rotulo:"Avaliação — é"},
-    {chave:"termo", rotulo:"Texto livre — contém"}
-  ];
+  function gruposDeCondicoes(conds){
+    var grupos = [];
+    (conds || []).forEach(function(c, i){
+      if(i === 0 || c.conector !== "ou") grupos.push([c]);
+      else grupos[grupos.length - 1].push(c);
+    });
+    return grupos;
+  }
 
-  function filtroAtivo(f, chave){
-    if(!f) return false;
-    if(chave === "ids") return !!(f.ids && f.ids.length);
-    if(chave === "periodo") return !!(f.inicio || f.fim);
-    if(chave === "assuntos" || chave === "estados") return !!(f[chave] && f[chave].length);
-    return !!f[chave];
+  function passaNosFiltros(item, f){
+    var conds = (f && f.condicoes) || [];
+    if(!conds.length) return true;
+    return gruposDeCondicoes(conds).every(function(g){
+      return g.some(function(c){ return testaCondicao(item, c); });
+    });
   }
 
   function contarFiltros(f){
-    return TIPOS_FILTRO.filter(function(t){ return filtroAtivo(f, t.chave); }).length;
+    return ((f && f.condicoes) || []).length;
   }
-
 
   function filtrosDe(alvo){
     return alvo === "inicio" ? state.filtrosInicio : state.pesquisa;
@@ -1738,114 +1858,114 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       IC_FILTRO + (n ? '<span class="contador-filtro">' + n + '</span>' : '') + '</button>';
   }
 
-  function rotuloTipoFiltro(chave){
-    for(var i=0;i<TIPOS_FILTRO.length;i++){ if(TIPOS_FILTRO[i].chave === chave) return TIPOS_FILTRO[i].rotulo; }
-    return chave;
+  function controleValor(c, i){
+    var campo = campoFiltro(c.campo);
+    if(!campo) return '<input type="text" disabled placeholder="Escolha o campo">';
+    var op = c.operador;
+
+    if(op === "vazio" || op === "nao_vazio") return '<input type="text" disabled value="">';
+
+    if(op === "um" || op === "nao_um"){
+      if(campo.tipo === "opcoes"){
+        var opcoes = opcoesDoCampo(c.campo);
+        var escolhidos = c.valor || [];
+        var rotulos = {};
+        opcoes.forEach(function(o){ rotulos[o[0]] = o[1]; });
+        var chips = escolhidos.map(function(v){
+          return '<span class="chip-filtro">' + esc(rotulos[v] || v) +
+            '<button type="button" data-tirar-chip="' + i + '" data-valor="' + esc(v) + '" aria-label="Remover">×</button></span>';
+        }).join("");
+        var livres = opcoes.filter(function(o){ return escolhidos.indexOf(o[0]) === -1; });
+        return '<div class="caixa-chips">' + chips +
+          (livres.length
+            ? '<select class="chip-add" data-i="' + i + '"><option value="">+ adicionar</option>' +
+                livres.map(function(o){ return '<option value="' + esc(o[0]) + '">' + esc(o[1]) + '</option>'; }).join("") +
+              '</select>'
+            : '') +
+        '</div>';
+      }
+      return '<textarea class="cond-lista" data-i="' + i + '" placeholder="Separe por vírgula, espaço ou linha">' + esc((c.valor || []).join(", ")) + '</textarea>';
+    }
+
+    if(campo.tipo === "data"){
+      if(op === "entre"){
+        var par = c.valor || ["",""];
+        return '<div class="cond-datas">' +
+          '<input type="date" class="cond-de" data-i="' + i + '" value="' + esc(par[0]) + '">' +
+          '<span>e</span>' +
+          '<input type="date" class="cond-ate" data-i="' + i + '" value="' + esc(par[1]) + '">' +
+        '</div>';
+      }
+      return '<input type="date" class="cond-valor" data-i="' + i + '" value="' + esc(c.valor || "") + '">';
+    }
+
+    if(campo.tipo === "numero"){
+      return '<input type="text" inputmode="numeric" class="cond-valor" data-i="' + i + '" placeholder="0 a 10" value="' + esc(c.valor || "") + '">';
+    }
+
+    return '<input type="text" class="cond-valor" data-i="' + i + '" value="' + esc(c.valor || "") + '">';
   }
 
-  function pessoasOrdenadas(){
-    return state.users.filter(function(u){ return u && u.username; })
-      .sort(function(a,b){ return nomeExibido(a).localeCompare(nomeExibido(b)); });
-  }
+  function linhaCondicao(c, i){
+    var campo = campoFiltro(c.campo);
+    var opcoesCampo = '<option value="">— escolha o campo —</option>' + CAMPOS_FILTRO.map(function(cf){
+      return '<option value="' + cf.chave + '"' + (cf.chave === c.campo ? " selected" : "") + '>' + esc(cf.rotulo) + '</option>';
+    }).join("");
+    var opcoesOperador = campo
+      ? campo.ops.map(function(o){ return '<option value="' + o + '"' + (o === c.operador ? " selected" : "") + '>' + OPERADORES[o] + '</option>'; }).join("")
+      : '<option value="">—</option>';
+    var ehOu = i > 0 && c.conector === "ou";
 
-  function controleFiltro(chave, f){
-    if(chave === "ids"){
-      return '<textarea id="fx-ids" placeholder="Cole os IDs separados por vírgula, espaço ou linha">' + esc((f.ids || []).join(", ")) + '</textarea>';
-    }
-    if(chave === "termo"){
-      return '<input type="text" id="fx-termo" placeholder="CPF, placa, nome, observação, SAC…" value="' + esc(f.termo) + '">';
-    }
-    if(chave === "periodo"){
-      return '<div class="grade-2">' +
-        '<div class="campo"><label for="fx-inicio">De</label><input type="date" id="fx-inicio" value="' + esc(f.inicio) + '"></div>' +
-        '<div class="campo"><label for="fx-fim">Até</label><input type="date" id="fx-fim" value="' + esc(f.fim) + '"></div>' +
-      '</div>';
-    }
-    if(chave === "assuntos"){
-      return '<div class="filtro-chips">' + nomesAssuntos().map(function(a){
-        return '<label class="assunto-opcao"><input type="checkbox" class="fx-assunto" value="' + esc(a) + '"' +
-          (f.assuntos.indexOf(a) !== -1 ? " checked" : "") + '>' + esc(a) + '</label>';
-      }).join("") + '</div>';
-    }
-    if(chave === "estados"){
-      var estados = [["naoRespondidas","Não respondidas"],["pendentes","Pendentes"],["respondidas","Respondidas"]];
-      return '<div class="filtro-chips">' + estados.map(function(e){
-        return '<label class="assunto-opcao"><input type="checkbox" class="fx-estado" value="' + e[0] + '"' +
-          (f.estados.indexOf(e[0]) !== -1 ? " checked" : "") + '>' + e[1] + '</label>';
-      }).join("") + '</div>';
-    }
-    if(chave === "descricao"){
-      return '<select id="fx-descricao">' +
-        state.descricoes.map(function(d){
-          return '<option value="' + esc(d.nome) + '"' + (f.descricao === d.nome ? " selected" : "") + '>' + esc(capitalizar(d.nome)) + '</option>';
-        }).join("") +
-        '<option value="__vazio"' + (f.descricao === "__vazio" ? " selected" : "") + '>Sem descrição</option>' +
-      '</select>';
-    }
-    if(chave === "responsavel"){
-      return '<select id="fx-responsavel">' +
-        pessoasOrdenadas().map(function(u){
-          return '<option value="' + esc(u.username) + '"' + (f.responsavel === u.username ? " selected" : "") + '>' + esc(nomeExibido(u)) + '</option>';
-        }).join("") +
-        '<option value="__ninguem"' + (f.responsavel === "__ninguem" ? " selected" : "") + '>Ninguém</option>' +
-      '</select>';
-    }
-    if(chave === "nome"){
-      var nomes = {};
-      pessoasOrdenadas().forEach(function(u){ nomes[nomeExibido(u)] = 1; });
-      state.coleta.forEach(function(i){ if(i.nome) nomes[i.nome] = 1; });
-      return '<select id="fx-nome">' +
-        Object.keys(nomes).sort().map(function(n){
-          return '<option value="' + esc(n) + '"' + (f.nome === n ? " selected" : "") + '>' + esc(n) + '</option>';
-        }).join("") +
-        '<option value="__ninguem"' + (f.nome === "__ninguem" ? " selected" : "") + '>Ninguém</option>' +
-      '</select>';
-    }
-    if(chave === "nota"){
-      return '<select id="fx-nota">' +
-        '<option value="com"' + (f.nota === "com" ? " selected" : "") + '>Com nota</option>' +
-        '<option value="sem"' + (f.nota === "sem" ? " selected" : "") + '>Sem nota</option>' +
-      '</select>';
-    }
-    return "";
-  }
-
-  function linhaFiltro(chave, f){
-    return '<div class="fx-linha" data-chave="' + chave + '">' +
-      '<div class="fx-linha-topo"><span>' + esc(rotuloTipoFiltro(chave)) + '</span>' +
-        '<button class="fx-remover" data-remover-filtro="' + chave + '" aria-label="Remover filtro" title="Remover filtro">×</button></div>' +
-      controleFiltro(chave, f) +
+    return '<div class="cond-linha' + (ehOu ? ' cond-ou' : '') + '" data-i="' + i + '">' +
+      (i > 0 ? '<div class="cond-conector">' + (ehOu ? "ou" : "e") + '</div>' : '') +
+      '<div class="cond-grade">' +
+        '<div class="campo"><label>Campo</label><select class="cond-campo" data-i="' + i + '">' + opcoesCampo + '</select></div>' +
+        '<div class="campo"><label>Operador</label><select class="cond-operador" data-i="' + i + '"' + (campo ? '' : ' disabled') + '>' + opcoesOperador + '</select></div>' +
+        '<div class="campo"><label>Valor</label>' + controleValor(c, i) + '</div>' +
+        '<div class="cond-botoes">' +
+          '<button type="button" class="cond-btn" data-cond-ou="' + i + '" title="Adicionar condição OU">ou</button>' +
+          '<button type="button" class="cond-btn" data-cond-e="' + i + '" title="Adicionar condição E">e</button>' +
+          '<button type="button" class="cond-lixo" data-cond-remover="' + i + '" aria-label="Remover condição" title="Remover condição">' + IC_LIXEIRA + '</button>' +
+        '</div>' +
+      '</div>' +
     '</div>';
   }
 
-  function lerLinhasFiltro(d, rascunho, ativos){
-    function val(sel){ var el = d.querySelector(sel); return el ? el.value : ""; }
-    ativos.forEach(function(chave){
-      if(chave === "ids"){
+  function condicaoVazia(conector){
+    return {conector: conector || "e", campo:"", operador:"", valor:null};
+  }
+
+  function lerCondicoes(d, conds){
+    conds.forEach(function(c, i){
+      var campo = campoFiltro(c.campo);
+      if(!campo) return;
+      var op = c.operador;
+      if(op === "vazio" || op === "nao_vazio"){ c.valor = null; return; }
+      if(op === "um" || op === "nao_um"){
+        if(campo.tipo === "opcoes") return;
+        var t = d.querySelector('.cond-lista[data-i="' + i + '"]');
+        if(!t) return;
         var vistos = {};
-        rascunho.ids = String(val("#fx-ids")).split(/[^0-9]+/).filter(function(x){
-          if(x.length < 6 || vistos[x]) return false;
+        c.valor = String(t.value).split(/[\s,;]+/).map(function(x){ return x.trim(); }).filter(function(x){
+          if(!x || vistos[x]) return false;
           vistos[x] = true; return true;
         });
+        return;
       }
-      else if(chave === "termo") rascunho.termo = val("#fx-termo");
-      else if(chave === "periodo"){ rascunho.inicio = val("#fx-inicio"); rascunho.fim = val("#fx-fim"); }
-      else if(chave === "assuntos"){
-        rascunho.assuntos = [];
-        Array.prototype.forEach.call(d.querySelectorAll(".fx-assunto"), function(c){ if(c.checked) rascunho.assuntos.push(c.value); });
+      if(op === "entre"){
+        var de = d.querySelector('.cond-de[data-i="' + i + '"]'), ate = d.querySelector('.cond-ate[data-i="' + i + '"]');
+        c.valor = [de ? de.value : "", ate ? ate.value : ""];
+        return;
       }
-      else if(chave === "estados"){
-        rascunho.estados = [];
-        Array.prototype.forEach.call(d.querySelectorAll(".fx-estado"), function(c){ if(c.checked) rascunho.estados.push(c.value); });
-      }
-      else rascunho[chave] = val("#fx-" + chave);
+      var el = d.querySelector('.cond-valor[data-i="' + i + '"]');
+      if(el) c.valor = el.value;
     });
   }
 
-  function zerarFiltro(rascunho, chave){
-    if(chave === "periodo"){ rascunho.inicio = ""; rascunho.fim = ""; }
-    else if(chave === "ids" || chave === "assuntos" || chave === "estados") rascunho[chave] = [];
-    else rascunho[chave] = "";
+  function fimDoGrupo(conds, i){
+    var j = i;
+    while(j + 1 < conds.length && conds[j + 1].conector === "ou") j++;
+    return j;
   }
 
   function abrirFiltros(alvo){
@@ -1854,8 +1974,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
     var original = filtrosDe(alvo);
     var rascunho = JSON.parse(JSON.stringify(original));
-    if(!rascunho.ids) rascunho.ids = [];
-    var ativos = TIPOS_FILTRO.map(function(t){ return t.chave; }).filter(function(c){ return filtroAtivo(rascunho, c); });
+    var conds = rascunho.condicoes && rascunho.condicoes.length ? rascunho.condicoes : [condicaoVazia("e")];
 
     var d = document.createElement("dialog");
     d.id = "popup-filtros";
@@ -1864,9 +1983,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         '<button class="btn btn-neutro btn-mini" id="fx-fechar" aria-label="Fechar" title="Fechar">×</button></div>' +
       '<div class="filtros-miolo">' +
         '<div id="fx-linhas"></div>' +
-        '<div class="campo"><select id="fx-novo" aria-label="Adicionar filtro"></select></div>' +
         (alvo === "dash"
-          ? '<label class="opcao-inline" style="padding-top:0"><input type="checkbox" id="fx-arquivo"' + (rascunho.incluirArquivo ? " checked" : "") + '>Incluir arquivo</label>'
+          ? '<label class="opcao-inline" style="padding-top:4px"><input type="checkbox" id="fx-arquivo"' + (rascunho.incluirArquivo ? " checked" : "") + '>Incluir arquivo</label>'
           : '') +
         '<div class="pesquisa-acoes" style="margin-top:14px">' +
           '<button class="btn btn-principal" style="width:auto" id="fx-aplicar">Aplicar filtros</button>' +
@@ -1877,70 +1995,114 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     document.body.appendChild(d);
 
     function desenhar(){
-      var area = d.querySelector("#fx-linhas");
-      area.innerHTML = ativos.length
-        ? ativos.map(function(c){ return linhaFiltro(c, rascunho); }).join("")
-        : '<div class="fx-vazio">Nenhum filtro. Adicione abaixo o que quiser usar.</div>';
+      d.querySelector("#fx-linhas").innerHTML = conds.map(linhaCondicao).join("");
 
-      var livres = TIPOS_FILTRO.filter(function(t){ return ativos.indexOf(t.chave) === -1; });
-      var novo = d.querySelector("#fx-novo");
-      novo.innerHTML = '<option value="">+ Adicionar filtro</option>' +
-        livres.map(function(t){ return '<option value="' + t.chave + '">' + esc(t.rotulo) + '</option>'; }).join("");
-      novo.disabled = !livres.length;
-
-      Array.prototype.forEach.call(d.querySelectorAll("[data-remover-filtro]"), function(b){
-        b.onclick = function(){
-          lerLinhasFiltro(d, rascunho, ativos);
-          var chave = b.getAttribute("data-remover-filtro");
-          ativos = ativos.filter(function(c){ return c !== chave; });
-          zerarFiltro(rascunho, chave);
+      Array.prototype.forEach.call(d.querySelectorAll(".cond-campo"), function(s){
+        s.onchange = function(){
+          lerCondicoes(d, conds);
+          var c = conds[Number(s.getAttribute("data-i"))];
+          var campo = campoFiltro(s.value);
+          c.campo = s.value;
+          c.operador = campo ? campo.ops[0] : "";
+          c.valor = valorPadrao(campo, c.operador);
           desenhar();
         };
       });
-
-      var termo = d.querySelector("#fx-termo");
-      if(termo) termo.addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); aplicar(); } });
+      Array.prototype.forEach.call(d.querySelectorAll(".cond-operador"), function(s){
+        s.onchange = function(){
+          lerCondicoes(d, conds);
+          var c = conds[Number(s.getAttribute("data-i"))];
+          var antes = c.operador;
+          c.operador = s.value;
+          var mesmoTipo = (antes === "um" || antes === "nao_um") === (c.operador === "um" || c.operador === "nao_um") &&
+            antes !== "entre" && c.operador !== "entre" &&
+            antes !== "vazio" && antes !== "nao_vazio";
+          if(!mesmoTipo) c.valor = valorPadrao(campoFiltro(c.campo), c.operador);
+          desenhar();
+        };
+      });
+      Array.prototype.forEach.call(d.querySelectorAll(".chip-add"), function(s){
+        s.onchange = function(){
+          if(!s.value) return;
+          lerCondicoes(d, conds);
+          var c = conds[Number(s.getAttribute("data-i"))];
+          c.valor = (c.valor || []).concat([s.value]);
+          desenhar();
+        };
+      });
+      Array.prototype.forEach.call(d.querySelectorAll("[data-tirar-chip]"), function(b){
+        b.onclick = function(){
+          lerCondicoes(d, conds);
+          var c = conds[Number(b.getAttribute("data-tirar-chip"))];
+          var alvoValor = b.getAttribute("data-valor");
+          c.valor = (c.valor || []).filter(function(v){ return v !== alvoValor; });
+          desenhar();
+        };
+      });
+      Array.prototype.forEach.call(d.querySelectorAll("[data-cond-ou]"), function(b){
+        b.onclick = function(){
+          lerCondicoes(d, conds);
+          var i = Number(b.getAttribute("data-cond-ou"));
+          conds.splice(i + 1, 0, condicaoVazia("ou"));
+          desenhar();
+        };
+      });
+      Array.prototype.forEach.call(d.querySelectorAll("[data-cond-e]"), function(b){
+        b.onclick = function(){
+          lerCondicoes(d, conds);
+          var i = Number(b.getAttribute("data-cond-e"));
+          conds.splice(fimDoGrupo(conds, i) + 1, 0, condicaoVazia("e"));
+          desenhar();
+        };
+      });
+      Array.prototype.forEach.call(d.querySelectorAll("[data-cond-remover]"), function(b){
+        b.onclick = function(){
+          lerCondicoes(d, conds);
+          var i = Number(b.getAttribute("data-cond-remover"));
+          var inicioDeGrupo = (i === 0 || conds[i].conector !== "ou");
+          conds.splice(i, 1);
+          if(inicioDeGrupo && conds[i] && conds[i].conector === "ou") conds[i].conector = "e";
+          if(!conds.length) conds.push(condicaoVazia("e"));
+          desenhar();
+        };
+      });
     }
 
     function fechar(){ d.close(); d.remove(); }
 
     function aplicar(){
-      lerLinhasFiltro(d, rascunho, ativos);
-      TIPOS_FILTRO.forEach(function(t){ if(ativos.indexOf(t.chave) === -1) zerarFiltro(rascunho, t.chave); });
+      lerCondicoes(d, conds);
+      var validas = conds.filter(function(c){ return !!campoFiltro(c.campo); });
+      if(validas.length) validas[0].conector = "e";
+      rascunho.condicoes = validas;
       var arq = d.querySelector("#fx-arquivo");
       rascunho.incluirArquivo = arq ? arq.checked : false;
-      rascunho.resultados = null;
       if(alvo === "inicio") state.filtrosInicio = rascunho;
       else state.pesquisa = rascunho;
       fechar();
       render();
     }
 
-    d.querySelector("#fx-novo").addEventListener("change", function(){
-      var chave = this.value;
-      if(!chave) return;
-      lerLinhasFiltro(d, rascunho, ativos);
-      ativos.push(chave);
-      desenhar();
-      var alvoFoco = d.querySelector('.fx-linha[data-chave="' + chave + '"] input, .fx-linha[data-chave="' + chave + '"] textarea, .fx-linha[data-chave="' + chave + '"] select');
-      if(alvoFoco) alvoFoco.focus();
-    });
-
     d.querySelector("#fx-fechar").onclick = fechar;
     d.addEventListener("cancel", function(e){ e.preventDefault(); fechar(); });
     d.querySelector("#fx-aplicar").onclick = aplicar;
     d.querySelector("#fx-limpar").onclick = function(){
-      ativos.forEach(function(c){ zerarFiltro(rascunho, c); });
-      ativos = [];
+      conds = [condicaoVazia("e")];
       desenhar();
     };
     var mes = d.querySelector("#fx-mes");
     if(mes) mes.onclick = function(){
-      lerLinhasFiltro(d, rascunho, ativos);
+      lerCondicoes(d, conds);
       var hoje = new Date();
-      rascunho.inicio = iso(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
-      rascunho.fim = iso(hoje);
-      if(ativos.indexOf("periodo") === -1) ativos.push("periodo");
+      var periodo = {conector:"e", campo:"data", operador:"entre",
+        valor:[iso(new Date(hoje.getFullYear(), hoje.getMonth(), 1)), iso(hoje)]};
+      var achou = false;
+      conds.forEach(function(c, i){ if(!achou && c.campo === "data" && c.operador === "entre"){ periodo.conector = c.conector; conds[i] = periodo; achou = true; } });
+      if(!achou){
+        conds = conds.filter(function(c){ return !!c.campo; });
+        conds.push(periodo);
+        if(conds.length) conds[0].conector = "e";
+      }
       desenhar();
     };
 
@@ -2548,12 +2710,11 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
   function definirPeriodoPadrao(){
     var hoje = new Date();
-    state.filtrosInicio = pesquisaPadrao();
-    state.filtrosInicio.incluirArquivo = false;
-    state.pesquisa = pesquisaPadrao();
-    state.pesquisa.inicio = iso(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
-    state.pesquisa.fim = iso(hoje);
+    state.filtrosInicio = {condicoes:[], incluirArquivo:false};
+    state.pesquisa = {condicoes:[{conector:"e", campo:"data", operador:"entre",
+      valor:[iso(new Date(hoje.getFullYear(), hoje.getMonth(), 1)), iso(hoje)]}], incluirArquivo:true};
   }
+
 
 
   function chaveISO(valor){
