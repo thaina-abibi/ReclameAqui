@@ -530,6 +530,10 @@
       ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
       ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true)"
     },
+    "arquivoIds": {
+      ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
+      ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true)"
+    },
     "arquivoIndice": {
       ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
       ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true)"
@@ -1851,6 +1855,13 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         });
       }
     }
+    var vistos = {};
+    base = base.filter(function(r){
+      var id = String(r.item.id);
+      if(vistos[id]) return false;
+      vistos[id] = true;
+      return true;
+    });
     var achados = base.filter(function(r){ return passaNosFiltros(r.item, f); });
     achados.sort(function(a,b){ return chaveData(b.item.data).localeCompare(chaveData(a.item.data)); });
     return achados;
@@ -2002,6 +2013,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
             '<option value="tudo"' + (state.arquivoModo === "tudo" ? " selected" : "") + '>Tudo do mês</option>' +
           '</select></div>' +
         '<div class="campo" style="margin-bottom:0"><button class="btn btn-principal btn-largo" id="arquivo-arquivar">Arquivar selecionados</button></div>' +
+        '<div class="campo" style="margin-bottom:0"><button class="btn btn-neutro btn-largo" id="arquivo-duplicados">Corrigir IDs duplicados</button></div>' +
       '</div>' +
       '<div id="arquivo-feedback" style="margin-top:14px;font-size:13.5px"></div>' +
     '</div>' +
@@ -2049,6 +2061,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         lote.forEach(function(i){
           var m = mesDoItem(i);
           mudancas["arquivo/" + m + "/" + i.id] = copiaLimpa(i);
+          mudancas["arquivoIds/" + i.id] = m;
           mudancas["coleta/" + i.id] = null;
           contagem[m] = (contagem[m] || 0) + 1;
         });
@@ -2084,6 +2097,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         ids.slice(ini, ini + 250).forEach(function(id){
           mudancas["coleta/" + id] = grupo[id];
           mudancas["arquivo/" + mes + "/" + id] = null;
+          mudancas["arquivoIds/" + id] = null;
         });
         await db.ref().update(mudancas);
       }
@@ -2094,6 +2108,85 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       render();
     } catch(err){
       toast(msgBanco(err));
+    }
+  }
+
+  function preenchidos(item){
+    var c = {};
+    for(var k in item){
+      if(!Object.prototype.hasOwnProperty.call(item,k)) continue;
+      var v = item[k];
+      if(v === undefined || v === null || v === "") continue;
+      c[k] = v;
+    }
+    return c;
+  }
+
+  async function corrigirDuplicados(){
+    if(!ehAdministrativo()) return toast("Só o perfil administrativo pode corrigir duplicados.");
+    var feedback = document.getElementById("arquivo-feedback");
+    ocupar("arquivo-duplicados", "Verificando…");
+    try {
+      state.arquivoCache = null;
+      var arquivo = await carregarArquivo();
+
+      var porId = {};
+      arquivo.forEach(function(r){
+        var id = String(r.item.id);
+        (porId[id] = porId[id] || []).push(r);
+      });
+
+      var ativos = {};
+      state.coleta.forEach(function(i){ ativos[String(i.id)] = i; });
+
+      var mudancas = [], resolvidos = 0, mantidos = {};
+      Object.keys(porId).forEach(function(id){
+        var ocorrencias = porId[id];
+        var ativo = ativos[id];
+
+        if(ativo){
+          var mesclado = {};
+          ocorrencias.forEach(function(r){ Object.assign(mesclado, preenchidos(r.item)); });
+          Object.assign(mesclado, preenchidos(ativo));
+          if(ocorrencias.some(function(r){ return r.item.situacao === "RESPONDIDA"; })) mesclado.situacao = "RESPONDIDA";
+          mudancas.push(["coleta/" + id, mesclado]);
+          ocorrencias.forEach(function(r){ mudancas.push(["arquivo/" + r.mes + "/" + id, null]); });
+          mudancas.push(["arquivoIds/" + id, null]);
+          resolvidos++;
+          return;
+        }
+
+        var certo = ocorrencias.filter(function(r){ return r.mes === mesDoItem(r.item); })[0] || ocorrencias[0];
+        if(ocorrencias.length > 1){
+          var junto = {};
+          ocorrencias.forEach(function(r){ Object.assign(junto, preenchidos(r.item)); });
+          Object.assign(junto, preenchidos(certo.item));
+          if(ocorrencias.some(function(r){ return r.item.situacao === "RESPONDIDA"; })) junto.situacao = "RESPONDIDA";
+          mudancas.push(["arquivo/" + certo.mes + "/" + id, junto]);
+          ocorrencias.forEach(function(r){ if(r !== certo) mudancas.push(["arquivo/" + r.mes + "/" + id, null]); });
+          resolvidos++;
+        }
+        mantidos[id] = certo.mes;
+      });
+
+      for(var ini = 0; ini < mudancas.length; ini += 400){
+        var lote = {};
+        mudancas.slice(ini, ini + 400).forEach(function(m){ lote[m[0]] = m[1]; });
+        await db.ref().update(lote);
+      }
+
+      var contagem = {};
+      Object.keys(mantidos).forEach(function(id){ contagem[mantidos[id]] = (contagem[mantidos[id]] || 0) + 1; });
+      await db.ref("arquivoIds").set(Object.keys(mantidos).length ? mantidos : null);
+      await db.ref("arquivoIndice").set(Object.keys(contagem).length ? contagem : null);
+
+      state.arquivoCache = null;
+      registrar("Correção de IDs duplicados (" + resolvidos + ")", "arquivo");
+      toast(resolvidos ? resolvidos + " ID(s) duplicado(s) unificado(s)." : "Nenhum ID duplicado encontrado.");
+      render();
+    } catch(err){
+      liberar("arquivo-duplicados");
+      if(feedback) feedback.textContent = "Não foi possível concluir: " + msgBanco(err);
     }
   }
 
@@ -2307,15 +2400,24 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     if(!itens.length){ feedback.textContent = "Nenhum registro encontrado."; return; }
 
     botao.disabled = true;
-    var gravados = 0;
+    var gravados = 0, noArquivo = 0;
     try {
+      var arquivados = await idsArquivados();
       for(var i=0;i<itens.length;i++){
-        await db.ref("coleta/" + itens[i].id).update(itens[i]);
+        var mesArquivo = arquivados[itens[i].id];
+        if(mesArquivo){
+          await db.ref("arquivo/" + mesArquivo + "/" + itens[i].id).update(itens[i]);
+          noArquivo++;
+        } else {
+          await db.ref("coleta/" + itens[i].id).update(itens[i]);
+        }
         gravados++;
         if(gravados % 25 === 0) feedback.textContent = gravados + " de " + itens.length + " gravados…";
       }
+      if(noArquivo) state.arquivoCache = null;
       campo.value = "";
-      feedback.textContent = gravados + " registro(s) importado(s).";
+      feedback.textContent = gravados + " registro(s) importado(s)" +
+        (noArquivo ? " — " + noArquivo + " já estavam arquivados e foram atualizados no arquivo" : "") + ".";
       registrar("Base importada (" + gravados + " registros)", "coleta");
       toast("Base importada.");
     } catch(err){
@@ -2966,8 +3068,11 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     if(!itens.length){feedback.textContent="Nenhum registro encontrado.";return;}
     botao.disabled=true;feedback.textContent="Importando…";
     try{
-      await gravarColeta(itens);
-      campo.value="";feedback.textContent=itens.length+" registro(s) processado(s). IDs existentes foram preservados. Os dados estão na página inicial.";
+      var r=await gravarColeta(itens);
+      var partes=[r.ativos+" na base ativa"];
+      if(r.arquivoAtualizado)partes.push(r.arquivoAtualizado+" já arquivado(s), atualizado(s) no arquivo");
+      if(r.ignorados)partes.push(r.ignorados+" já arquivado(s), ignorado(s)");
+      campo.value="";feedback.textContent=itens.length+" registro(s) processado(s): "+partes.join(" · ")+". Cada ID existe em um único lugar.";
     }catch(e){feedback.textContent="Importação não concluída: "+e.message+". O texto foi preservado; você pode tentar novamente. Alguns registros podem já ter sido salvos.";}
     finally{botao.disabled=false;}
   }
@@ -3150,6 +3255,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       b.addEventListener("click", function(){ abrirFiltros(b.getAttribute("data-abrir-filtros")); });
     });
     liga("arquivo-arquivar", "click", arquivarSelecionados);
+    liga("arquivo-duplicados", "click", corrigirDuplicados);
     liga("arquivo-modo", "change", function(){ state.arquivoModo = this.value; });
     cada("[data-arquivar-mes]", function(c){
       c.addEventListener("change", function(){ state.arquivoSelecao[c.getAttribute("data-arquivar-mes")] = c.checked; });
@@ -3631,11 +3737,37 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     }
     return item;
   }
+  async function idsArquivados(){
+    var snap = await db.ref("arquivoIds").once("value");
+    var mapa = snap.val() || {};
+    if(!Object.keys(mapa).length && Object.keys(state.arquivoIndice || {}).length){
+      var lista = await carregarArquivo();
+      mapa = {};
+      lista.forEach(function(r){ mapa[String(r.item.id)] = r.mes; });
+    }
+    return mapa;
+  }
+
   async function gravarColeta(itens){
     if(!auth.currentUser || !state.currentUser)throw new Error("Entre no app.");
     var limpos=itens.map(normalizarItem);
+    var arquivados=await idsArquivados();
+    var resumo={ativos:0, arquivoAtualizado:0, ignorados:0};
     for(var i=0;i<limpos.length;i++){
       var item=limpos[i];
+      var mesArquivo=arquivados[item.id];
+      if(mesArquivo){
+        if(ehAdministrativo()){
+          var mudanca={situacao:item.situacao};
+          if(item.nota!==undefined)mudanca.nota=item.nota;
+          await db.ref("arquivo/"+mesArquivo+"/"+item.id).update(mudanca);
+          resumo.arquivoAtualizado++;
+        } else {
+          resumo.ignorados++;
+        }
+        continue;
+      }
+      resumo.ativos++;
       await db.ref("coleta/"+item.id).transaction(function(atual){
         if(!atual)return item;
         atual.situacao=item.situacao;
@@ -3643,6 +3775,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         return atual;
       },undefined,false);
     }
+    if(resumo.arquivoAtualizado)state.arquivoCache=null;
+    return resumo;
   }
 
   iniciar();
