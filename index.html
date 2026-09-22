@@ -406,6 +406,13 @@
   .filtros-topo h2{font-size:19px; display:flex; align-items:center; gap:10px;}
   .filtros-topo h2 svg{width:18px; height:18px;}
   .filtros-miolo{padding:22px 24px;}
+  .fx-linha{border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:12px; background:var(--paper);}
+  .fx-linha .campo{margin-bottom:0;}
+  .fx-linha-topo{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; font-size:12.5px; font-weight:600; color:var(--ink-soft);}
+  .fx-remover{background:none; border:1px solid var(--line-strong); color:var(--ink-soft); border-radius:6px; width:26px; height:26px; cursor:pointer; line-height:1; font-size:15px;}
+  .fx-remover:hover{color:#e77362; border-color:var(--rust);}
+  .fx-vazio{font-size:13.5px; color:var(--ink-soft); padding:4px 0 14px;}
+  #fx-ids{min-height:74px; resize:vertical; font-family:var(--font-mono); font-size:13px;}
   .dash-topo-acoes{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
   .aviso-carregando{font-size:13px; color:var(--ink-soft); margin-top:10px; display:flex; align-items:center; gap:8px;}
   .filtro-chips{display:flex; flex-wrap:wrap; gap:8px;}
@@ -1022,7 +1029,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     if(refListas){refListas.off(); refListas=null;}
     if(refIndice){refIndice.off(); refIndice=null;}
     state.arquivoCache = null;
-    state.pesquisa = pesquisaPadrao();
+    definirPeriodoPadrao();
     if(refUsuarios){ refUsuarios.off(); refUsuarios = null; }
     if(refLogs){ refLogs.off(); refLogs = null; }
     if(refSessao){ refSessao.off(); refSessao = null; }
@@ -1366,7 +1373,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     }
 
     var nav = itemNav("inicio", "Início", IC_INICIO, state.painelAba === "inicio");
-    nav += itemNav("dash", "Dashboard", IC_GRAFICO, state.painelAba === "dash" || state.painelAba === "pesquisa");
+    nav += itemNav("dash", "Painel", IC_GRAFICO, state.painelAba === "dash" || state.painelAba === "pesquisa");
     if(admin){
       nav += itemNav("usuarios", "Usuários", IC_PESSOAS, state.painelAba === "usuarios");
       nav += itemNav("registro", "Registro", IC_REGISTRO, state.painelAba === "registro");
@@ -1657,10 +1664,12 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   }
 
   function pesquisaPadrao(){
-    return {termo:"", incluirArquivo:true, inicio:"", fim:"", assuntos:[], estados:[], descricao:"", responsavel:"", nome:"", nota:"", resultados:null};
+    return {termo:"", incluirArquivo:true, inicio:"", fim:"", ids:[], assuntos:[], estados:[], descricao:"", responsavel:"", nome:"", nota:"", resultados:null};
   }
 
+
   function passaNosFiltros(item, f){
+    if(f.ids && f.ids.length && f.ids.indexOf(String(item.id)) === -1) return false;
     var ini = chaveISO(f.inicio), fim = chaveISO(f.fim);
     if(ini || fim){
       var c = chaveData(item.data);
@@ -1694,20 +1703,30 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     return true;
   }
 
-  function contarFiltros(f){
-    if(!f) return 0;
-    var n = 0;
-    if(f.termo) n++;
-    if(f.inicio) n++;
-    if(f.fim) n++;
-    if(f.assuntos.length) n++;
-    if(f.estados.length) n++;
-    if(f.descricao) n++;
-    if(f.responsavel) n++;
-    if(f.nome) n++;
-    if(f.nota) n++;
-    return n;
+  var TIPOS_FILTRO = [
+    {chave:"ids", rotulo:"Nº do ID — é um dos"},
+    {chave:"periodo", rotulo:"Data de abertura — entre"},
+    {chave:"assuntos", rotulo:"Assunto — é um dos"},
+    {chave:"estados", rotulo:"Situação — é uma das"},
+    {chave:"descricao", rotulo:"Descrição — é"},
+    {chave:"responsavel", rotulo:"Atribuído a — é"},
+    {chave:"nome", rotulo:"Tratado por — é"},
+    {chave:"nota", rotulo:"Avaliação — é"},
+    {chave:"termo", rotulo:"Texto livre — contém"}
+  ];
+
+  function filtroAtivo(f, chave){
+    if(!f) return false;
+    if(chave === "ids") return !!(f.ids && f.ids.length);
+    if(chave === "periodo") return !!(f.inicio || f.fim);
+    if(chave === "assuntos" || chave === "estados") return !!(f[chave] && f[chave].length);
+    return !!f[chave];
   }
+
+  function contarFiltros(f){
+    return TIPOS_FILTRO.filter(function(t){ return filtroAtivo(f, t.chave); }).length;
+  }
+
 
   function filtrosDe(alvo){
     return alvo === "inicio" ? state.filtrosInicio : state.pesquisa;
@@ -1719,120 +1738,213 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       IC_FILTRO + (n ? '<span class="contador-filtro">' + n + '</span>' : '') + '</button>';
   }
 
-  function formularioFiltros(f, alvo){
-    var opcoesDescricao = '<option value="">Todas</option><option value="__vazio"' + (f.descricao === "__vazio" ? " selected" : "") + '>Sem descrição</option>' +
-      state.descricoes.map(function(d){
-        return '<option value="' + esc(d.nome) + '"' + (f.descricao === d.nome ? " selected" : "") + '>' + esc(capitalizar(d.nome)) + '</option>';
-      }).join("");
+  function rotuloTipoFiltro(chave){
+    for(var i=0;i<TIPOS_FILTRO.length;i++){ if(TIPOS_FILTRO[i].chave === chave) return TIPOS_FILTRO[i].rotulo; }
+    return chave;
+  }
 
-    var pessoas = state.users.filter(function(u){ return u && u.username; })
+  function pessoasOrdenadas(){
+    return state.users.filter(function(u){ return u && u.username; })
       .sort(function(a,b){ return nomeExibido(a).localeCompare(nomeExibido(b)); });
+  }
 
-    var opcoesResponsavel = '<option value="">Qualquer pessoa</option><option value="__ninguem"' + (f.responsavel === "__ninguem" ? " selected" : "") + '>Ninguém</option>' +
-      pessoas.map(function(u){
-        return '<option value="' + esc(u.username) + '"' + (f.responsavel === u.username ? " selected" : "") + '>' + esc(nomeExibido(u)) + '</option>';
-      }).join("");
-
-    var nomes = {};
-    pessoas.forEach(function(u){ nomes[nomeExibido(u)] = 1; });
-    state.coleta.forEach(function(i){ if(i.nome) nomes[i.nome] = 1; });
-    var opcoesNome = '<option value="">Qualquer pessoa</option><option value="__ninguem"' + (f.nome === "__ninguem" ? " selected" : "") + '>Ninguém</option>' +
-      Object.keys(nomes).sort().map(function(n){
-        return '<option value="' + esc(n) + '"' + (f.nome === n ? " selected" : "") + '>' + esc(n) + '</option>';
-      }).join("");
-
-    var chipsAssunto = nomesAssuntos().map(function(a){
-      return '<label class="assunto-opcao"><input type="checkbox" class="fx-assunto" value="' + esc(a) + '"' +
-        (f.assuntos.indexOf(a) !== -1 ? " checked" : "") + '>' + esc(a) + '</label>';
-    }).join("");
-
-    var estados = [["naoRespondidas","Não respondidas"],["pendentes","Pendentes"],["respondidas","Respondidas"]];
-    var chipsEstado = estados.map(function(e){
-      return '<label class="assunto-opcao"><input type="checkbox" class="fx-estado" value="' + e[0] + '"' +
-        (f.estados.indexOf(e[0]) !== -1 ? " checked" : "") + '>' + e[1] + '</label>';
-    }).join("");
-
-    return '' +
-      '<div class="campo"><label for="fx-termo">Texto livre</label>' +
-        '<input type="text" id="fx-termo" placeholder="ID, CPF, placa, nome, observação, SAC…" value="' + esc(f.termo) + '"></div>' +
-      '<div class="grade-3">' +
-        '<div class="campo"><label for="fx-inicio">Data de</label><input type="date" id="fx-inicio" value="' + esc(f.inicio) + '"></div>' +
-        '<div class="campo"><label for="fx-fim">Data até</label><input type="date" id="fx-fim" value="' + esc(f.fim) + '"></div>' +
-        '<div class="campo"><label for="fx-descricao">Descrição</label><select id="fx-descricao">' + opcoesDescricao + '</select></div>' +
-      '</div>' +
-      '<div class="grade-3">' +
-        '<div class="campo"><label for="fx-responsavel">Atribuído a</label><select id="fx-responsavel">' + opcoesResponsavel + '</select></div>' +
-        '<div class="campo"><label for="fx-nome">Tratado por</label><select id="fx-nome">' + opcoesNome + '</select></div>' +
-        '<div class="campo"><label for="fx-nota">Avaliação</label><select id="fx-nota">' +
-          '<option value="">Todas</option>' +
-          '<option value="com"' + (f.nota === "com" ? " selected" : "") + '>Com nota</option>' +
-          '<option value="sem"' + (f.nota === "sem" ? " selected" : "") + '>Sem nota</option>' +
-        '</select></div>' +
-      '</div>' +
-      '<div class="campo"><label>Assuntos</label><div class="filtro-chips">' + chipsAssunto + '</div></div>' +
-      '<div class="campo"><label>Situação</label><div class="filtro-chips">' + chipsEstado + '</div></div>' +
-      (alvo === "dash"
-        ? '<label class="opcao-inline" style="padding-top:0"><input type="checkbox" id="fx-arquivo"' + (f.incluirArquivo ? " checked" : "") + '>Incluir arquivo</label>'
-        : '') +
-      '<div class="pesquisa-acoes" style="margin-top:14px">' +
-        '<button class="btn btn-principal" style="width:auto" id="fx-aplicar">Aplicar filtros</button>' +
-        '<button class="btn btn-neutro" id="fx-limpar">Limpar</button>' +
-        (alvo === "inicio" ? '<button class="btn btn-neutro" id="fx-mes">Mês atual</button>' : '') +
+  function controleFiltro(chave, f){
+    if(chave === "ids"){
+      return '<textarea id="fx-ids" placeholder="Cole os IDs separados por vírgula, espaço ou linha">' + esc((f.ids || []).join(", ")) + '</textarea>';
+    }
+    if(chave === "termo"){
+      return '<input type="text" id="fx-termo" placeholder="CPF, placa, nome, observação, SAC…" value="' + esc(f.termo) + '">';
+    }
+    if(chave === "periodo"){
+      return '<div class="grade-2">' +
+        '<div class="campo"><label for="fx-inicio">De</label><input type="date" id="fx-inicio" value="' + esc(f.inicio) + '"></div>' +
+        '<div class="campo"><label for="fx-fim">Até</label><input type="date" id="fx-fim" value="' + esc(f.fim) + '"></div>' +
       '</div>';
+    }
+    if(chave === "assuntos"){
+      return '<div class="filtro-chips">' + nomesAssuntos().map(function(a){
+        return '<label class="assunto-opcao"><input type="checkbox" class="fx-assunto" value="' + esc(a) + '"' +
+          (f.assuntos.indexOf(a) !== -1 ? " checked" : "") + '>' + esc(a) + '</label>';
+      }).join("") + '</div>';
+    }
+    if(chave === "estados"){
+      var estados = [["naoRespondidas","Não respondidas"],["pendentes","Pendentes"],["respondidas","Respondidas"]];
+      return '<div class="filtro-chips">' + estados.map(function(e){
+        return '<label class="assunto-opcao"><input type="checkbox" class="fx-estado" value="' + e[0] + '"' +
+          (f.estados.indexOf(e[0]) !== -1 ? " checked" : "") + '>' + e[1] + '</label>';
+      }).join("") + '</div>';
+    }
+    if(chave === "descricao"){
+      return '<select id="fx-descricao">' +
+        state.descricoes.map(function(d){
+          return '<option value="' + esc(d.nome) + '"' + (f.descricao === d.nome ? " selected" : "") + '>' + esc(capitalizar(d.nome)) + '</option>';
+        }).join("") +
+        '<option value="__vazio"' + (f.descricao === "__vazio" ? " selected" : "") + '>Sem descrição</option>' +
+      '</select>';
+    }
+    if(chave === "responsavel"){
+      return '<select id="fx-responsavel">' +
+        pessoasOrdenadas().map(function(u){
+          return '<option value="' + esc(u.username) + '"' + (f.responsavel === u.username ? " selected" : "") + '>' + esc(nomeExibido(u)) + '</option>';
+        }).join("") +
+        '<option value="__ninguem"' + (f.responsavel === "__ninguem" ? " selected" : "") + '>Ninguém</option>' +
+      '</select>';
+    }
+    if(chave === "nome"){
+      var nomes = {};
+      pessoasOrdenadas().forEach(function(u){ nomes[nomeExibido(u)] = 1; });
+      state.coleta.forEach(function(i){ if(i.nome) nomes[i.nome] = 1; });
+      return '<select id="fx-nome">' +
+        Object.keys(nomes).sort().map(function(n){
+          return '<option value="' + esc(n) + '"' + (f.nome === n ? " selected" : "") + '>' + esc(n) + '</option>';
+        }).join("") +
+        '<option value="__ninguem"' + (f.nome === "__ninguem" ? " selected" : "") + '>Ninguém</option>' +
+      '</select>';
+    }
+    if(chave === "nota"){
+      return '<select id="fx-nota">' +
+        '<option value="com"' + (f.nota === "com" ? " selected" : "") + '>Com nota</option>' +
+        '<option value="sem"' + (f.nota === "sem" ? " selected" : "") + '>Sem nota</option>' +
+      '</select>';
+    }
+    return "";
+  }
+
+  function linhaFiltro(chave, f){
+    return '<div class="fx-linha" data-chave="' + chave + '">' +
+      '<div class="fx-linha-topo"><span>' + esc(rotuloTipoFiltro(chave)) + '</span>' +
+        '<button class="fx-remover" data-remover-filtro="' + chave + '" aria-label="Remover filtro" title="Remover filtro">×</button></div>' +
+      controleFiltro(chave, f) +
+    '</div>';
+  }
+
+  function lerLinhasFiltro(d, rascunho, ativos){
+    function val(sel){ var el = d.querySelector(sel); return el ? el.value : ""; }
+    ativos.forEach(function(chave){
+      if(chave === "ids"){
+        var vistos = {};
+        rascunho.ids = String(val("#fx-ids")).split(/[^0-9]+/).filter(function(x){
+          if(x.length < 6 || vistos[x]) return false;
+          vistos[x] = true; return true;
+        });
+      }
+      else if(chave === "termo") rascunho.termo = val("#fx-termo");
+      else if(chave === "periodo"){ rascunho.inicio = val("#fx-inicio"); rascunho.fim = val("#fx-fim"); }
+      else if(chave === "assuntos"){
+        rascunho.assuntos = [];
+        Array.prototype.forEach.call(d.querySelectorAll(".fx-assunto"), function(c){ if(c.checked) rascunho.assuntos.push(c.value); });
+      }
+      else if(chave === "estados"){
+        rascunho.estados = [];
+        Array.prototype.forEach.call(d.querySelectorAll(".fx-estado"), function(c){ if(c.checked) rascunho.estados.push(c.value); });
+      }
+      else rascunho[chave] = val("#fx-" + chave);
+    });
+  }
+
+  function zerarFiltro(rascunho, chave){
+    if(chave === "periodo"){ rascunho.inicio = ""; rascunho.fim = ""; }
+    else if(chave === "ids" || chave === "assuntos" || chave === "estados") rascunho[chave] = [];
+    else rascunho[chave] = "";
   }
 
   function abrirFiltros(alvo){
     var velho = document.getElementById("popup-filtros");
     if(velho) velho.remove();
 
-    var f = filtrosDe(alvo);
+    var original = filtrosDe(alvo);
+    var rascunho = JSON.parse(JSON.stringify(original));
+    if(!rascunho.ids) rascunho.ids = [];
+    var ativos = TIPOS_FILTRO.map(function(t){ return t.chave; }).filter(function(c){ return filtroAtivo(rascunho, c); });
+
     var d = document.createElement("dialog");
     d.id = "popup-filtros";
     d.setAttribute("aria-labelledby","titulo-filtros");
     d.innerHTML = '<div class="filtros-topo"><h2 id="titulo-filtros">' + IC_FILTRO + 'Filtros</h2>' +
         '<button class="btn btn-neutro btn-mini" id="fx-fechar" aria-label="Fechar" title="Fechar">×</button></div>' +
-      '<div class="filtros-miolo">' + formularioFiltros(f, alvo) + '</div>';
+      '<div class="filtros-miolo">' +
+        '<div id="fx-linhas"></div>' +
+        '<div class="campo"><select id="fx-novo" aria-label="Adicionar filtro"></select></div>' +
+        (alvo === "dash"
+          ? '<label class="opcao-inline" style="padding-top:0"><input type="checkbox" id="fx-arquivo"' + (rascunho.incluirArquivo ? " checked" : "") + '>Incluir arquivo</label>'
+          : '') +
+        '<div class="pesquisa-acoes" style="margin-top:14px">' +
+          '<button class="btn btn-principal" style="width:auto" id="fx-aplicar">Aplicar filtros</button>' +
+          '<button class="btn btn-neutro" id="fx-limpar">Limpar tudo</button>' +
+          (alvo === "dash" ? '<button class="btn btn-neutro" id="fx-mes">Mês atual</button>' : '') +
+        '</div>' +
+      '</div>';
     document.body.appendChild(d);
 
-    function fechar(){ d.close(); d.remove(); }
-    d.querySelector("#fx-fechar").onclick = fechar;
-    d.addEventListener("cancel", function(e){ e.preventDefault(); fechar(); });
+    function desenhar(){
+      var area = d.querySelector("#fx-linhas");
+      area.innerHTML = ativos.length
+        ? ativos.map(function(c){ return linhaFiltro(c, rascunho); }).join("")
+        : '<div class="fx-vazio">Nenhum filtro. Adicione abaixo o que quiser usar.</div>';
 
-    function ler(){
-      var novo = pesquisaPadrao();
-      novo.termo = d.querySelector("#fx-termo").value;
-      novo.inicio = d.querySelector("#fx-inicio").value;
-      novo.fim = d.querySelector("#fx-fim").value;
-      novo.descricao = d.querySelector("#fx-descricao").value;
-      novo.responsavel = d.querySelector("#fx-responsavel").value;
-      novo.nome = d.querySelector("#fx-nome").value;
-      novo.nota = d.querySelector("#fx-nota").value;
-      Array.prototype.forEach.call(d.querySelectorAll(".fx-assunto"), function(c){ if(c.checked) novo.assuntos.push(c.value); });
-      Array.prototype.forEach.call(d.querySelectorAll(".fx-estado"), function(c){ if(c.checked) novo.estados.push(c.value); });
-      var arq = d.querySelector("#fx-arquivo");
-      novo.incluirArquivo = arq ? arq.checked : false;
-      return novo;
+      var livres = TIPOS_FILTRO.filter(function(t){ return ativos.indexOf(t.chave) === -1; });
+      var novo = d.querySelector("#fx-novo");
+      novo.innerHTML = '<option value="">+ Adicionar filtro</option>' +
+        livres.map(function(t){ return '<option value="' + t.chave + '">' + esc(t.rotulo) + '</option>'; }).join("");
+      novo.disabled = !livres.length;
+
+      Array.prototype.forEach.call(d.querySelectorAll("[data-remover-filtro]"), function(b){
+        b.onclick = function(){
+          lerLinhasFiltro(d, rascunho, ativos);
+          var chave = b.getAttribute("data-remover-filtro");
+          ativos = ativos.filter(function(c){ return c !== chave; });
+          zerarFiltro(rascunho, chave);
+          desenhar();
+        };
+      });
+
+      var termo = d.querySelector("#fx-termo");
+      if(termo) termo.addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); aplicar(); } });
     }
 
-    function aplicar(novo){
-      if(alvo === "inicio") state.filtrosInicio = novo;
-      else state.pesquisa = novo;
+    function fechar(){ d.close(); d.remove(); }
+
+    function aplicar(){
+      lerLinhasFiltro(d, rascunho, ativos);
+      TIPOS_FILTRO.forEach(function(t){ if(ativos.indexOf(t.chave) === -1) zerarFiltro(rascunho, t.chave); });
+      var arq = d.querySelector("#fx-arquivo");
+      rascunho.incluirArquivo = arq ? arq.checked : false;
+      rascunho.resultados = null;
+      if(alvo === "inicio") state.filtrosInicio = rascunho;
+      else state.pesquisa = rascunho;
       fechar();
       render();
     }
 
-    d.querySelector("#fx-aplicar").onclick = function(){ aplicar(ler()); };
-    d.querySelector("#fx-termo").addEventListener("keydown", function(e){
-      if(e.key === "Enter"){ e.preventDefault(); aplicar(ler()); }
+    d.querySelector("#fx-novo").addEventListener("change", function(){
+      var chave = this.value;
+      if(!chave) return;
+      lerLinhasFiltro(d, rascunho, ativos);
+      ativos.push(chave);
+      desenhar();
+      var alvoFoco = d.querySelector('.fx-linha[data-chave="' + chave + '"] input, .fx-linha[data-chave="' + chave + '"] textarea, .fx-linha[data-chave="' + chave + '"] select');
+      if(alvoFoco) alvoFoco.focus();
     });
+
+    d.querySelector("#fx-fechar").onclick = fechar;
+    d.addEventListener("cancel", function(e){ e.preventDefault(); fechar(); });
+    d.querySelector("#fx-aplicar").onclick = aplicar;
     d.querySelector("#fx-limpar").onclick = function(){
-      var limpo = pesquisaPadrao();
-      limpo.incluirArquivo = (alvo === "dash");
-      aplicar(limpo);
+      ativos.forEach(function(c){ zerarFiltro(rascunho, c); });
+      ativos = [];
+      desenhar();
     };
     var mes = d.querySelector("#fx-mes");
-    if(mes) mes.onclick = function(){ definirPeriodoPadrao(); fechar(); render(); };
+    if(mes) mes.onclick = function(){
+      lerLinhasFiltro(d, rascunho, ativos);
+      var hoje = new Date();
+      rascunho.inicio = iso(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+      rascunho.fim = iso(hoje);
+      if(ativos.indexOf("periodo") === -1) ativos.push("periodo");
+      desenhar();
+    };
 
+    desenhar();
     d.showModal();
   }
 
@@ -1918,7 +2030,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var regs = registrosDash();
     var itens = regs.map(function(r){ return r.item; });
     var cabecalho = '<div class="cartao-topo">' +
-        '<h2>Dashboard · ' + regs.length + ' registro(s)</h2>' +
+        '<h2>Painel · ' + regs.length + ' registro(s)</h2>' +
         '<div class="dash-topo-acoes">' +
           botaoFiltro("dash") +
           '<button class="btn btn-neutro btn-mini" id="btn-atualizar">Atualizar dados</button>' +
@@ -1953,7 +2065,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
     a.href = url;
-    a.download = "dashboard_RA_" + iso(new Date()) + ".csv";
+    a.download = "painel_RA_" + iso(new Date()) + ".csv";
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -2438,9 +2550,11 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var hoje = new Date();
     state.filtrosInicio = pesquisaPadrao();
     state.filtrosInicio.incluirArquivo = false;
-    state.filtrosInicio.inicio = iso(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
-    state.filtrosInicio.fim = iso(hoje);
+    state.pesquisa = pesquisaPadrao();
+    state.pesquisa.inicio = iso(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+    state.pesquisa.fim = iso(hoje);
   }
+
 
   function chaveISO(valor){
     return String(valor || "").replace(/-/g, "");
