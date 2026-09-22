@@ -2456,13 +2456,14 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
     var grupos = {naoRespondidas:[], pendentes:[], respondidas:[], avaliadas:[]};
     visiveis.forEach(function(i){
-      grupos[estadoColeta(i)].push(i);
-      if(estadoColeta(i) === "respondidas" && typeof i.nota === "number") grupos.avaliadas.push(i);
+      var e = estadoColeta(i);
+      if(e === "respondidas" && typeof i.nota === "number") grupos.avaliadas.push(i);
+      else grupos[e].push(i);
     });
 
     var aba = grupos[state.coletaAba] ? state.coletaAba : "naoRespondidas";
     var lista = grupos[aba];
-    var comNota = (aba === "respondidas" || aba === "avaliadas");
+    var comNota = (aba === "avaliadas");
     var colunas = comNota ? 8 : 7;
 
     var linhas = lista.map(function(item){
