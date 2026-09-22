@@ -2147,7 +2147,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       var i = r.item;
       var id = r.mes
         ? '<span class="mono">' + esc(i.id) + '</span>'
-        : '<button class="id-link" data-abrir-caso="' + esc(i.id) + '">' + esc(i.id) + '</button>';
+        : idDoCaso(i);
       var local = r.mes
         ? '<span class="selo selo-arquivo">Arquivo ' + esc(rotuloMes(r.mes)) + '</span>'
         : '<span class="selo selo-ativo-base">Ativo</span>';
@@ -2287,7 +2287,6 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
             '<option value="tudo"' + (state.arquivoModo === "tudo" ? " selected" : "") + '>Tudo do mês</option>' +
           '</select></div>' +
         '<div class="campo" style="margin-bottom:0"><button class="btn btn-principal btn-largo" id="arquivo-arquivar">Arquivar selecionados</button></div>' +
-        '<div class="campo" style="margin-bottom:0"><button class="btn btn-neutro btn-largo" id="arquivo-duplicados">Corrigir IDs duplicados</button></div>' +
       '</div>' +
       '<div id="arquivo-feedback" style="margin-top:14px;font-size:13.5px"></div>' +
     '</div>' +
@@ -2385,84 +2384,9 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     }
   }
 
-  function preenchidos(item){
-    var c = {};
-    for(var k in item){
-      if(!Object.prototype.hasOwnProperty.call(item,k)) continue;
-      var v = item[k];
-      if(v === undefined || v === null || v === "") continue;
-      c[k] = v;
-    }
-    return c;
-  }
 
-  async function corrigirDuplicados(){
-    if(!ehAdministrativo()) return toast("Só o perfil administrativo pode corrigir duplicados.");
-    var feedback = document.getElementById("arquivo-feedback");
-    ocupar("arquivo-duplicados", "Verificando…");
-    try {
-      state.arquivoCache = null;
-      var arquivo = await carregarArquivo();
 
-      var porId = {};
-      arquivo.forEach(function(r){
-        var id = String(r.item.id);
-        (porId[id] = porId[id] || []).push(r);
-      });
 
-      var ativos = {};
-      state.coleta.forEach(function(i){ ativos[String(i.id)] = i; });
-
-      var mudancas = [], resolvidos = 0, mantidos = {};
-      Object.keys(porId).forEach(function(id){
-        var ocorrencias = porId[id];
-        var ativo = ativos[id];
-
-        if(ativo){
-          var mesclado = {};
-          ocorrencias.forEach(function(r){ Object.assign(mesclado, preenchidos(r.item)); });
-          Object.assign(mesclado, preenchidos(ativo));
-          if(ocorrencias.some(function(r){ return r.item.situacao === "RESPONDIDA"; })) mesclado.situacao = "RESPONDIDA";
-          mudancas.push(["coleta/" + id, mesclado]);
-          ocorrencias.forEach(function(r){ mudancas.push(["arquivo/" + r.mes + "/" + id, null]); });
-          mudancas.push(["arquivoIds/" + id, null]);
-          resolvidos++;
-          return;
-        }
-
-        var certo = ocorrencias.filter(function(r){ return r.mes === mesDoItem(r.item); })[0] || ocorrencias[0];
-        if(ocorrencias.length > 1){
-          var junto = {};
-          ocorrencias.forEach(function(r){ Object.assign(junto, preenchidos(r.item)); });
-          Object.assign(junto, preenchidos(certo.item));
-          if(ocorrencias.some(function(r){ return r.item.situacao === "RESPONDIDA"; })) junto.situacao = "RESPONDIDA";
-          mudancas.push(["arquivo/" + certo.mes + "/" + id, junto]);
-          ocorrencias.forEach(function(r){ if(r !== certo) mudancas.push(["arquivo/" + r.mes + "/" + id, null]); });
-          resolvidos++;
-        }
-        mantidos[id] = certo.mes;
-      });
-
-      for(var ini = 0; ini < mudancas.length; ini += 400){
-        var lote = {};
-        mudancas.slice(ini, ini + 400).forEach(function(m){ lote[m[0]] = m[1]; });
-        await db.ref().update(lote);
-      }
-
-      var contagem = {};
-      Object.keys(mantidos).forEach(function(id){ contagem[mantidos[id]] = (contagem[mantidos[id]] || 0) + 1; });
-      await db.ref("arquivoIds").set(Object.keys(mantidos).length ? mantidos : null);
-      await db.ref("arquivoIndice").set(Object.keys(contagem).length ? contagem : null);
-
-      state.arquivoCache = null;
-      registrar("Correção de IDs duplicados (" + resolvidos + ")", "arquivo");
-      toast(resolvidos ? resolvidos + " ID(s) duplicado(s) unificado(s)." : "Nenhum ID duplicado encontrado.");
-      render();
-    } catch(err){
-      liberar("arquivo-duplicados");
-      if(feedback) feedback.textContent = "Não foi possível concluir: " + msgBanco(err);
-    }
-  }
 
   function listasEmEdicao(){
     if(!state.editListas){
@@ -2769,7 +2693,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
       return '<tr>' +
         '<td>' + esc(item.data || "—") + '</td>' +
-        '<td><button class="id-link" data-abrir-caso="' + esc(item.id) + '">' + esc(item.id || "—") + '</button></td>' +
+        '<td>' + idDoCaso(item) + '</td>' +
         '<td>' + assunto + '</td>' +
         celulaDados +
         (item.nome ? '<td>' + esc(item.nome) + '</td>' : '<td class="celula-vazia">—</td>') +
@@ -2962,6 +2886,19 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       return estadoColeta(i) === "naoRespondidas" && !casoAberto(i.id) &&
         String(i.responsavel || "").toLowerCase() === eu;
     }));
+  }
+
+  function podeAbrirCaso(item){
+    if(!item) return false;
+    if(ehAdministrativo()) return true;
+    var eu = meuUsuario();
+    return !!eu && String(item.responsavel || "").toLowerCase() === eu;
+  }
+
+  function idDoCaso(item){
+    return podeAbrirCaso(item)
+      ? '<button class="id-link" data-abrir-caso="' + esc(item.id) + '">' + esc(item.id) + '</button>'
+      : '<span class="mono">' + esc(item.id) + '</span>';
   }
 
   function proximoCaso(){
@@ -3247,7 +3184,9 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         var partes = [a.item.id, a.item.data || "—", a.item.assunto || "—"];
         if(a.item.descricao) partes.push(capitalizar(a.item.descricao));
         if(a.item.nome) partes.push(a.item.nome);
-        return '<button data-repetido="' + esc(a.item.id) + '">' + esc(partes.join(" · ")) + '</button>';
+        return podeAbrirCaso(a.item)
+          ? '<button data-repetido="' + esc(a.item.id) + '">' + esc(partes.join(" · ")) + '</button>'
+          : '<span class="mono" style="font-size:13px">' + esc(partes.join(" · ")) + '</span>';
       }).join('') +
     '</div>';
 
@@ -3531,7 +3470,6 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       b.addEventListener("click", function(){ abrirFiltros(b.getAttribute("data-abrir-filtros")); });
     });
     liga("arquivo-arquivar", "click", arquivarSelecionados);
-    liga("arquivo-duplicados", "click", corrigirDuplicados);
     liga("arquivo-modo", "change", function(){ state.arquivoModo = this.value; });
     cada("[data-arquivar-mes]", function(c){
       c.addEventListener("change", function(){ state.arquivoSelecao[c.getAttribute("data-arquivar-mes")] = c.checked; });
@@ -3600,7 +3538,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         var alvo = b.getAttribute("data-abrir-caso");
         var caso = null;
         for(var i=0;i<state.coleta.length;i++){ if(String(state.coleta[i].id) === alvo) caso = state.coleta[i]; }
-        if(caso) abrirAtendimento(caso);
+        if(caso && podeAbrirCaso(caso)) abrirAtendimento(caso);
       });
     });
     cada("[data-coleta-aba]", function(b){
