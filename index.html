@@ -705,7 +705,7 @@ function status(msg){
  if(contador.textContent!==itens.length+" Registro(s)")contador.textContent=itens.length+" Registro(s)";
  if(recado.textContent!==(msg||""))recado.textContent=msg||"";
 }
-var bColetar=botao("Coletar esta página",true),bCSV=botao("Copiar como CSV (Excel)"),bTexto=botao("Copiar Lista Detalhada"),bLimpar=botao("Limpar lista");
+var bColetar=botao("Coletar esta página",true),bCSV=botao("Copiar como CSV (Excel)"),bLimpar=botao("Limpar lista");
 var rodape=document.createElement("label");rodape.style.cssText="display:flex;align-items:center;gap:7px;margin-top:10px;font-size:11.5px;color:#a3a89a;cursor:pointer";
 var chk=document.createElement("input");chk.type="checkbox";chk.checked=true;
 rodape.appendChild(chk);rodape.appendChild(document.createTextNode("Coletar auto ao navegar"));caixa.appendChild(rodape);
@@ -721,7 +721,6 @@ function auto(ativo){
 }
 bColetar.onclick=function(){var n=varrer();status(n?n+" novo(s) nesta página.":"Nenhum dado novo nesta página.");};
 bCSV.onclick=function(){if(!itens.length)return status("A lista está vazia.");copiar("DATA;ID;ASSUNTO;SITUAÇÃO;NOTA\n"+itens.map(function(i){return i.data+";"+i.id+";"+i.assunto+";"+(i.situacao||"NÃO RESPONDIDA")+";"+(i.nota===undefined?"":i.nota);}).join("\n"),itens.length+" linha(s) em CSV copiadas!");};
-bTexto.onclick=function(){if(!itens.length)return status("A lista está vazia.");copiar(itens.map(function(i){return "Data: "+i.data+" | ID: "+i.id+" | Assunto: "+i.assunto+" | Situação: "+(i.situacao||"NÃO RESPONDIDA")+(i.nota===undefined?"":" | Nota: "+i.nota);}).join("\n"),itens.length+" item(ns) copiado(s).");};
 bLimpar.onclick=function(){itens=[];vistos=Object.create(null);salvar();status("Lista zerada.");};
 chk.onchange=function(){auto(chk.checked);};x.onclick=function(){auto(false);caixa.remove();};
 document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
@@ -2392,6 +2391,114 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
 
 
+  function nomesDaBase(){
+    var contagem = {};
+    state.coleta.forEach(function(i){ if(i.nome) contagem[i.nome] = (contagem[i.nome] || 0) + 1; });
+    return contagem;
+  }
+
+  function sugestaoDeNome(nome){
+    var alvo = normalizarBusca(nome);
+    var achados = pessoasOrdenadas().filter(function(u){
+      var completo = normalizarBusca(nomeExibido(u));
+      return completo === alvo || completo.indexOf(alvo + " ") === 0;
+    });
+    return achados.length === 1 ? achados[0].username : "";
+  }
+
+  function blocoNomes(){
+    var contagem = nomesDaBase();
+    var nomes = Object.keys(contagem).sort();
+    var pessoas = pessoasOrdenadas();
+
+    var linhas = nomes.map(function(n){
+      var sugerido = sugestaoDeNome(n);
+      var igualAtual = pessoas.some(function(u){ return nomeExibido(u) === n; });
+      return '<tr>' +
+        '<td><strong>' + esc(n) + '</strong></td>' +
+        '<td class="mono">' + contagem[n] + '</td>' +
+        '<td><select class="nome-destino" data-nome="' + esc(n) + '">' +
+          '<option value="">Manter como está</option>' +
+          pessoas.map(function(u){
+            var marcar = (!igualAtual && u.username === sugerido) ? " selected" : "";
+            return '<option value="' + esc(u.username) + '"' + marcar + '>' + esc(nomeExibido(u)) + '</option>';
+          }).join("") +
+        '</select></td>' +
+      '</tr>';
+    }).join('');
+
+    return '<div class="cartao">' +
+      '<h2>Unificar nomes</h2>' +
+      '<div class="rolagem"><table style="min-width:620px"><thead><tr>' +
+        '<th>NOME NA BASE</th><th>REGISTROS</th><th>PASSAR PARA</th>' +
+      '</tr></thead><tbody>' +
+        (linhas || '<tr><td colspan="3" class="vazio">Nenhum nome registrado na base ativa.</td></tr>') +
+      '</tbody></table></div>' +
+      '<label class="opcao-inline" style="margin-top:12px"><input type="checkbox" id="nomes-arquivo" checked>Aplicar também no arquivo</label>' +
+      '<div id="nomes-feedback" style="margin:10px 0"></div>' +
+      '<button class="btn btn-principal" style="width:auto;" id="nomes-unificar">Unificar nomes</button>' +
+    '</div>';
+  }
+
+  async function unificarNomes(){
+    if(!ehAdministrativo()) return toast("Só o perfil administrativo pode unificar nomes.");
+    var feedback = document.getElementById("nomes-feedback");
+    var mapa = {};
+    cada(".nome-destino", function(sel){
+      var de = sel.getAttribute("data-nome");
+      var user = sel.value ? acharUsuario(sel.value) : null;
+      if(!user) return;
+      var para = nomeExibido(user);
+      if(para && para !== de) mapa[de] = para;
+    });
+
+    var origens = Object.keys(mapa);
+    if(!origens.length){ feedback.innerHTML = '<div class="aviso aviso-erro">Escolha ao menos um nome para unificar.</div>'; return; }
+    if(!confirm("Unificar " + origens.length + " nome(s) na base?")) return;
+
+    var tambemArquivo = document.getElementById("nomes-arquivo").checked;
+    ocupar("nomes-unificar", "Unificando…");
+
+    var mudancas = [];
+    state.coleta.forEach(function(i){
+      if(i.nome && mapa[i.nome]) mudancas.push(["coleta/" + i.id + "/nome", mapa[i.nome]]);
+    });
+
+    try {
+      if(tambemArquivo){
+        state.arquivoCache = null;
+        var arquivo = await carregarArquivo();
+        arquivo.forEach(function(r){
+          if(r.item.nome && mapa[r.item.nome]) mudancas.push(["arquivo/" + r.mes + "/" + r.item.id + "/nome", mapa[r.item.nome]]);
+        });
+      }
+
+      if(!mudancas.length){
+        liberar("nomes-unificar");
+        feedback.innerHTML = '<div class="aviso aviso-ok">Nada a alterar.</div>';
+        return;
+      }
+
+      var feitos = 0;
+      for(var ini = 0; ini < mudancas.length; ini += 400){
+        var lote = {};
+        mudancas.slice(ini, ini + 400).forEach(function(m){ lote[m[0]] = m[1]; });
+        await db.ref().update(lote);
+        feitos += Object.keys(lote).length;
+        feedback.textContent = feitos + " de " + mudancas.length + " registros atualizados…";
+      }
+
+      state.coleta.forEach(function(i){ if(i.nome && mapa[i.nome]) i.nome = mapa[i.nome]; });
+      state.arquivoCache = null;
+      registrar("Nomes unificados (" + origens.length + ")", origens.join(", ").slice(0,120));
+      toast(feitos + " registro(s) atualizado(s).");
+      render();
+    } catch(err){
+      liberar("nomes-unificar");
+      feedback.innerHTML = '<div class="aviso aviso-erro">' + esc(msgBanco(err)) + '</div>';
+    }
+  }
+
   function listasEmEdicao(){
     if(!state.editListas){
       state.editListas = {
@@ -2470,6 +2577,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
           (linhasDescricao || '<tr><td colspan="3" class="vazio">Nenhuma descrição.</td></tr>') +
         '</tbody></table></div>' +
       '</div>' +
+      blocoNomes() +
       '<div class="cartao">' +
         '<div id="listas-feedback"></div>' +
         '<div class="acoes">' +
@@ -3048,6 +3156,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       copiarBtn.hidden = true;
       corpo.innerHTML = telaAssuntos();
     } else {
+      repetidosExpandido = false;
       titulo.textContent = atendimento.item.id;
       titulo.style.fontFamily = "var(--font-mono)";
       titulo.style.color = "var(--amber-deep)";
@@ -3190,6 +3299,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     atualizarRepetidos();
   }
 
+  var repetidosExpandido = false;
+
   function atualizarRepetidos(){
     var area = document.getElementById("at-repetidos");
     if(!area || !atendimento.item) return;
@@ -3210,13 +3321,18 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     }
 
     if(!achados.length){ area.innerHTML = ""; return; }
+    if(achados.length <= 3) repetidosExpandido = false;
 
     achados.sort(function(a,b){ return chaveData(b.item.data).localeCompare(chaveData(a.item.data)); });
+
+    var LIMITE = 3;
+    var mostrar = repetidosExpandido ? achados : achados.slice(0, LIMITE);
+    var restantes = achados.length - mostrar.length;
 
     area.innerHTML = '<div class="repetidos">' +
       '<span class="repetidos-titulo">' + achados.length + ' protocolo(s) com ' +
         (achados[0].cpf ? "esse CPF" : "essa placa") + '</span>' +
-      achados.map(function(a){
+      mostrar.map(function(a){
         var partes = [a.item.id, a.item.data || "—", a.item.assunto || "—"];
         if(a.item.descricao) partes.push(capitalizar(a.item.descricao));
         if(a.item.nome) partes.push(a.item.nome);
@@ -3224,7 +3340,13 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
           ? '<button data-repetido="' + esc(a.item.id) + '">' + esc(partes.join(" · ")) + '</button>'
           : '<span class="mono" style="font-size:13px">' + esc(partes.join(" · ")) + '</span>';
       }).join('') +
+      (restantes > 0 ? '<button class="link" id="at-mais-repetidos" style="align-self:flex-start;padding-left:0">Mostrar mais (' + restantes + ')</button>' : '') +
     '</div>';
+
+    liga("at-mais-repetidos", "click", function(){
+      repetidosExpandido = true;
+      atualizarRepetidos();
+    });
 
     cada("[data-repetido]", function(b){
       b.addEventListener("click", function(){
@@ -3525,6 +3647,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       b.addEventListener("click", function(){ restaurarMes(b.getAttribute("data-restaurar-mes")); });
     });
     liga("listas-salvar", "click", salvarListas);
+    liga("nomes-unificar", "click", unificarNomes);
     liga("listas-add-assunto", "click", function(){
       var dados = coletarListasDoDOM();
       dados.assuntos.push({nome:"", grupo:"outros", placa:false});
