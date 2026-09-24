@@ -540,6 +540,10 @@
           ".write": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true) && data.parent().child('uid').val() === auth.uid",
           ".validate": "newData.isString() && newData.val().length <= 40"
         },
+        "assuntosPadrao": {
+          ".write": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true) && data.parent().child('uid').val() === auth.uid",
+          ".validate": "newData.isString() && newData.val().length <= 400"
+        },
         "tempPassword": {
           ".write": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true) && data.parent().child('uid').val() === auth.uid",
           ".validate": "newData.val() === false"
@@ -2888,6 +2892,37 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     }));
   }
 
+  function preSelecionados(){
+    var bruto = String((state.currentUser && state.currentUser.assuntosPadrao) || "");
+    var lista = bruto.split("|").map(function(x){ return x.trim(); }).filter(Boolean);
+    var validos = nomesAssuntos();
+    return lista.filter(function(a){ return validos.indexOf(a) !== -1; });
+  }
+
+  async function salvarPreSelecao(){
+    var feedback = document.getElementById("pre-feedback");
+    var escolhidos = [];
+    cada(".pre-assunto", function(c){ if(c.checked) escolhidos.push(c.value); });
+
+    var indice = state.users.findIndex(function(u){
+      return u && u.uid && auth.currentUser && u.uid === auth.currentUser.uid;
+    });
+    if(indice < 0){ feedback.innerHTML = '<div class="aviso aviso-erro">Cadastro não encontrado.</div>'; return; }
+
+    var texto = escolhidos.join("|");
+    var botao = document.getElementById("pre-salvar");
+    botao.disabled = true;
+    try {
+      await db.ref("usuarios/" + indice + "/assuntosPadrao").set(texto);
+      state.currentUser.assuntosPadrao = texto;
+      feedback.innerHTML = '<div class="aviso aviso-ok">Pré-seleção salva.</div>';
+      toast(escolhidos.length ? "Pré-seleção salva." : "Pré-seleção limpa.");
+    } catch(err){
+      feedback.innerHTML = '<div class="aviso aviso-erro">' + esc(msgBanco(err)) + '</div>';
+    }
+    botao.disabled = false;
+  }
+
   function podeAbrirCaso(item){
     if(!item) return false;
     if(ehAdministrativo()) return true;
@@ -3023,11 +3058,12 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   }
 
   function telaAssuntos(){
-    var todos = atendimento.assuntos.length === state.assuntos.length;
+    var escolhidos = atendimento.assuntos.length ? atendimento.assuntos : preSelecionados();
+    var todos = escolhidos.length === state.assuntos.length;
     return '<div class="assuntos-grade">' +
       '<label class="assunto-opcao"><input type="checkbox" id="assunto-todos"' + (todos ? ' checked' : '') + '>TODOS</label>' +
       nomesAssuntos().map(function(op){
-        var marcado = atendimento.assuntos.indexOf(op) !== -1 ? ' checked' : '';
+        var marcado = escolhidos.indexOf(op) !== -1 ? ' checked' : '';
         return '<label class="assunto-opcao"><input type="checkbox" class="assunto-check" value="' + esc(op) + '"' + marcado + '>' + esc(op) + '</label>';
       }).join('') +
     '</div>' +
@@ -3306,6 +3342,17 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         '<div class="linha-dado"><span>Criado em</span><span>' + esc(dataHora(u.createdAt)) + '</span></div>' +
       '</div>' +
       '<div class="cartao">' +
+        '<h2>Pré-seleção de assuntos</h2>' +
+        '<div class="filtro-chips" style="margin-bottom:16px">' +
+          nomesAssuntos().map(function(a){
+            return '<label class="assunto-opcao"><input type="checkbox" class="pre-assunto" value="' + esc(a) + '"' +
+              (preSelecionados().indexOf(a) !== -1 ? " checked" : "") + '>' + esc(a) + '</label>';
+          }).join("") +
+        '</div>' +
+        '<div id="pre-feedback"></div>' +
+        '<button class="btn btn-principal" style="width:auto;" id="pre-salvar">Salvar pré-seleção</button>' +
+      '</div>' +
+      '<div class="cartao">' +
         '<h2>Trocar senha</h2>' +
         '<div id="troca-feedback"></div>' +
         '<div class="grade-2">' +
@@ -3554,6 +3601,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     liga("novo-cpf", "input", function(){ this.value = formatCPF(this.value); });
     liga("copiar-credencial", "click", copiarCredencial);
     liga("conta-salvar-senha", "click", trocarMinhaSenha);
+    liga("pre-salvar", "click", salvarPreSelecao);
 
     cada("[data-painel]", function(b){
       b.addEventListener("click", function(){
