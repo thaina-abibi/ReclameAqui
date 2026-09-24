@@ -644,15 +644,20 @@ var itens=[],vistos=Object.create(null);
 try { itens=JSON.parse(localStorage.getItem(CHAVE)||"[]")||[]; } catch(e){itens=[];}
 itens.forEach(function(item){vistos[item.id]=true;});
 function salvar(){try{localStorage.setItem(CHAVE,JSON.stringify(itens));}catch(e){}}
+var REGRAS=/*REGRAS*/[];
+var REGRAS_PRONTAS=REGRAS.map(function(r){
+ return {nome:r.nome, testes:(r.palavras||[]).map(function(p){
+   return new RegExp("\\b"+String(p).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b");
+ })};
+});
+var ASSUNTO_PADRAO=(REGRAS.filter(function(r){return r.padrao;})[0]||REGRAS[REGRAS.length-1]||{nome:"OUTROS"}).nome;
 function categorizarAssunto(titulo){
- var t=(titulo||"").toLowerCase();
- if(t.match(/\b(cnh|habilita[çc][ãa]o|carteira|categoria|exame|pdd|renach|biometria)\b/))return "CNH";
- if(t.match(/\b(ve[íi]culo|carro|moto|placa|transfer[êe]ncia|licenciamento|ipva|crv|crlv|renavam)\b/))return "VEÍCULOS";
- if(t.match(/\b(multa|infra[çc][ãa]o|pontos|recurso|defesa|autua[çc][ãa]o)\b/))return "MULTAS";
- if(t.match(/\b(portal|site|sistema|app|aplicativo|login|senha|erro|acesso|cadastro)\b/))return "PORTAL";
- if(t.match(/\b(credenciad[oa]|autoescola|cfc|m[eé]dic[oa]|psic[óo]log[oa]|despachante|vistoriah)\b/))return "CREDENCIADOS";
- if(t.match(/\b(an[áa]lise|processo|andamento|pend[êe]ncia|aguardando|prazo|status)\b/))return "ANÁLISE";
- return "OUTROS";
+ var t=(titulo||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+ for(var i=0;i<REGRAS_PRONTAS.length;i++){
+  var r=REGRAS_PRONTAS[i];
+  for(var k=0;k<r.testes.length;k++){ if(r.testes[k].test(t)) return r.nome; }
+ }
+ return ASSUNTO_PADRAO;
 }
 function varrer(){
  var texto=document.body.innerText||"",novos=0;
@@ -757,13 +762,13 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   var ADMIN_UID = "SEFaMdmhNNNtXdSuUvOhjFNiXDJ3";
   var coletaRef=null;
   var ASSUNTOS_PADRAO = [
-    {nome:"CNH", grupo:"cnh", placa:false},
-    {nome:"VEÍCULOS", grupo:"veiculos", placa:true},
-    {nome:"MULTAS", grupo:"veiculos", placa:true},
-    {nome:"PORTAL", grupo:"cnh", placa:false},
-    {nome:"CREDENCIADOS", grupo:"outros", placa:false},
-    {nome:"ANÁLISE", grupo:"outros", placa:false},
-    {nome:"OUTROS", grupo:"outros", placa:false}
+    {nome:"CNH", grupo:"cnh", placa:false, palavras:"cnh, habilitação, carteira, categoria, exame, pdd, renach, biometria"},
+    {nome:"VEÍCULOS", grupo:"veiculos", placa:true, palavras:"veículo, veículos, carro, moto, placa, transferência, licenciamento, ipva, crv, crlv, renavam"},
+    {nome:"MULTAS", grupo:"veiculos", placa:true, palavras:"multa, multas, infração, infrações, pontos, recurso, defesa, autuação"},
+    {nome:"PORTAL", grupo:"cnh", placa:false, palavras:"portal, site, sistema, app, aplicativo, login, senha, erro, acesso, cadastro"},
+    {nome:"CREDENCIADOS", grupo:"outros", placa:false, palavras:"credenciado, credenciada, autoescola, cfc, médico, psicólogo, despachante, vistoria"},
+    {nome:"ANÁLISE", grupo:"outros", placa:false, palavras:"análise, processo, andamento, pendência, aguardando, prazo, status"},
+    {nome:"OUTROS", grupo:"outros", placa:false, palavras:""}
   ];
   var DESCRICOES_PADRAO = [
     {nome:"RESPONDIDO", tipo:"finaliza"},
@@ -2502,7 +2507,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   function listasEmEdicao(){
     if(!state.editListas){
       state.editListas = {
-        assuntos: state.assuntos.map(function(a){ return {nome:a.nome, grupo:a.grupo || "outros", placa:!!a.placa}; }),
+        assuntos: state.assuntos.map(function(a){ return {nome:a.nome, grupo:a.grupo || "outros", placa:!!a.placa, palavras:a.palavras || ""}; }),
         descricoes: state.descricoes.map(function(d){ return {nome:d.nome, tipo:d.tipo || "finaliza"}; })
       };
     }
@@ -2515,7 +2520,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       assuntos.push({
         nome: (l.querySelector(".assunto-nome").value || "").trim().toUpperCase(),
         grupo: l.querySelector(".assunto-grupo").value,
-        placa: l.querySelector(".assunto-placa").checked
+        placa: l.querySelector(".assunto-placa").checked,
+        palavras: (l.querySelector(".assunto-palavras").value || "").trim()
       });
     });
     cada(".linha-descricao", function(l){
@@ -2533,6 +2539,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var linhasAssunto = edit.assuntos.map(function(a, i){
       return '<tr class="linha-assunto">' +
         '<td><input type="text" class="assunto-nome" value="' + esc(a.nome) + '" placeholder="NOME DO ASSUNTO"></td>' +
+        '<td><input type="text" class="assunto-palavras" value="' + esc(a.palavras || "") + '" placeholder="palavras separadas por vírgula"></td>' +
         '<td><select class="assunto-grupo">' +
           '<option value="veiculos"' + (a.grupo === "veiculos" ? " selected" : "") + '>Veículos</option>' +
           '<option value="cnh"' + (a.grupo === "cnh" ? " selected" : "") + '>CNH</option>' +
@@ -2560,10 +2567,10 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
           '<h2>Assuntos</h2>' +
           '<button class="btn btn-neutro btn-mini" id="listas-add-assunto">Adicionar assunto</button>' +
         '</div>' +
-        '<div class="rolagem"><table><thead><tr>' +
-          '<th>NOME</th><th>GRUPO NO TOTAL</th><th>PEDE PLACA</th><th></th>' +
+        '<div class="rolagem"><table style="min-width:900px"><thead><tr>' +
+          '<th>NOME</th><th>PALAVRAS NA COLETA</th><th>GRUPO NO TOTAL</th><th>PEDE PLACA</th><th></th>' +
         '</tr></thead><tbody>' +
-          (linhasAssunto || '<tr><td colspan="4" class="vazio">Nenhum assunto.</td></tr>') +
+          (linhasAssunto || '<tr><td colspan="5" class="vazio">Nenhum assunto.</td></tr>') +
         '</tbody></table></div>' +
       '</div>' +
       '<div class="cartao">' +
@@ -3776,10 +3783,26 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     }
   }
 
+  function regrasDeColeta(){
+    var padrao = null;
+    var regras = state.assuntos.map(function(a){
+      var palavras = String(a.palavras || "").split(/[,;\n]+/).map(function(x){
+        return normalizarBusca(x).trim();
+      }).filter(Boolean);
+      if(!palavras.length && !padrao) padrao = a.nome;
+      return {nome:a.nome, palavras:palavras};
+    });
+    var nomes = regras.map(function(r){ return r.nome; });
+    var alvo = nomes.indexOf("OUTROS") !== -1 ? "OUTROS" : (padrao || nomes[nomes.length - 1]);
+    regras.forEach(function(r){ if(r.nome === alvo) r.padrao = true; });
+    return regras;
+  }
+
   function copiarCodigoColetor(){
     var el = document.getElementById("codigo-coletor");
     if(!el){ toast("Código do coletor não encontrado no arquivo."); return; }
-    copiar(el.textContent.trim(), "Código copiado. Feche o coletor antigo no X e execute este no Reclame Aqui.");
+    var texto = el.textContent.trim().replace("/*REGRAS*/[]", JSON.stringify(regrasDeColeta()));
+    copiar(texto, "Código copiado com as palavras atuais. Feche o coletor antigo no X e execute este no Reclame Aqui.");
   }
 
   async function alternarUso(){
