@@ -2986,6 +2986,13 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     });
   }
 
+  function naDoca(id){
+    for(var i=0;i<atendimento.minimizados.length;i++){
+      if(String(atendimento.minimizados[i].id) === String(id)) return true;
+    }
+    return false;
+  }
+
   function casoAberto(id){
     if(atendimento.item && String(atendimento.item.id) === String(id)) return true;
     for(var i=0;i<atendimento.minimizados.length;i++){
@@ -3002,7 +3009,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var eu = meuUsuario();
     if(!eu) return [];
     return ordenarCasos(state.coleta.filter(function(i){
-      return estadoColeta(i) === "naoRespondidas" && !casoAberto(i.id) &&
+      return estadoColeta(i) === "naoRespondidas" && !casoAberto(i.id) && !naDoca(i.id) &&
         String(i.responsavel || "").toLowerCase() === eu;
     }));
   }
@@ -3056,7 +3063,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     if(meus.length) return meus[0];
     var novos = state.coleta.filter(function(i){
       if(estadoColeta(i) !== "naoRespondidas") return false;
-      if(casoAberto(i.id)) return false;
+      if(casoAberto(i.id) || naDoca(i.id)) return false;
       if(i.responsavel) return false;
       return !atendimento.assuntos.length || atendimento.assuntos.indexOf(i.assunto) !== -1;
     });
@@ -3823,6 +3830,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     }
 
     state.ocupadoUso = true;
+    encerrarAtendimento();
     ocupar("btn-uso", "AGUARDE…");
 
     var dados = {
@@ -3857,8 +3865,18 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     render();
   }
 
+  function encerrarAtendimento(){
+    atendimento.item = null;
+    atendimento.minimizados = [];
+    var d = document.getElementById("popup-atendimento");
+    if(d){ if(d.open) d.close(); d.remove(); }
+    var doca = document.getElementById("doca-atendimento");
+    if(doca) doca.remove();
+  }
+
   async function finalizarUso(silencioso){
     if(!ehMinhaSessao()) return;
+    encerrarAtendimento();
     state.ocupadoUso = true;
     if(!silencioso) ocupar("btn-uso", "AGUARDE…");
 
