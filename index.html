@@ -879,23 +879,28 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     return out;
   }
 
+  function paraISO(v){
+    if(typeof v === "number") return new Date(v).toISOString();
+    return String(v == null ? "" : v);
+  }
+
   function dataHora(iso){
     if(!iso) return "";
-    var d = new Date(iso);
+    var d = new Date(typeof iso === "number" ? iso : iso);
     if(isNaN(d.getTime())) return iso;
     return d.toLocaleDateString("pt-BR") + " " + d.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"});
   }
 
   function soData(iso){
     if(!iso) return "";
-    var d = new Date(iso);
+    var d = new Date(typeof iso === "number" ? iso : iso);
     if(isNaN(d.getTime())) return iso;
     return d.toLocaleDateString("pt-BR");
   }
 
   function soHora(iso){
     if(!iso) return "";
-    var d = new Date(iso);
+    var d = new Date(typeof iso === "number" ? iso : iso);
     if(isNaN(d.getTime())) return "";
     return d.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit", second:"2-digit"});
   }
@@ -1007,7 +1012,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       (state.currentUser.username||"").toLowerCase() === (username||"").toLowerCase());
   }
 
-  var refUsuarios = null, refLogs = null, refSessao = null, refUso = null, refListas = null, refIndice = null, aoCair = null;
+  var refUsuarios = null, refLogs = null, refSessao = null, refUso = null, refListas = null, refIndice = null, aoCair = null, aoCairRegistro = null;
 
   function ligarBase(){
     if(refUsuarios) return;
@@ -1051,7 +1056,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     refUso = db.ref("usoRegistro");
     refUso.on("value", function(snap){
       state.uso = toArray(snap.val()).sort(function(a,b){
-        return String(a.em||"").localeCompare(String(b.em||""));
+        return paraISO(a.em).localeCompare(paraISO(b.em));
       });
       if(state.screen === "painel" && state.painelAba === "registro") render();
     }, function(){});
@@ -3595,7 +3600,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var linhas = state.uso.slice().reverse().map(function(r){
       var selo = (r.acao === "INICIAR")
         ? '<span class="selo selo-inicio">INICIAR</span>'
-        : '<span class="selo selo-fim">FINALIZAR</span>';
+        : '<span class="selo selo-fim">FINALIZAR</span>' +
+          (r.automatico ? '<span class="selo selo-temp">saiu sem finalizar</span>' : '');
       return '<tr>' +
         '<td><strong>' + esc(r.nome || r.username || "—") + '</strong>' +
           (r.email ? '<div class="mono">' + esc(r.email) + '</div>' : '') + '</td>' +
@@ -3854,6 +3860,20 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       }
       aoCair = db.ref("sessaoAtiva").onDisconnect();
       aoCair.remove();
+
+      try {
+        var saida = db.ref("usoRegistro").push();
+        aoCairRegistro = saida.onDisconnect();
+        await aoCairRegistro.set({
+          username: u.username || "",
+          nome: nomeExibido(u),
+          email: u.email || "",
+          acao: "FINALIZAR",
+          automatico: true,
+          em: firebase.database.ServerValue.TIMESTAMP
+        });
+      } catch(e){ aoCairRegistro = null; }
+
       state.sessao = dados;
       await registrarUso("INICIAR");
       toast("Uso iniciado.");
@@ -3882,6 +3902,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
     try {
       if(aoCair){ try { await aoCair.cancel(); } catch(e){} aoCair = null; }
+      if(aoCairRegistro){ try { await aoCairRegistro.cancel(); } catch(e){} aoCairRegistro = null; }
       await db.ref("sessaoAtiva").remove();
       state.sessao = null;
       await registrarUso("FINALIZAR");
