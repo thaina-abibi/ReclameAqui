@@ -3085,10 +3085,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       atendimento.minimizados = atendimento.minimizados.filter(function(i){ return String(i.id) !== String(caso.id); });
       if(atendimento.item && String(atendimento.item.id) !== String(caso.id)) guardarNaDoca(atendimento.item);
       atendimento.item = caso;
-    } else if(!atendimento.item){
-      var meus = atribuidosAMim();
-      if(meus.length) atendimento.item = meus[0];
-      else if(atendimento.assuntos.length) atendimento.item = proximoCaso();
+    } else if(!atendimento.item && atendimento.assuntos.length){
+      atendimento.item = proximoCaso();
     }
 
     renderDoca();
@@ -3390,7 +3388,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var sustentacao = (document.getElementById("at-sustentacao").value || "").trim().toUpperCase();
     var observacao = (document.getElementById("at-observacao").value || "").trim();
 
-    var fica = !!destino || atribuir || (!!descricao && ehPendente(descricao));
+    var guardaVinculos = !!destino || atribuir || (!!descricao && ehPendente(descricao));
+    var assumeDono = !!destino || atribuir;
     var alvo = destino ? (acharUsuario(destino) || state.currentUser) : state.currentUser;
     var descricaoFinal = destino ? "" : descricao;
     var dados = {
@@ -3399,10 +3398,10 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       placa: pedePlaca(assunto) ? placa : "",
       descricao: descricaoFinal,
       observacao: observacao,
-      sac: fica ? sac : "",
-      sustentacao: fica ? sustentacao : "",
+      sac: guardaVinculos ? sac : "",
+      sustentacao: guardaVinculos ? sustentacao : "",
       nome: nomeExibido(alvo),
-      responsavel: fica ? ((alvo && alvo.username) || "") : "",
+      responsavel: assumeDono ? ((alvo && alvo.username) || "") : "",
       atualizadoEm: new Date().toISOString()
     };
 
@@ -3918,6 +3917,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
   function encerrarAtendimento(){
     atendimento.item = null;
+    atendimento.assuntos = [];
     atendimento.minimizados = [];
     var d = document.getElementById("popup-atendimento");
     if(d){ if(d.open) d.close(); d.remove(); }
