@@ -1012,7 +1012,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       (state.currentUser.username||"").toLowerCase() === (username||"").toLowerCase());
   }
 
-  var refUsuarios = null, refLogs = null, refSessao = null, refUso = null, refListas = null, refIndice = null, aoCair = null, aoCairRegistro = null;
+  var refUsuarios = null, refLogs = null, refSessao = null, refUso = null, refListas = null, refIndice = null;
 
   function ligarBase(){
     if(refUsuarios) return;
@@ -3390,14 +3390,9 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var sustentacao = (document.getElementById("at-sustentacao").value || "").trim().toUpperCase();
     var observacao = (document.getElementById("at-observacao").value || "").trim();
 
-    if(!atribuir){
-      if(!descricao){ feedback.innerHTML = '<div class="aviso aviso-erro">Escolha a descrição.</div>'; return; }
-      if(cpf.length !== 11){ feedback.innerHTML = '<div class="aviso aviso-erro">O CPF precisa ter 11 dígitos.</div>'; return; }
-    }
-
     var fica = !!destino || atribuir || (!!descricao && ehPendente(descricao));
     var alvo = destino ? (acharUsuario(destino) || state.currentUser) : state.currentUser;
-    var descricaoFinal = destino ? "" : (atribuir ? (descricao || descricaoPendentePadrao()) : descricao);
+    var descricaoFinal = destino ? "" : descricao;
     var dados = {
       assunto: assunto,
       cpf: cpf,
@@ -3423,6 +3418,13 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     } catch(err){
       salvar.disabled = false; atribui.disabled = false; if(outro) outro.disabled = false;
       feedback.innerHTML = '<div class="aviso aviso-erro">' + esc(msgBanco(err)) + '</div>';
+      return;
+    }
+
+    if(!atribuir && !destino && !descricao){
+      salvar.disabled = false; atribui.disabled = false; if(outro) outro.disabled = false;
+      renderAtendimento();
+      render();
       return;
     }
 
@@ -3818,6 +3820,49 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     copiar(texto, "Código copiado com as palavras atuais. Feche o coletor antigo no X e execute este no Reclame Aqui.");
   }
 
+  var saida = {token:null, dados:null, relogio:null, enviado:false};
+
+  function prepararSaida(u){
+    saida.enviado = false;
+    saida.dados = {
+      username: u.username || "",
+      nome: nomeExibido(u),
+      email: u.email || "",
+      acao: "FINALIZAR",
+      automatico: true
+    };
+    function renovar(){
+      if(!auth.currentUser) return;
+      auth.currentUser.getIdToken().then(function(t){ saida.token = t; }, function(){});
+    }
+    renovar();
+    clearInterval(saida.relogio);
+    saida.relogio = setInterval(renovar, 20 * 60 * 1000);
+  }
+
+  function encerrarSaida(){
+    clearInterval(saida.relogio);
+    saida.relogio = null;
+    saida.token = null;
+    saida.dados = null;
+    saida.enviado = false;
+  }
+
+  function registrarSaidaAbrupta(){
+    if(saida.enviado || !saida.token || !saida.dados) return;
+    if(!ehMinhaSessao()) return;
+    saida.enviado = true;
+    var base = firebaseConfig.databaseURL.replace(/\/$/, "");
+    var corpo = JSON.stringify(Object.assign({em: new Date().toISOString()}, saida.dados));
+    try {
+      fetch(base + "/usoRegistro.json?auth=" + encodeURIComponent(saida.token), {method:"POST", body:corpo, keepalive:true});
+      fetch(base + "/sessaoAtiva.json?auth=" + encodeURIComponent(saida.token), {method:"DELETE", keepalive:true});
+    } catch(e){}
+  }
+
+  window.addEventListener("pagehide", registrarSaidaAbrupta);
+  window.addEventListener("beforeunload", registrarSaidaAbrupta);
+
   async function alternarUso(){
     if(state.ocupadoUso) return;
     if(ehMinhaSessao()) await finalizarUso(false);
@@ -3858,21 +3903,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         render();
         return;
       }
-      aoCair = db.ref("sessaoAtiva").onDisconnect();
-      aoCair.remove();
-
-      try {
-        var saida = db.ref("usoRegistro").push();
-        aoCairRegistro = saida.onDisconnect();
-        await aoCairRegistro.set({
-          username: u.username || "",
-          nome: nomeExibido(u),
-          email: u.email || "",
-          acao: "FINALIZAR",
-          automatico: true,
-          em: firebase.database.ServerValue.TIMESTAMP
-        });
-      } catch(e){ aoCairRegistro = null; }
+      prepararSaida(u);
 
       state.sessao = dados;
       await registrarUso("INICIAR");
@@ -3901,8 +3932,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     if(!silencioso) ocupar("btn-uso", "AGUARDE…");
 
     try {
-      if(aoCair){ try { await aoCair.cancel(); } catch(e){} aoCair = null; }
-      if(aoCairRegistro){ try { await aoCairRegistro.cancel(); } catch(e){} aoCairRegistro = null; }
+      encerrarSaida();
       await db.ref("sessaoAtiva").remove();
       state.sessao = null;
       await registrarUso("FINALIZAR");
