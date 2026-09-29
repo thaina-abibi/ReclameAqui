@@ -3400,10 +3400,11 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       observacao: observacao,
       sac: guardaVinculos ? sac : "",
       sustentacao: guardaVinculos ? sustentacao : "",
-      nome: nomeExibido(alvo),
       responsavel: assumeDono ? ((alvo && alvo.username) || "") : "",
       atualizadoEm: new Date().toISOString()
     };
+
+    if(assumeDono || descricaoFinal) dados.nome = nomeExibido(alvo);
 
     var salvar = document.getElementById("at-salvar");
     var atribui = document.getElementById("at-atribuir");
@@ -3413,7 +3414,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     try {
       await db.ref("coleta/" + item.id).update(dados);
       for(var k in dados){ if(Object.prototype.hasOwnProperty.call(dados,k)) item[k] = dados[k]; }
-      toast(destino ? ("Caso atribuído a " + nomeExibido(alvo) + ".") : (atribuir ? "Caso atribuído a você." : "Caso salvo."));
+      toast(destino ? ("Caso atribuído a " + nomeExibido(alvo) + ".") : (atribuir ? "Caso atribuído a você." : "Caso salvo, sem atribuição."));
     } catch(err){
       salvar.disabled = false; atribui.disabled = false; if(outro) outro.disabled = false;
       feedback.innerHTML = '<div class="aviso aviso-erro">' + esc(msgBanco(err)) + '</div>';
