@@ -371,6 +371,21 @@
   .at-copiar{background:none;border:1px solid var(--line-strong);color:var(--ink-soft);border-radius:7px;padding:5px 6px;cursor:pointer;display:flex;align-items:center;}
   .at-copiar:hover{color:var(--amber-deep);border-color:var(--amber);}
   .at-copiar svg{width:16px;height:16px;}
+  .resposta-item{border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:12px; background:var(--paper);}
+  .resposta-item:last-child{margin-bottom:0;}
+  .resposta-topo{display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap; margin-bottom:10px;}
+  .resposta-meta{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+  .resposta-texto{font-size:13.5px; color:var(--ink); white-space:pre-wrap; max-height:150px; overflow:auto;}
+  #resposta-texto{min-height:140px; resize:vertical;}
+
+  .historico{
+    margin:4px 0 16px; padding:12px 14px; border:1px solid var(--line); border-radius:9px;
+    background:var(--paper); display:flex; flex-direction:column; gap:6px; max-height:170px; overflow:auto;
+  }
+  .historico-titulo{font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft);}
+  .historico-linha{font-size:12.5px; color:var(--ink);}
+  .historico-linha .mono{color:var(--ink-soft);}
+
   .repetidos{
     margin:0 0 16px;padding:12px 14px;border:1px dashed var(--gold);border-radius:9px;
     background:var(--amber-soft);display:flex;flex-direction:column;gap:7px;
@@ -574,6 +589,19 @@
       ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
       ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true)"
     },
+    "respostas": {
+      ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
+      ".write": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
+      "$id": {
+        ".validate": "newData.hasChildren(['titulo','texto'])",
+        "titulo": { ".validate": "newData.isString() && newData.val().length <= 140" },
+        "assunto": { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "texto": { ".validate": "newData.isString() && newData.val().length <= 8000" },
+        "por": { ".validate": "newData.isString() && newData.val().length <= 80" },
+        "em": { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "$outro": { ".validate": false }
+      }
+    },
     "listas": {
       ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
       ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true)"
@@ -625,6 +653,9 @@
         },
         "atualizadoEm": {
           ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "historico": {
+          ".validate": "newData.hasChildren()"
         },
         "$outro": {
           ".validate": false
@@ -796,6 +827,9 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     assuntos:ASSUNTOS_PADRAO.slice(),
     descricoes:DESCRICOES_PADRAO.slice(),
     editListas:null,
+    respostas:[],
+    respostaEdit:null,
+    respostaBusca:"",
     pesquisa:{termo:"", incluirArquivo:true, inicio:"", fim:"", assuntos:[], estados:[], descricao:"", responsavel:"", nome:"", nota:"", resultados:null},
     arquivoIndice:{},
     arquivoCache:null,
@@ -811,6 +845,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   var IC_REGISTRO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><line x1="9" y1="13" x2="16" y2="13"/><line x1="9" y1="17" x2="14" y2="17"/></svg>';
   var IC_INICIO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.4 12 4l9 7.4"/><path d="M5 10v9.5a.5.5 0 0 0 .5.5H10v-6h4v6h4.5a.5.5 0 0 0 .5-.5V10"/></svg>';
   var IC_FILTRO = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3.5" y="2.8" width="17" height="2.8" rx="1.2"/><path d="M4.3 7h15.4l-6.1 7.2V21l-3.2-1.7v-5.1z"/></svg>';
+  var IC_RESPOSTAS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-8 8H8l-4 2.5V12a8 8 0 0 1 8-8h1a8 8 0 0 1 8 8z"/><line x1="9" y1="11" x2="16" y2="11"/><line x1="9" y1="15" x2="13" y2="15"/></svg>';
   var IC_BUSCA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20.5" y1="20.5" x2="16" y2="16"/></svg>';
   var IC_ARQUIVO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/><line x1="10" y1="13" x2="14" y2="13"/></svg>';
   var IC_LISTAS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="7" r="2.2"/><circle cx="15" cy="12" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>';
@@ -1012,7 +1047,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       (state.currentUser.username||"").toLowerCase() === (username||"").toLowerCase());
   }
 
-  var refUsuarios = null, refLogs = null, refSessao = null, refUso = null, refListas = null, refIndice = null;
+  var refUsuarios = null, refLogs = null, refSessao = null, refUso = null, refListas = null, refIndice = null, refRespostas = null;
 
   function ligarBase(){
     if(refUsuarios) return;
@@ -1020,6 +1055,15 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     refIndice.on("value", function(snap){
       state.arquivoIndice = snap.val() || {};
       if(state.screen === "painel" && state.painelAba === "arquivo" && !digitandoNoFormulario()) render();
+    }, function(){});
+    refRespostas = db.ref("respostas");
+    refRespostas.on("value", function(snap){
+      var v = snap.val() || {};
+      state.respostas = Object.keys(v).map(function(k){
+        var r = v[k] || {};
+        return {id:k, titulo:r.titulo || "", assunto:r.assunto || "", texto:r.texto || "", por:r.por || "", em:r.em || ""};
+      }).sort(function(a,b){ return a.titulo.localeCompare(b.titulo); });
+      if(state.screen === "painel" && state.painelAba === "respostas" && !digitandoNoFormulario()) render();
     }, function(){});
     refListas = db.ref("listas");
     refListas.on("value", function(snap){
@@ -1065,6 +1109,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   function desligarBase(){
     if(coletaRef){coletaRef.off();coletaRef=null;} state.coleta=[];
     if(refListas){refListas.off(); refListas=null;}
+    if(refRespostas){refRespostas.off(); refRespostas=null;} state.respostas=[]; state.respostaEdit=null;
     if(refIndice){refIndice.off(); refIndice=null;}
     state.arquivoCache = null;
     definirPeriodoPadrao();
@@ -1151,7 +1196,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
   function digitandoNoFormulario(){
     if(state.painelAba === "listas" && document.getElementById("area-listas")) return true;
-    var ids = ["base-dados","editar-nome","editar-cpf","coleta-dados","novo-nome","novo-usuario","novo-cpf","login-usuario","conta-senha1","senha-nova"];
+    var ids = ["resposta-titulo","resposta-texto","base-dados","editar-nome","editar-cpf","coleta-dados","novo-nome","novo-usuario","novo-cpf","login-usuario","conta-senha1","senha-nova"];
     for(var i=0;i<ids.length;i++){
       var campo = document.getElementById(ids[i]);
       if(campo && campo.value) return true;
@@ -1412,6 +1457,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
     var nav = itemNav("inicio", "Início", IC_INICIO, state.painelAba === "inicio");
     nav += itemNav("dash", "Painel", IC_GRAFICO, state.painelAba === "dash" || state.painelAba === "pesquisa");
+    nav += itemNav("respostas", "Respostas", IC_RESPOSTAS, state.painelAba === "respostas");
     if(admin){
       nav += itemNav("usuarios", "Usuários", IC_PESSOAS, state.painelAba === "usuarios");
       nav += itemNav("registro", "Registro", IC_REGISTRO, state.painelAba === "registro");
@@ -1434,6 +1480,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var conteudo;
     if(state.painelAba === "dash" || state.painelAba === "pesquisa") conteudo = blocoDashboard();
     else if(state.painelAba === "arquivo" && admin) conteudo = blocoArquivo();
+    else if(state.painelAba === "respostas") conteudo = blocoRespostas();
     else if(state.painelAba === "conta") conteudo = blocoConta(u);
     else if(state.painelAba === "usuarios" && admin) conteudo = blocoUsuarios();
     else if(state.painelAba === "registro" && admin) conteudo = blocoRegistro();
@@ -3081,6 +3128,11 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
     if(caso && !caso.id) caso = null;
 
+    if(caso && !podeAbrirCaso(caso) && caso.responsavel){
+      toast("Protocolo atribuído a " + nomeDoResponsavel(caso.responsavel) + ".");
+      return;
+    }
+
     if(caso){
       atendimento.minimizados = atendimento.minimizados.filter(function(i){ return String(i.id) !== String(caso.id); });
       if(atendimento.item && String(atendimento.item.id) !== String(caso.id)) guardarNaDoca(atendimento.item);
@@ -3231,6 +3283,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     '</div>' +
     '<div class="campo"><label for="at-observacao">Observação</label>' +
       '<textarea id="at-observacao" maxlength="600">' + esc(item.observacao || "") + '</textarea></div>' +
+    blocoHistorico(item) +
     '<div id="at-feedback"></div>' +
     '<div class="at-acoes">' +
       '<button class="btn btn-principal" id="at-salvar">SALVAR</button>' +
@@ -3375,6 +3428,42 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     });
   }
 
+  function resumoMudancas(antes, depois){
+    var rotulos = {assunto:"Assunto", cpf:"CPF", placa:"Placa", descricao:"Descrição",
+      observacao:"Observação", sac:"SAC", sustentacao:"Sustentação", responsavel:"Atribuído a", nome:"Nome"};
+    var partes = [];
+    Object.keys(rotulos).forEach(function(k){
+      if(!(k in depois)) return;
+      var de = String(antes[k] === undefined || antes[k] === null ? "" : antes[k]);
+      var para = String(depois[k] === undefined || depois[k] === null ? "" : depois[k]);
+      if(de === para) return;
+      if(k === "responsavel"){ de = nomeDoResponsavel(de); para = nomeDoResponsavel(para); }
+      if(k === "descricao"){ de = capitalizar(de); para = capitalizar(para); }
+      partes.push(rotulos[k] + ": " + (de ? de + " → " : "") + (para || "vazio"));
+    });
+    return partes.join(" · ");
+  }
+
+  function historicoDoItem(item){
+    return toArray(item && item.historico).slice().sort(function(a,b){
+      return paraISO(b.em).localeCompare(paraISO(a.em));
+    });
+  }
+
+  function blocoHistorico(item){
+    var lista = historicoDoItem(item);
+    if(!lista.length) return "";
+    return '<div class="historico">' +
+      '<span class="historico-titulo">Histórico</span>' +
+      lista.slice(0, 12).map(function(h){
+        return '<div class="historico-linha">' +
+          '<span class="mono">' + esc(dataHora(h.em)) + '</span> · ' + esc(h.por || "—") +
+          (h.mudancas ? ' — ' + esc(h.mudancas) : '') +
+        '</div>';
+      }).join('') +
+    '</div>';
+  }
+
   async function salvarAtendimento(atribuir, destino){
     var item = atendimento.item;
     if(!item) return;
@@ -3411,8 +3500,18 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var outro = document.getElementById("at-confirmar-outro");
     salvar.disabled = true; atribui.disabled = true; if(outro) outro.disabled = true;
 
+    var mudancas = resumoMudancas(item, dados);
+
     try {
       await db.ref("coleta/" + item.id).update(dados);
+      if(mudancas){
+        var registro = {em: new Date().toISOString(), por: nomeExibido(state.currentUser), mudancas: mudancas};
+        try {
+          var nova = await db.ref("coleta/" + item.id + "/historico").push(registro);
+          item.historico = item.historico || {};
+          item.historico[nova.key] = registro;
+        } catch(e){}
+      }
       for(var k in dados){ if(Object.prototype.hasOwnProperty.call(dados,k)) item[k] = dados[k]; }
       toast(destino ? ("Caso atribuído a " + nomeExibido(alvo) + ".") : (atribuir ? "Caso atribuído a você." : "Caso salvo, sem atribuição."));
     } catch(err){
@@ -3469,6 +3568,97 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       campo.value="";feedback.textContent=itens.length+" registro(s) processado(s): "+partes.join(" · ")+". Cada ID existe em um único lugar.";
     }catch(e){feedback.textContent="Importação não concluída: "+e.message+". O texto foi preservado; você pode tentar novamente. Alguns registros podem já ter sido salvos.";}
     finally{botao.disabled=false;}
+  }
+
+  function blocoRespostas(){
+    var edit = state.respostaEdit;
+    var busca = normalizarBusca(state.respostaBusca);
+    var lista = state.respostas.filter(function(r){
+      if(!busca) return true;
+      return normalizarBusca(r.titulo + " " + r.assunto + " " + r.texto).indexOf(busca) !== -1;
+    });
+
+    var opcoesAssunto = '<option value="">Geral</option>' + nomesAssuntos().map(function(a){
+      return '<option value="' + esc(a) + '"' + (edit && edit.assunto === a ? " selected" : "") + '>' + esc(a) + '</option>';
+    }).join("");
+
+    var cartoes = lista.map(function(r){
+      return '<div class="resposta-item">' +
+        '<div class="resposta-topo">' +
+          '<div>' +
+            '<strong>' + esc(r.titulo) + '</strong>' +
+            '<div class="resposta-meta">' + esc(r.assunto || "Geral") + (r.por ? ' · ' + esc(r.por) : '') + (r.em ? ' · ' + esc(soData(r.em)) : '') + '</div>' +
+          '</div>' +
+          '<div class="acoes">' +
+            '<button class="btn btn-neutro btn-mini" data-copiar-resposta="' + esc(r.id) + '">Copiar</button>' +
+            '<button class="btn btn-neutro btn-mini" data-editar-resposta="' + esc(r.id) + '">Editar</button>' +
+            '<button class="btn btn-risco btn-mini" data-excluir-resposta="' + esc(r.id) + '">Excluir</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="resposta-texto">' + esc(r.texto) + '</div>' +
+      '</div>';
+    }).join('');
+
+    return '<div class="cartao">' +
+      '<h2>' + (edit && edit.id ? "Editar resposta" : "Nova resposta") + '</h2>' +
+      '<div class="grade-2">' +
+        '<div class="campo"><label for="resposta-titulo">Título</label>' +
+          '<input type="text" id="resposta-titulo" maxlength="140" placeholder="Ex.: CNH — segunda via em análise" value="' + esc(edit ? edit.titulo : "") + '"></div>' +
+        '<div class="campo"><label for="resposta-assunto">Assunto</label>' +
+          '<select id="resposta-assunto">' + opcoesAssunto + '</select></div>' +
+      '</div>' +
+      '<div class="campo"><label for="resposta-texto">Texto</label>' +
+        '<textarea id="resposta-texto" maxlength="8000" placeholder="Texto da resposta">' + esc(edit ? edit.texto : "") + '</textarea></div>' +
+      '<div id="resposta-feedback"></div>' +
+      '<div class="acoes" style="margin-top:12px">' +
+        '<button class="btn btn-principal" style="width:auto;" id="resposta-salvar">' + (edit && edit.id ? "Salvar alterações" : "Salvar resposta") + '</button>' +
+        (edit ? '<button class="btn btn-neutro" id="resposta-cancelar">Cancelar</button>' : '') +
+      '</div>' +
+    '</div>' +
+    '<div class="cartao">' +
+      '<div class="cartao-topo">' +
+        '<h2>' + lista.length + ' resposta(s)</h2>' +
+        '<input type="text" id="resposta-busca" placeholder="Buscar" style="max-width:260px" value="' + esc(state.respostaBusca) + '">' +
+      '</div>' +
+      (cartoes || '<div class="vazio">Nenhuma resposta cadastrada ainda.</div>') +
+    '</div>';
+  }
+
+  async function salvarResposta(){
+    var feedback = document.getElementById("resposta-feedback");
+    var titulo = (document.getElementById("resposta-titulo").value || "").trim();
+    var assunto = document.getElementById("resposta-assunto").value;
+    var texto = (document.getElementById("resposta-texto").value || "").trim();
+
+    if(!titulo){ feedback.innerHTML = '<div class="aviso aviso-erro">Informe o título.</div>'; return; }
+    if(!texto){ feedback.innerHTML = '<div class="aviso aviso-erro">Escreva o texto da resposta.</div>'; return; }
+
+    var edit = state.respostaEdit;
+    var dados = {
+      titulo: titulo,
+      assunto: assunto,
+      texto: texto,
+      por: nomeExibido(state.currentUser),
+      em: new Date().toISOString()
+    };
+
+    var botao = document.getElementById("resposta-salvar");
+    botao.disabled = true;
+    try {
+      if(edit && edit.id) await db.ref("respostas/" + edit.id).set(dados);
+      else await db.ref("respostas").push(dados);
+      state.respostaEdit = null;
+      toast(edit && edit.id ? "Resposta atualizada." : "Resposta salva.");
+      render();
+    } catch(err){
+      botao.disabled = false;
+      feedback.innerHTML = '<div class="aviso aviso-erro">' + esc(msgBanco(err)) + '</div>';
+    }
+  }
+
+  function acharResposta(id){
+    for(var i=0;i<state.respostas.length;i++){ if(state.respostas[i].id === id) return state.respostas[i]; }
+    return null;
   }
 
   function blocoConta(u){
@@ -3746,6 +3936,36 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     liga("novo-cpf", "input", function(){ this.value = formatCPF(this.value); });
     liga("copiar-credencial", "click", copiarCredencial);
     liga("conta-salvar-senha", "click", trocarMinhaSenha);
+    liga("resposta-salvar", "click", salvarResposta);
+    liga("resposta-cancelar", "click", function(){ state.respostaEdit = null; render(); });
+    liga("resposta-busca", "input", function(){ state.respostaBusca = this.value; });
+    liga("resposta-busca", "change", function(){ state.respostaBusca = this.value; render(); });
+    cada("[data-copiar-resposta]", function(b){
+      b.addEventListener("click", function(){
+        var r = acharResposta(b.getAttribute("data-copiar-resposta"));
+        if(r) copiar(r.texto, "Resposta copiada.");
+      });
+    });
+    cada("[data-editar-resposta]", function(b){
+      b.addEventListener("click", function(){
+        var r = acharResposta(b.getAttribute("data-editar-resposta"));
+        if(!r) return;
+        state.respostaEdit = {id:r.id, titulo:r.titulo, assunto:r.assunto, texto:r.texto};
+        render();
+      });
+    });
+    cada("[data-excluir-resposta]", function(b){
+      b.addEventListener("click", function(){
+        var r = acharResposta(b.getAttribute("data-excluir-resposta"));
+        if(!r) return;
+        if(!confirm('Excluir a resposta "' + r.titulo + '"?')) return;
+        db.ref("respostas/" + r.id).remove().then(function(){
+          if(state.respostaEdit && state.respostaEdit.id === r.id) state.respostaEdit = null;
+          toast("Resposta excluída.");
+          render();
+        }).catch(function(err){ toast(msgBanco(err)); });
+      });
+    });
     liga("pre-salvar", "click", salvarPreSelecao);
 
     cada("[data-painel]", function(b){
