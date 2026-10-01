@@ -288,7 +288,7 @@
   .acoes{display:flex; gap:7px; flex-wrap:wrap;}
   .voce{font-size:12.5px; color:var(--ink-soft);}
   .tabela-uso{min-width:560px;}
-  .tabela-coleta{min-width:980px;}
+  .tabela-coleta{min-width:1120px;}
   .tabela-coleta select{padding:7px 28px 7px 10px; font-size:13px;}
   .celula-vazia{color:#6D7264;}
 
@@ -460,7 +460,7 @@
   .pesquisa-acoes{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:4px;}
   .opcao-inline{display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--ink-soft); cursor:pointer; padding:11px 0; white-space:nowrap;}
   .opcao-inline input{width:auto;}
-  .tabela-pesquisa{min-width:1450px;}
+  .tabela-pesquisa{min-width:1600px;}
   .selo-arquivo{background:var(--paper); color:var(--ink-soft); border:1px dashed var(--line-strong);}
   .selo-ativo-base{background:var(--sage-soft); color:#a3e666; border:1px solid var(--sage);}
   html.tema-claro .selo-ativo-base{color:#1f7a37;}
@@ -2230,6 +2230,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         celula(i.sac, true) +
         celula(i.sustentacao, true) +
         celula(typeof i.nota === "number" ? i.nota : "", true) +
+        celula(i.atualizadoEm ? dataHora(i.atualizadoEm) : "", true) +
         '<td>' + local + '</td>' +
       '</tr>';
     }).join('');
@@ -2241,9 +2242,9 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       '</div>' +
       '<div class="rolagem"><table class="tabela-pesquisa"><thead><tr>' +
         '<th>DATA</th><th>ID</th><th>ASSUNTO</th><th>SITUAÇÃO</th><th>CPF</th><th>PLACA</th><th>NOME</th><th>ATRIBUÍDO A</th>' +
-        '<th>DESCRIÇÃO</th><th>OBSERVAÇÃO</th><th>SAC</th><th>SUSTENTAÇÃO</th><th>NOTA</th><th>LOCAL</th>' +
+        '<th>DESCRIÇÃO</th><th>OBSERVAÇÃO</th><th>SAC</th><th>SUSTENTAÇÃO</th><th>NOTA</th><th>ATUALIZADO EM</th><th>LOCAL</th>' +
       '</tr></thead><tbody>' +
-        (linhas || '<tr><td colspan="14" class="vazio">Nada encontrado com esses filtros.</td></tr>') +
+        (linhas || '<tr><td colspan="15" class="vazio">Nada encontrado com esses filtros.</td></tr>') +
       '</tbody></table></div>' +
     '</div>';
   }
@@ -2272,13 +2273,14 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var r = registrosDash();
     if(!r.length){ toast("Não há registros com esses filtros."); return; }
 
-    var cab = ["DATA","ID","ASSUNTO","SITUAÇÃO","CPF","PLACA","NOME","ATRIBUÍDO A","DESCRIÇÃO","OBSERVAÇÃO","SAC","SUSTENTAÇÃO","NOTA","LOCAL"];
+    var cab = ["DATA","ID","ASSUNTO","SITUAÇÃO","CPF","PLACA","NOME","ATRIBUÍDO A","DESCRIÇÃO","OBSERVAÇÃO","SAC","SUSTENTAÇÃO","NOTA","ATUALIZADO EM","LOCAL"];
     var linhas = r.map(function(x){
       var i = x.item;
       return [
         i.data, i.id, i.assunto, rotuloEstado(i), i.cpf ? digitos(i.cpf) : "", i.placa,
         i.nome, nomeDoResponsavel(i.responsavel), i.descricao ? capitalizar(i.descricao) : "", i.observacao, i.sac, i.sustentacao,
-        (typeof i.nota === "number" ? i.nota : ""), x.mes ? "Arquivo " + rotuloMes(x.mes) : "Ativo"
+        (typeof i.nota === "number" ? i.nota : ""), i.atualizadoEm ? dataHora(i.atualizadoEm) : "",
+        x.mes ? "Arquivo " + rotuloMes(x.mes) : "Ativo"
       ].map(valorCsv).join(";");
     });
 
@@ -2834,7 +2836,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var aba = grupos[state.coletaAba] ? state.coletaAba : "naoRespondidas";
     var lista = grupos[aba];
     var comNota = (aba === "avaliadas");
-    var colunas = comNota ? 8 : 7;
+    var colunas = comNota ? 9 : 8;
 
     var linhas = lista.map(function(item){
       var assunto = admin
@@ -2871,6 +2873,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         celulaDescricao +
         (item.observacao ? '<td>' + esc(item.observacao) + '</td>' : '<td class="celula-vazia">—</td>') +
         (comNota ? nota : '') +
+        (item.atualizadoEm ? '<td class="mono">' + esc(dataHora(item.atualizadoEm)) + '</td>' : '<td class="celula-vazia">—</td>') +
       '</tr>';
     }).join('');
 
@@ -2895,6 +2898,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       '<div class="rolagem"><table class="tabela-coleta"><thead><tr>' +
         '<th>DATA</th><th>ID</th><th>ASSUNTO</th><th>DADOS</th><th>NOME</th><th>DESCRIÇÕES</th><th>OBSERVAÇÃO</th>' +
         (comNota ? '<th>NOTA</th>' : '') +
+        '<th>ATUALIZADO EM</th>' +
       '</tr></thead><tbody>' +
         (linhas || '<tr><td colspan="' + colunas + '" class="vazio">Nenhum registro nesta aba.</td></tr>') +
       '</tbody></table></div>' +
