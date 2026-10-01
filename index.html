@@ -183,7 +183,7 @@
   .uso-campo.ocupado .nome{color:#ef8474;}
   .uso-campo.livre .nome{letter-spacing:.08em;}
 
-  .conteudo{padding:26px 30px 70px; max-width:1180px; width:100%; margin:0 auto;}
+  .conteudo{padding:26px 30px 70px; max-width:1680px; width:100%; margin:0 auto;}
   @media (max-width:820px){
     .cabecalho{padding:10px 14px; gap:10px;}
     .marca-topo img{height:30px; border-radius:15px;}
@@ -288,8 +288,18 @@
   .acoes{display:flex; gap:7px; flex-wrap:wrap;}
   .voce{font-size:12.5px; color:var(--ink-soft);}
   .tabela-uso{min-width:560px;}
-  .tabela-coleta{min-width:1120px;}
-  .tabela-coleta select{padding:7px 28px 7px 10px; font-size:13px;}
+  .tabela-coleta{min-width:0; width:100%; table-layout:fixed;}
+  .tabela-coleta th, .tabela-coleta td{white-space:normal; word-break:break-word;}
+  .tabela-coleta th:nth-child(1), .tabela-coleta td:nth-child(1){width:84px;}
+  .tabela-coleta th:nth-child(2), .tabela-coleta td:nth-child(2){width:104px;}
+  .tabela-coleta th:nth-child(3), .tabela-coleta td:nth-child(3){width:150px;}
+  .tabela-coleta th:nth-child(4), .tabela-coleta td:nth-child(4){width:130px;}
+  .tabela-coleta th:nth-child(5), .tabela-coleta td:nth-child(5){width:150px;}
+  .tabela-coleta th:last-child, .tabela-coleta td:last-child{width:126px;}
+  .tabela-coleta select{padding:7px 8px; font-size:12.5px;}
+  @media (max-width:1180px){
+    .tabela-coleta{min-width:1060px; table-layout:auto;}
+  }
   .celula-vazia{color:#6D7264;}
 
   .selo{display:inline-flex; align-items:center; gap:5px; border-radius:100px; padding:3px 10px; font-size:12px; font-weight:500; white-space:nowrap;}
