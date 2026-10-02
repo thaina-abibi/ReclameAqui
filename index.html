@@ -601,7 +601,7 @@
     },
     "respostas": {
       ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
-      ".write": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
+      ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true)",
       "$id": {
         ".validate": "newData.hasChildren(['titulo','texto'])",
         "titulo": { ".validate": "newData.isString() && newData.val().length <= 140" },
@@ -3585,7 +3585,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   }
 
   function blocoRespostas(){
-    var edit = state.respostaEdit;
+    var admin = ehAdministrativo();
+    var edit = admin ? state.respostaEdit : null;
     var busca = normalizarBusca(state.respostaBusca);
     var lista = state.respostas.filter(function(r){
       if(!busca) return true;
@@ -3605,15 +3606,17 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
           '</div>' +
           '<div class="acoes">' +
             '<button class="btn btn-neutro btn-mini" data-copiar-resposta="' + esc(r.id) + '">Copiar</button>' +
-            '<button class="btn btn-neutro btn-mini" data-editar-resposta="' + esc(r.id) + '">Editar</button>' +
-            '<button class="btn btn-risco btn-mini" data-excluir-resposta="' + esc(r.id) + '">Excluir</button>' +
+            (admin
+              ? '<button class="btn btn-neutro btn-mini" data-editar-resposta="' + esc(r.id) + '">Editar</button>' +
+                '<button class="btn btn-risco btn-mini" data-excluir-resposta="' + esc(r.id) + '">Excluir</button>'
+              : '') +
           '</div>' +
         '</div>' +
         '<div class="resposta-texto">' + esc(r.texto) + '</div>' +
       '</div>';
     }).join('');
 
-    return '<div class="cartao">' +
+    var formulario = !admin ? '' : '<div class="cartao">' +
       '<h2>' + (edit && edit.id ? "Editar resposta" : "Nova resposta") + '</h2>' +
       '<div class="grade-2">' +
         '<div class="campo"><label for="resposta-titulo">Título</label>' +
@@ -3628,7 +3631,9 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         '<button class="btn btn-principal" style="width:auto;" id="resposta-salvar">' + (edit && edit.id ? "Salvar alterações" : "Salvar resposta") + '</button>' +
         (edit ? '<button class="btn btn-neutro" id="resposta-cancelar">Cancelar</button>' : '') +
       '</div>' +
-    '</div>' +
+    '</div>';
+
+    return formulario +
     '<div class="cartao">' +
       '<div class="cartao-topo">' +
         '<h2>' + lista.length + ' resposta(s)</h2>' +
@@ -3639,6 +3644,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   }
 
   async function salvarResposta(){
+    if(!ehAdministrativo()) return toast("Só o perfil administrativo pode cadastrar respostas.");
     var feedback = document.getElementById("resposta-feedback");
     var titulo = (document.getElementById("resposta-titulo").value || "").trim();
     var assunto = document.getElementById("resposta-assunto").value;
@@ -3970,6 +3976,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     });
     cada("[data-excluir-resposta]", function(b){
       b.addEventListener("click", function(){
+        if(!ehAdministrativo()) return toast("Só o perfil administrativo pode excluir respostas.");
         var r = acharResposta(b.getAttribute("data-excluir-resposta"));
         if(!r) return;
         if(!confirm('Excluir a resposta "' + r.titulo + '"?')) return;
