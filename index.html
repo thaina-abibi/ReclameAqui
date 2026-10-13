@@ -711,15 +711,17 @@ function varrer(){
  for(var k=0;k<pontos.length;k++){
   var ponto=pontos[k];
   if(vistos[ponto.id])continue;
-  var antes=texto.slice(Math.max(0,ponto.ini-90),ponto.ini);
+  var antes=texto.slice(Math.max(0,ponto.ini-130),ponto.ini);
   var limite=(k+1<pontos.length)?pontos[k+1].ini:Math.min(texto.length,ponto.fim+900);
   var depois=texto.slice(ponto.fim,limite);
   var linhas=depois.split("\n").map(function(l){return l.trim();}).filter(function(l){return l.length>3;});
   var titulo=linhas.length?linhas[0]:"";
   var data=(depois.match(/(\d{2}\/\d{2}\/\d{2,4})/)||[])[1]||"";
   if(!titulo||!data)continue;
-  var situacao="NÃO RESPONDIDA";
-  if(!/n[ãa]o\s+respondida/i.test(antes) && /respondida|resolvida|r[ée]plica/i.test(antes))situacao="RESPONDIDA";
+  var reSelo=/n[ãa]o\s+respondida|respondida|n[ãa]o\s+resolvida|resolvida|encerrada\s+sem\s+avalia[çc][ãa]o|encerrada|n[ãa]o\s+avaliada|avaliada|r[ée]plica|em\s+r[ée]plica|finalizada/gi;
+  var selo=null,ms;
+  while((ms=reSelo.exec(antes))!==null)selo=ms[0];
+  var situacao=(!selo || /^n[ãa]o\s+respondida$/i.test(String(selo).trim()))?"NÃO RESPONDIDA":"RESPONDIDA";
   var registro={data:data,id:ponto.id,assunto:categorizarAssunto(titulo),situacao:situacao,titulo:titulo};
   var nota=depois.match(/(\d{1,2})\s*★?\s*(?:n[ãa]o\s+)?voltar[áa]\s+a\s+fazer\s+neg[óo]cio/i);
   if(nota)registro.nota=Number(nota[1]);
@@ -4509,8 +4511,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var d=i.data.split("/").map(Number),ano=d[2]<100?2000+d[2]:d[2],dt=new Date(Date.UTC(ano,d[1]-1,d[0]));
     if(dt.getUTCFullYear()!==ano || dt.getUTCMonth()!==d[1]-1 || dt.getUTCDate()!==d[0])throw new Error("Data inválida");
     var item={id:String(i.id),data:i.data,assunto:i.assunto,situacao:"NÃO RESPONDIDA"};
-    var sit=String(i.situacao||"").trim().toUpperCase();
-    if(sit && !/^N[ÃA]O/.test(sit)) item.situacao="RESPONDIDA";
+    var sit=String(i.situacao||"").trim().toUpperCase().replace(/\s+/g," ");
+    if(sit && !/^N[ÃA]O RESP/.test(sit)) item.situacao="RESPONDIDA";
     var nota=String(i.nota===undefined||i.nota===null?"":i.nota).trim();
     if(nota!==""){
       var n=Number(nota);
