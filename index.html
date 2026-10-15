@@ -876,6 +876,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     arquivoCarregando:false,
     arquivoSelecao:{},
     arquivoModo:"respondidas",
+    usoFiltro:{nome:"", data:"", periodo:"15"},
     tema:"escuro"
   };
 
@@ -3878,14 +3879,58 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     '</div>';
   }
 
+  function diaDoRegistro(v){
+    if(!v) return "";
+    var d = new Date(typeof v === "number" ? v : v);
+    if(isNaN(d.getTime())) return "";
+    return iso(d);
+  }
+
   function blocoUso(){
-    if(state.uso.length === 0){
-      return '<div class="cartao">' +
-        '<h2>Registro de uso</h2>' +
-        '<div class="vazio">Nenhum uso registrado ainda.</div>' +
-      '</div>';
-    }
-    var linhas = state.uso.slice().reverse().map(function(r){
+    var f = state.usoFiltro;
+    var hoje = new Date();
+    var limite = iso(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 14));
+
+    var todos = state.uso.slice().reverse();
+
+    var nomes = {};
+    todos.forEach(function(r){
+      var n = r.nome || r.username;
+      if(n) nomes[n] = 1;
+    });
+
+    var lista = todos.filter(function(r){
+      var dia = diaDoRegistro(r.em);
+      if(f.nome && String(r.nome || r.username || "") !== f.nome) return false;
+      if(f.data) return dia === f.data;
+      if(f.periodo === "15") return dia >= limite;
+      return true;
+    });
+
+    var opcoesNome = '<option value="">Todas as pessoas</option>' +
+      Object.keys(nomes).sort().map(function(n){
+        return '<option value="' + esc(n) + '"' + (f.nome === n ? " selected" : "") + '>' + esc(n) + '</option>';
+      }).join("");
+
+    var filtros = '<div class="grade-3" style="align-items:end; margin-bottom:16px">' +
+      '<div class="campo" style="margin-bottom:0"><label for="uso-nome">Pessoa</label>' +
+        '<select id="uso-nome">' + opcoesNome + '</select></div>' +
+      '<div class="campo" style="margin-bottom:0"><label for="uso-data">Data</label>' +
+        '<input type="date" id="uso-data" value="' + esc(f.data) + '"></div>' +
+      '<div class="campo" style="margin-bottom:0"><label for="uso-periodo">Período</label>' +
+        '<select id="uso-periodo"' + (f.data ? " disabled" : "") + '>' +
+          '<option value="15"' + (f.periodo === "15" ? " selected" : "") + '>Últimos 15 dias</option>' +
+          '<option value="tudo"' + (f.periodo === "tudo" ? " selected" : "") + '>Todo o histórico</option>' +
+        '</select></div>' +
+    '</div>' +
+    '<div class="pesquisa-acoes" style="margin:-6px 0 16px">' +
+      '<button class="btn btn-neutro btn-mini" id="uso-limpar">Limpar filtros</button>' +
+      '<span class="voce">' + lista.length + ' de ' + todos.length + ' registro(s)' +
+        (f.data ? " · " + esc(soData(f.data + "T12:00:00")) : (f.periodo === "15" ? " · últimos 15 dias" : " · histórico completo")) +
+      '</span>' +
+    '</div>';
+
+    var linhas = lista.map(function(r){
       var selo = (r.acao === "INICIAR")
         ? '<span class="selo selo-inicio">INICIAR</span>'
         : '<span class="selo selo-fim">FINALIZAR</span>' +
@@ -3901,9 +3946,12 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
     return '<div class="cartao">' +
       '<h2>Registro de uso</h2>' +
+      filtros +
       '<div class="rolagem"><table class="tabela-uso"><thead><tr>' +
         '<th>Nome</th><th>Ação</th><th>Data</th><th>Horário</th>' +
-      '</tr></thead><tbody>' + linhas + '</tbody></table></div>' +
+      '</tr></thead><tbody>' +
+        (linhas || '<tr><td colspan="4" class="vazio">Nenhum registro com esses filtros.</td></tr>') +
+      '</tbody></table></div>' +
     '</div>';
   }
 
@@ -3966,6 +4014,10 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     cada("[data-restaurar-mes]", function(b){
       b.addEventListener("click", function(){ restaurarMes(b.getAttribute("data-restaurar-mes")); });
     });
+    liga("uso-nome", "change", function(){ state.usoFiltro.nome = this.value; render(); });
+    liga("uso-data", "change", function(){ state.usoFiltro.data = this.value; render(); });
+    liga("uso-periodo", "change", function(){ state.usoFiltro.periodo = this.value; render(); });
+    liga("uso-limpar", "click", function(){ state.usoFiltro = {nome:"", data:"", periodo:"15"}; render(); });
     liga("listas-salvar", "click", salvarListas);
     liga("nomes-unificar", "click", unificarNomes);
     liga("listas-add-assunto", "click", function(){
