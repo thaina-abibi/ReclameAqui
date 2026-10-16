@@ -252,6 +252,10 @@
   .gauge-trilho{stroke:var(--line); }
   .gauge-num{font-family:var(--font-display); font-weight:700; font-size:34px; fill:var(--ink);}
   .gauge-sub{font-size:11px; fill:var(--ink-soft); letter-spacing:.08em;}
+  .dupla{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; margin-bottom:22px;}
+  .dupla .cartao{margin-bottom:0;}
+  @media (max-width:1100px){ .dupla{grid-template-columns:1fr;} }
+
   .grafico-topo{display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px;}
   .grafico-nav{display:flex; align-items:center; gap:8px;}
   .grafico-nav select{width:auto; min-width:150px; padding:7px 30px 7px 11px; font-size:13px;}
@@ -926,6 +930,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     arquivoModo:"respondidas",
     usoFiltro:{nome:"", data:"", periodo:"15"},
     mesGrafico:"",
+    mesSecao:{descricao:"", grupo:"", assunto:"", avaliacoes:""},
     tema:"escuro"
   };
 
@@ -1699,12 +1704,15 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     return assunto === "VEÍCULOS" || assunto === "MULTAS";
   }
 
-  function barra(rotulo, valor, maximo, cor){
+  function barra(rotulo, valor, maximo, cor, total){
     var pct = maximo > 0 ? Math.round((valor / maximo) * 100) : 0;
-    return '<div class="barra-linha">' +
+    var parte = (total && total > 0) ? Math.round((valor / total) * 100) : null;
+    return '<div class="barra-linha' + (valor ? '' : ' zero') + '">' +
       '<span class="barra-rotulo">' + esc(rotulo) + '</span>' +
       '<div class="barra-trilho"><div class="barra-cheia' + (cor ? " " + cor : "") + '" style="width:' + pct + '%"></div></div>' +
-      '<span class="barra-valor">' + valor + '</span>' +
+      '<span class="barra-valor"><b>' + valor + '</b>' +
+        (parte === null ? '' : (valor ? '<em>' + parte + '%</em>' : '<em></em>')) +
+      '</span>' +
     '</div>';
   }
 
@@ -1718,29 +1726,40 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   function graficosDash(itens, cabecalho, itensMes){
     var total = itens.length;
     var tratadas = itens.filter(function(i){ return !!i.descricao && !ehPendente(i.descricao); }).length;
-    var porDescricao = {};
-    state.descricoes.forEach(function(d){ porDescricao[d.nome] = 0; });
-    itens.forEach(function(i){ if(i.descricao && porDescricao[i.descricao] !== undefined) porDescricao[i.descricao]++; });
-    var nomesDescricao = Object.keys(porDescricao);
-    var maiorDescricao = Math.max.apply(null, nomesDescricao.map(function(n){ return porDescricao[n]; }).concat([1]));
     var aguardando = itens.filter(function(i){ return estadoColeta(i) === "pendentes"; }).length;
     var respondidas = itens.filter(function(i){ return estadoColeta(i) === "respondidas"; }).length;
     var pendentes = total - respondidas - aguardando;
     var percentual = total > 0 ? Math.round((respondidas / total) * 100) + "%" : "—";
 
-    var notas = itens.filter(function(i){ return typeof i.nota === "number"; });
+    var base = itensMes || itens;
+
+    // ----- por descrição -----
+    var itDesc = itensDoMes(base, mesDaSecao("descricao"));
+    var porDescricao = {};
+    state.descricoes.forEach(function(d){ porDescricao[d.nome] = 0; });
+    itDesc.forEach(function(i){ if(i.descricao && porDescricao[i.descricao] !== undefined) porDescricao[i.descricao]++; });
+    var nomesDescricao = Object.keys(porDescricao);
+    var maiorDescricao = Math.max.apply(null, nomesDescricao.map(function(n){ return porDescricao[n]; }).concat([1]));
+    var totalDescricao = nomesDescricao.reduce(function(a, n){ return a + porDescricao[n]; }, 0);
+
+    // ----- por grupo -----
+    var itGrupo = itensDoMes(base, mesDaSecao("grupo"));
+    var grupos = totaisColeta(itGrupo);
+    var maiorGrupo = Math.max(grupos.veiculos, grupos.cnh, grupos.outros, 1);
+
+    // ----- por assunto -----
+    var itAssunto = itensDoMes(base, mesDaSecao("assunto"));
+    var porAssunto = {};
+    nomesAssuntos().forEach(function(a){ porAssunto[a] = 0; });
+    itAssunto.forEach(function(i){ if(porAssunto[i.assunto] !== undefined) porAssunto[i.assunto]++; });
+    var maiorAssunto = Math.max.apply(null, nomesAssuntos().map(function(a){ return porAssunto[a]; }).concat([1]));
+
+    // ----- avaliações -----
+    var itAval = itensDoMes(base, mesDaSecao("avaliacoes"));
+    var notas = itAval.filter(function(i){ return typeof i.nota === "number"; });
     var soma = notas.reduce(function(acc, i){ return acc + i.nota; }, 0);
     var promotoras = notas.filter(function(i){ return i.nota >= 9; }).length;
     var detratoras = notas.filter(function(i){ return i.nota <= 6; }).length;
-
-    var grupos = totaisColeta(itens);
-    var maiorGrupo = Math.max(grupos.veiculos, grupos.cnh, grupos.outros, 1);
-
-    var porAssunto = {};
-    nomesAssuntos().forEach(function(a){ porAssunto[a] = 0; });
-    itens.forEach(function(i){ if(porAssunto[i.assunto] !== undefined) porAssunto[i.assunto]++; });
-    var maiorAssunto = Math.max.apply(null, nomesAssuntos().map(function(a){ return porAssunto[a]; }).concat([1]));
-
     var mediaNum = notas.length ? (soma / notas.length) : null;
 
     var porNota = {};
@@ -1749,12 +1768,12 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var maiorNota = Math.max.apply(null, Object.keys(porNota).map(function(n){ return porNota[n]; }).concat([1]));
 
     var escalaNotas = "";
-    for(var n = 10; n >= 0; n--){
-      var qtd = porNota[n];
+    for(var n2 = 10; n2 >= 0; n2--){
+      var qtd = porNota[n2];
       var pct = notas.length ? Math.round((qtd / notas.length) * 100) : 0;
       escalaNotas += '<div class="barra-linha' + (qtd ? '' : ' zero') + '">' +
-        '<span class="barra-rotulo">Nota ' + n + '</span>' +
-        '<div class="barra-trilho"><div class="barra-cheia ' + faixaNota(n) + '" style="width:' +
+        '<span class="barra-rotulo">Nota ' + n2 + '</span>' +
+        '<div class="barra-trilho"><div class="barra-cheia ' + faixaNota(n2) + '" style="width:' +
           (maiorNota > 0 ? Math.round((qtd / maiorNota) * 100) : 0) + '%"></div></div>' +
         '<span class="barra-valor"><b>' + qtd + '</b>' + (qtd ? '<em>' + pct + '%</em>' : '<em></em>') + '</span>' +
       '</div>';
@@ -1768,7 +1787,11 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
     var cartaoNotas = notas.length
       ? escalaNotas + legenda
-      : '<div class="vazio">Nenhuma avaliação registrada ainda.</div>';
+      : '<div class="vazio">Nenhuma avaliação neste período.</div>';
+
+    function topoSecao(titulo, id){
+      return '<div class="grafico-topo"><h2>' + titulo + '</h2>' + navMes(id, base) + '</div>';
+    }
 
     return '' +
     '<div class="cartao">' +
@@ -1786,24 +1809,30 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         '<div class="total-item"><span>Assuntos</span><b>' + state.assuntos.length + '</b></div>' +
       '</div>' +
     '</div>' +
-    '<div class="cartao">' +
-      '<h2>Por descrição</h2>' +
-      (nomesDescricao.length
-        ? nomesDescricao.map(function(n){ return barra(capitalizar(n), porDescricao[n], maiorDescricao); }).join('')
-        : '<div class="vazio">Nenhuma descrição cadastrada.</div>') +
+    '<div class="dupla">' +
+      '<div class="cartao">' +
+        topoSecao("Por descrição", "descricao") +
+        (totalDescricao
+          ? nomesDescricao.map(function(n3){ return barra(capitalizar(n3), porDescricao[n3], maiorDescricao, "", totalDescricao); }).join('')
+          : '<div class="vazio">Nenhuma descrição neste período.</div>') +
+      '</div>' +
+      '<div class="cartao">' +
+        topoSecao("Por grupo", "grupo") +
+        (itGrupo.length
+          ? barra("Veículos", grupos.veiculos, maiorGrupo, "", grupos.total) +
+            barra("CNH", grupos.cnh, maiorGrupo, "", grupos.total) +
+            barra("Outros", grupos.outros, maiorGrupo, "", grupos.total)
+          : '<div class="vazio">Nenhum registro neste período.</div>') +
+      '</div>' +
     '</div>' +
     '<div class="cartao">' +
-      '<h2>Por grupo</h2>' +
-      barra("Veículos", grupos.veiculos, maiorGrupo) +
-      barra("CNH", grupos.cnh, maiorGrupo) +
-      barra("Outros", grupos.outros, maiorGrupo) +
+      topoSecao("Por assunto", "assunto") +
+      (itAssunto.length
+        ? nomesAssuntos().map(function(a){ return barra(a, porAssunto[a], maiorAssunto, "", itAssunto.length); }).join('')
+        : '<div class="vazio">Nenhum registro neste período.</div>') +
     '</div>' +
     '<div class="cartao">' +
-      '<h2>Por assunto</h2>' +
-      nomesAssuntos().map(function(a){ return barra(a, porAssunto[a], maiorAssunto); }).join('') +
-    '</div>' +
-    '<div class="cartao">' +
-      '<h2>Avaliações</h2>' +
+      topoSecao("Avaliações", "avaliacoes") +
       '<div class="painel-totais quatro avaliacoes" style="margin-bottom:22px">' +
         '<div class="total-item total-gauge g-' + (mediaNum === null ? "coral" : faixaNota(mediaNum)) + '">' +
           '<span>Nota média</span>' + gaugeNota(mediaNum) + '</div>' +
@@ -1813,7 +1842,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       '</div>' +
       cartaoNotas +
     '</div>' +
-    graficoPorDia(itensMes || itens);
+    graficoPorDia(base);
   }
 
   function mesDoItem(item){
@@ -2397,6 +2426,39 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var d = new Date();
     var m = String(d.getMonth() + 1);
     return String(d.getFullYear()) + (m.length === 1 ? "0" + m : m);
+  }
+
+  function mesDaSecao(id){
+    var v = state.mesSecao[id];
+    return (v === undefined || v === "") ? mesAtualChave() : v;
+  }
+
+  function itensDoMes(base, chave){
+    if(chave === "todos") return base;
+    return base.filter(function(i){ return chaveData(i.data).slice(0,6) === chave; });
+  }
+
+  function navMes(id, base){
+    var atual = mesDaSecao(id);
+    var meses = {};
+    base.forEach(function(i){
+      var m = chaveData(i.data).slice(0,6);
+      if(m.length === 6) meses[m] = 1;
+    });
+    meses[mesAtualChave()] = 1;
+    if(atual !== "todos") meses[atual] = 1;
+
+    var opcoes = '<option value="todos"' + (atual === "todos" ? " selected" : "") + '>Todo o período</option>' +
+      Object.keys(meses).sort().reverse().map(function(m){
+        return '<option value="' + m + '"' + (m === atual ? " selected" : "") + '>' + rotuloMes(m) + '</option>';
+      }).join("");
+
+    return '<div class="grafico-nav">' +
+      '<button class="grafico-seta" data-mes-ant="' + id + '" aria-label="Mês anterior" title="Mês anterior">‹</button>' +
+      '<select data-mes-sel="' + id + '">' + opcoes + '</select>' +
+      '<button class="grafico-seta" data-mes-prox="' + id + '" aria-label="Próximo mês" title="Próximo mês">›</button>' +
+      '<button class="btn btn-neutro btn-mini" data-mes-hoje="' + id + '">Mês atual</button>' +
+    '</div>';
   }
 
   function mesVizinho(chave, passo){
@@ -4215,6 +4277,26 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     liga("base-importar", "click", importarBase);
     liga("dash-baixar", "click", baixarPlanilha);
     liga("grafico-mes", "change", function(){ state.mesGrafico = this.value; render(); });
+    cada("[data-mes-sel]", function(sel){
+      sel.addEventListener("change", function(){ state.mesSecao[sel.getAttribute("data-mes-sel")] = sel.value; render(); });
+    });
+    cada("[data-mes-ant]", function(b){
+      b.addEventListener("click", function(){
+        var id = b.getAttribute("data-mes-ant");
+        state.mesSecao[id] = mesVizinho(mesDaSecao(id) === "todos" ? mesAtualChave() : mesDaSecao(id), -1);
+        render();
+      });
+    });
+    cada("[data-mes-prox]", function(b){
+      b.addEventListener("click", function(){
+        var id = b.getAttribute("data-mes-prox");
+        state.mesSecao[id] = mesVizinho(mesDaSecao(id) === "todos" ? mesAtualChave() : mesDaSecao(id), 1);
+        render();
+      });
+    });
+    cada("[data-mes-hoje]", function(b){
+      b.addEventListener("click", function(){ state.mesSecao[b.getAttribute("data-mes-hoje")] = mesAtualChave(); render(); });
+    });
     liga("grafico-ant", "click", function(){ state.mesGrafico = mesVizinho(state.mesGrafico || mesAtualChave(), -1); render(); });
     liga("grafico-prox", "click", function(){ state.mesGrafico = mesVizinho(state.mesGrafico || mesAtualChave(), 1); render(); });
     liga("grafico-hoje", "click", function(){ state.mesGrafico = mesAtualChave(); render(); });
