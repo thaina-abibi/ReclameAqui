@@ -235,6 +235,23 @@
   .barra-cheia{height:100%; background:var(--amber); border-radius:100px;}
   .barra-cheia.verde{background:var(--sage);}
   .barra-cheia.vermelha{background:var(--rust);}
+  .barra-cheia.esmeralda{background:linear-gradient(90deg,#1f9d58,#2ee08a);}
+  .barra-cheia.ambar{background:linear-gradient(90deg,#c79a18,#f0c84a);}
+  .barra-cheia.coral{background:linear-gradient(90deg,#b8402c,#ef7a5f);}
+  .barra-linha.zero .barra-valor{color:var(--ink-soft);}
+
+  .total-gauge{align-items:center; text-align:center; gap:2px; position:relative; overflow:hidden;}
+  .total-gauge::after{content:""; position:absolute; inset:0; pointer-events:none; opacity:.55;}
+  .total-gauge.g-esmeralda::after{background:radial-gradient(circle at 50% 90%, rgba(46,224,138,.22), transparent 62%);}
+  .total-gauge.g-ambar::after{background:radial-gradient(circle at 50% 90%, rgba(240,200,74,.20), transparent 62%);}
+  .total-gauge.g-coral::after{background:radial-gradient(circle at 50% 90%, rgba(239,122,95,.20), transparent 62%);}
+  .gauge{display:block; width:100%; max-width:168px; margin:2px auto 0; position:relative; z-index:1;}
+  .gauge-trilho{stroke:var(--line); }
+  .gauge-num{font-family:var(--font-display); font-weight:700; font-size:34px; fill:var(--ink);}
+  .gauge-sub{font-size:11px; fill:var(--ink-soft); letter-spacing:.08em;}
+  .legenda-notas{display:flex; flex-wrap:wrap; gap:14px; margin-top:14px; font-size:12px; color:var(--ink-soft);}
+  .legenda-notas span{display:inline-flex; align-items:center; gap:6px;}
+  .legenda-notas i{width:12px; height:12px; border-radius:3px; display:inline-block;}
   .barra-valor{font-family:var(--font-mono); font-size:13px; text-align:right; color:var(--ink);}
   @media (max-width:520px){ .barra-linha{grid-template-columns:92px minmax(0,1fr) 44px; gap:8px;} }
 
@@ -1681,7 +1698,6 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
     var notas = itens.filter(function(i){ return typeof i.nota === "number"; });
     var soma = notas.reduce(function(acc, i){ return acc + i.nota; }, 0);
-    var media = notas.length ? (soma / notas.length).toFixed(1).replace(".", ",") : "—";
     var promotoras = notas.filter(function(i){ return i.nota >= 9; }).length;
     var detratoras = notas.filter(function(i){ return i.nota <= 6; }).length;
 
@@ -1701,10 +1717,33 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var dias = Object.keys(porDia).sort(function(a,b){ return chaveData(b).localeCompare(chaveData(a)); }).slice(0,10);
     var maiorDia = Math.max.apply(null, dias.map(function(d){ return porDia[d]; }).concat([1]));
 
+    var mediaNum = notas.length ? (soma / notas.length) : null;
+
+    var porNota = {};
+    for(var n = 0; n <= 10; n++) porNota[n] = 0;
+    notas.forEach(function(i){ if(porNota[i.nota] !== undefined) porNota[i.nota]++; });
+    var maiorNota = Math.max.apply(null, Object.keys(porNota).map(function(n){ return porNota[n]; }).concat([1]));
+
+    var escalaNotas = "";
+    for(var n = 10; n >= 0; n--){
+      var qtd = porNota[n];
+      var pct = notas.length ? Math.round((qtd / notas.length) * 100) : 0;
+      escalaNotas += '<div class="barra-linha' + (qtd ? '' : ' zero') + '">' +
+        '<span class="barra-rotulo">Nota ' + n + '</span>' +
+        '<div class="barra-trilho"><div class="barra-cheia ' + faixaNota(n) + '" style="width:' +
+          (maiorNota > 0 ? Math.round((qtd / maiorNota) * 100) : 0) + '%"></div></div>' +
+        '<span class="barra-valor">' + qtd + (qtd ? ' · ' + pct + '%' : '') + '</span>' +
+      '</div>';
+    }
+
+    var legenda = '<div class="legenda-notas">' +
+      '<span><i style="background:' + corFaixa("esmeralda") + '"></i>Notas 9 e 10 · promotores</span>' +
+      '<span><i style="background:' + corFaixa("ambar") + '"></i>Notas 7 e 8 · neutros</span>' +
+      '<span><i style="background:' + corFaixa("coral") + '"></i>Notas 0 a 6 · detratores</span>' +
+    '</div>';
+
     var cartaoNotas = notas.length
-      ? barra("Nota 9 e 10", promotoras, notas.length, "verde") +
-        barra("Nota 7 e 8", notas.length - promotoras - detratoras, notas.length) +
-        barra("Nota 0 a 6", detratoras, notas.length, "vermelha")
+      ? escalaNotas + legenda
       : '<div class="vazio">Nenhuma avaliação registrada ainda.</div>';
 
     return '' +
@@ -1742,7 +1781,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     '<div class="cartao">' +
       '<h2>Avaliações</h2>' +
       '<div class="painel-totais quatro" style="margin-bottom:20px">' +
-        '<div class="total-item"><span>Nota média</span><b>' + media + '</b></div>' +
+        '<div class="total-item total-gauge g-' + (mediaNum === null ? "coral" : faixaNota(mediaNum)) + '">' +
+          '<span>Nota média</span>' + gaugeNota(mediaNum) + '</div>' +
         '<div class="total-item"><span>Avaliadas</span><b>' + notas.length + '</b></div>' +
         '<div class="total-item"><span>Nota 9 e 10</span><b>' + promotoras + '</b></div>' +
         '<div class="total-item"><span>Nota 0 a 6</span><b>' + detratoras + '</b></div>' +
@@ -2300,6 +2340,38 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         (linhas || '<tr><td colspan="15" class="vazio">Nada encontrado com esses filtros.</td></tr>') +
       '</tbody></table></div>' +
     '</div>';
+  }
+
+  function faixaNota(n){
+    if(n >= 9) return "esmeralda";
+    if(n >= 7) return "ambar";
+    return "coral";
+  }
+
+  function corFaixa(faixa){
+    if(faixa === "esmeralda") return "#2ee08a";
+    if(faixa === "ambar") return "#f0c84a";
+    return "#ef7a5f";
+  }
+
+  function gaugeNota(valor){
+    var temNota = typeof valor === "number" && !isNaN(valor);
+    var pct = temNota ? Math.max(0, Math.min(1, valor / 10)) : 0;
+    var volta = 2 * Math.PI * 52;
+    var arco = volta * 0.75;
+    var cheio = arco * pct;
+    var faixa = temNota ? faixaNota(valor) : "coral";
+    var cor = temNota ? corFaixa(faixa) : "var(--line-strong)";
+    var texto = temNota ? valor.toFixed(1).replace(".", ",") : "—";
+
+    return '<svg class="gauge" viewBox="0 0 140 140" role="img" aria-label="Nota média ' + esc(texto) + ' de 10">' +
+      '<circle class="gauge-trilho" cx="70" cy="70" r="52" fill="none" stroke-width="13" stroke-linecap="round"' +
+        ' stroke-dasharray="' + arco.toFixed(1) + ' ' + volta.toFixed(1) + '" transform="rotate(135 70 70)"/>' +
+      '<circle cx="70" cy="70" r="52" fill="none" stroke="' + cor + '" stroke-width="13" stroke-linecap="round"' +
+        ' stroke-dasharray="' + cheio.toFixed(1) + ' ' + volta.toFixed(1) + '" transform="rotate(135 70 70)"/>' +
+      '<text class="gauge-num" x="70" y="76" text-anchor="middle">' + esc(texto) + '</text>' +
+      '<text class="gauge-sub" x="70" y="97" text-anchor="middle">DE 10</text>' +
+    '</svg>';
   }
 
   function blocoDashboard(){
