@@ -266,10 +266,11 @@
   .gm-linha{fill:none; stroke:var(--amber); stroke-width:2.6; stroke-linejoin:round; stroke-linecap:round;}
   .gm-area{fill:var(--amber); opacity:.12;}
   .gm-ponto{fill:var(--surface); stroke:var(--amber); stroke-width:2;}
-  .gm-rotulo{fill:var(--ink); font-size:11.5px; font-weight:700; text-anchor:middle; opacity:0;}
+  .gm-rotulo{fill:var(--ink-soft); font-size:10.5px; font-weight:600; text-anchor:middle; opacity:1; paint-order:stroke; stroke:var(--surface); stroke-width:3px; stroke-linejoin:round;}
+  .gm-rotulo.zerado{opacity:.45;}
   .gm-coluna{fill:var(--ink); opacity:0;}
   .gm-dia:hover .gm-coluna{opacity:.07;}
-  .gm-dia:hover .gm-rotulo{opacity:1;}
+  .gm-dia:hover .gm-rotulo{fill:var(--ink); font-size:13px; font-weight:700; opacity:1;}
   .gm-dia:hover .gm-ponto{fill:var(--amber); r:5.5;}
   .gm-dia:hover .gm-dialabel{fill:var(--ink); font-weight:700;}
   .gm-hoje .gm-ponto{stroke:var(--sage);}
@@ -2433,7 +2434,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var ehMesAtual = chave === mesAtualChave();
     var diaHoje = ehMesAtual ? hoje.getDate() : 0;
 
-    var W = 960, H = 300, L = 44, R = 16, T = 22, B = 34;
+    var W = 960, H = 320, L = 44, R = 16, T = 34, B = 34;
     var areaW = W - L - R, areaH = H - T - B;
     var passo = totalDias > 1 ? areaW / (totalDias - 1) : areaW;
     function px(dia){ return L + (totalDias > 1 ? (dia - 1) * passo : areaW / 2); }
@@ -2462,7 +2463,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         '<title>Dia ' + d4 + " · " + contagem[d4] + ' registro(s)</title>' +
         '<rect class="gm-coluna" x="' + (cx - passo / 2).toFixed(1) + '" y="' + T + '" width="' + passo.toFixed(1) + '" height="' + areaH + '"/>' +
         '<circle class="gm-ponto" cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="3.4"/>' +
-        '<text class="gm-rotulo" x="' + cx.toFixed(1) + '" y="' + (cy - 11).toFixed(1) + '">' + contagem[d4] + '</text>' +
+        '<text class="gm-rotulo' + (contagem[d4] ? '' : ' zerado') + '" x="' + cx.toFixed(1) + '" y="' + (cy - 11).toFixed(1) + '">' + contagem[d4] + '</text>' +
         (mostrarDia ? '<text class="gm-eixo gm-dialabel' + (d4 === diaHoje ? ' destaque' : '') + '" x="' + cx.toFixed(1) + '" y="' + (T + areaH + 18) + '" text-anchor="middle">' + d4 + '</text>' : '') +
       '</g>';
     }
