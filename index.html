@@ -252,6 +252,28 @@
   .gauge-trilho{stroke:var(--line); }
   .gauge-num{font-family:var(--font-display); font-weight:700; font-size:34px; fill:var(--ink);}
   .gauge-sub{font-size:11px; fill:var(--ink-soft); letter-spacing:.08em;}
+  .grafico-topo{display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px;}
+  .grafico-nav{display:flex; align-items:center; gap:8px;}
+  .grafico-nav select{width:auto; min-width:150px; padding:7px 30px 7px 11px; font-size:13px;}
+  .grafico-seta{background:var(--paper); border:1px solid var(--line-strong); color:var(--ink); border-radius:7px; width:30px; height:30px; cursor:pointer; font-size:15px; line-height:1;}
+  .grafico-seta:hover{border-color:var(--olive); color:var(--olive-soft);}
+  .grafico-resumo{display:flex; gap:18px; flex-wrap:wrap; font-size:12.5px; color:var(--ink-soft);}
+  .grafico-resumo b{color:var(--ink); font-family:var(--font-display); font-size:15px; margin-left:6px;}
+  .grafico-mes{width:100%; height:auto; display:block; overflow:visible;}
+  .gm-grade{stroke:var(--line); stroke-width:1;}
+  .gm-eixo{fill:var(--ink-soft); font-size:10px;}
+  .gm-eixo.destaque{fill:var(--ink); font-weight:600;}
+  .gm-linha{fill:none; stroke:var(--amber); stroke-width:2.6; stroke-linejoin:round; stroke-linecap:round;}
+  .gm-area{fill:var(--amber); opacity:.12;}
+  .gm-ponto{fill:var(--surface); stroke:var(--amber); stroke-width:2;}
+  .gm-rotulo{fill:var(--ink); font-size:11.5px; font-weight:700; text-anchor:middle; opacity:0;}
+  .gm-coluna{fill:var(--ink); opacity:0;}
+  .gm-dia:hover .gm-coluna{opacity:.07;}
+  .gm-dia:hover .gm-rotulo{opacity:1;}
+  .gm-dia:hover .gm-ponto{fill:var(--amber); r:5.5;}
+  .gm-dia:hover .gm-dialabel{fill:var(--ink); font-weight:700;}
+  .gm-hoje .gm-ponto{stroke:var(--sage);}
+
   .legenda-notas{display:flex; flex-wrap:wrap; gap:18px; margin-top:18px; padding-top:14px; border-top:1px solid var(--line); font-size:12px; color:var(--ink-soft);}
   .legenda-notas span{display:inline-flex; align-items:center; gap:6px;}
   .legenda-notas i{width:12px; height:12px; border-radius:3px; display:inline-block;}
@@ -902,6 +924,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     arquivoSelecao:{},
     arquivoModo:"respondidas",
     usoFiltro:{nome:"", data:"", periodo:"15"},
+    mesGrafico:"",
     tema:"escuro"
   };
 
@@ -1691,7 +1714,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     return ano + p[1] + p[0];
   }
 
-  function graficosDash(itens, cabecalho){
+  function graficosDash(itens, cabecalho, itensMes){
     var total = itens.length;
     var tratadas = itens.filter(function(i){ return !!i.descricao && !ehPendente(i.descricao); }).length;
     var porDescricao = {};
@@ -1716,14 +1739,6 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     nomesAssuntos().forEach(function(a){ porAssunto[a] = 0; });
     itens.forEach(function(i){ if(porAssunto[i.assunto] !== undefined) porAssunto[i.assunto]++; });
     var maiorAssunto = Math.max.apply(null, nomesAssuntos().map(function(a){ return porAssunto[a]; }).concat([1]));
-
-    var porDia = {};
-    itens.forEach(function(i){
-      var d = i.data || "—";
-      porDia[d] = (porDia[d] || 0) + 1;
-    });
-    var dias = Object.keys(porDia).sort(function(a,b){ return chaveData(b).localeCompare(chaveData(a)); }).slice(0,10);
-    var maiorDia = Math.max.apply(null, dias.map(function(d){ return porDia[d]; }).concat([1]));
 
     var mediaNum = notas.length ? (soma / notas.length) : null;
 
@@ -1797,12 +1812,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       '</div>' +
       cartaoNotas +
     '</div>' +
-    '<div class="cartao">' +
-      '<h2>Por data</h2>' +
-      (dias.length
-        ? dias.map(function(d){ return barra(d, porDia[d], maiorDia); }).join('')
-        : '<div class="vazio">Nenhum registro importado ainda.</div>') +
-    '</div>';
+    graficoPorDia(itensMes || itens);
   }
 
   function mesDoItem(item){
@@ -2382,9 +2392,141 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     '</svg>';
   }
 
+  function mesAtualChave(){
+    var d = new Date();
+    var m = String(d.getMonth() + 1);
+    return String(d.getFullYear()) + (m.length === 1 ? "0" + m : m);
+  }
+
+  function mesVizinho(chave, passo){
+    var ano = Number(chave.slice(0,4)), mes = Number(chave.slice(4,6)) - 1 + passo;
+    var d = new Date(ano, mes, 1);
+    var m = String(d.getMonth() + 1);
+    return String(d.getFullYear()) + (m.length === 1 ? "0" + m : m);
+  }
+
+  function graficoPorDia(itens){
+    var chave = state.mesGrafico || mesAtualChave();
+    var ano = Number(chave.slice(0,4)), mes = Number(chave.slice(4,6));
+    var totalDias = new Date(ano, mes, 0).getDate();
+
+    var contagem = [];
+    for(var d = 0; d <= totalDias; d++) contagem.push(0);
+    itens.forEach(function(i){
+      var c = chaveData(i.data);
+      if(c.slice(0,6) !== chave) return;
+      var dia = Number(c.slice(6,8));
+      if(dia >= 1 && dia <= totalDias) contagem[dia]++;
+    });
+
+    var totalMes = contagem.reduce(function(a,b){ return a + b; }, 0);
+    var maximo = Math.max.apply(null, contagem.slice(1).concat([1]));
+    var topo = Math.max(1, Math.ceil(maximo / 4) * 4);
+
+    var pico = 1;
+    for(var d2 = 1; d2 <= totalDias; d2++){ if(contagem[d2] > contagem[pico]) pico = d2; }
+
+    var diasComDado = contagem.slice(1).filter(function(v){ return v > 0; }).length;
+    var mediaDia = diasComDado ? (totalMes / diasComDado) : 0;
+
+    var hoje = new Date();
+    var ehMesAtual = chave === mesAtualChave();
+    var diaHoje = ehMesAtual ? hoje.getDate() : 0;
+
+    var W = 960, H = 300, L = 44, R = 16, T = 22, B = 34;
+    var areaW = W - L - R, areaH = H - T - B;
+    var passo = totalDias > 1 ? areaW / (totalDias - 1) : areaW;
+    function px(dia){ return L + (totalDias > 1 ? (dia - 1) * passo : areaW / 2); }
+    function py(valor){ return T + areaH - (valor / topo) * areaH; }
+
+    var grade = "", eixoY = "";
+    for(var g = 0; g <= 4; g++){
+      var valor = topo * (g / 4);
+      var yy = py(valor);
+      grade += '<line class="gm-grade" x1="' + L + '" y1="' + yy.toFixed(1) + '" x2="' + (W - R) + '" y2="' + yy.toFixed(1) + '"/>';
+      eixoY += '<text class="gm-eixo" x="' + (L - 10) + '" y="' + (yy + 3.5).toFixed(1) + '" text-anchor="end">' + Math.round(valor) + '</text>';
+    }
+
+    var linha = "", area = "";
+    for(var d3 = 1; d3 <= totalDias; d3++){
+      linha += (d3 === 1 ? "M" : "L") + px(d3).toFixed(1) + " " + py(contagem[d3]).toFixed(1) + " ";
+    }
+    area = "M" + px(1).toFixed(1) + " " + (T + areaH).toFixed(1) + " " +
+      linha.replace(/^M/, "L") + "L" + px(totalDias).toFixed(1) + " " + (T + areaH).toFixed(1) + " Z";
+
+    var pontos = "";
+    for(var d4 = 1; d4 <= totalDias; d4++){
+      var cx = px(d4), cy = py(contagem[d4]);
+      var mostrarDia = (totalDias <= 31);
+      pontos += '<g class="gm-dia' + (d4 === diaHoje ? ' gm-hoje' : '') + '">' +
+        '<title>Dia ' + d4 + " · " + contagem[d4] + ' registro(s)</title>' +
+        '<rect class="gm-coluna" x="' + (cx - passo / 2).toFixed(1) + '" y="' + T + '" width="' + passo.toFixed(1) + '" height="' + areaH + '"/>' +
+        '<circle class="gm-ponto" cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="3.4"/>' +
+        '<text class="gm-rotulo" x="' + cx.toFixed(1) + '" y="' + (cy - 11).toFixed(1) + '">' + contagem[d4] + '</text>' +
+        (mostrarDia ? '<text class="gm-eixo gm-dialabel' + (d4 === diaHoje ? ' destaque' : '') + '" x="' + cx.toFixed(1) + '" y="' + (T + areaH + 18) + '" text-anchor="middle">' + d4 + '</text>' : '') +
+      '</g>';
+    }
+
+    var meses = {};
+    itens.forEach(function(i){
+      var m = chaveData(i.data).slice(0,6);
+      if(m.length === 6) meses[m] = (meses[m] || 0) + 1;
+    });
+    meses[mesAtualChave()] = meses[mesAtualChave()] || 0;
+    meses[chave] = meses[chave] || 0;
+    var opcoes = Object.keys(meses).sort().reverse().map(function(m){
+      return '<option value="' + m + '"' + (m === chave ? " selected" : "") + '>' + rotuloMes(m) + (meses[m] ? ' · ' + meses[m] : '') + '</option>';
+    }).join("");
+
+    return '<div class="cartao">' +
+      '<div class="grafico-topo">' +
+        '<h2>Por data · ' + rotuloMes(chave) + '</h2>' +
+        '<div class="grafico-nav">' +
+          '<button class="grafico-seta" id="grafico-ant" aria-label="Mês anterior" title="Mês anterior">‹</button>' +
+          '<select id="grafico-mes">' + opcoes + '</select>' +
+          '<button class="grafico-seta" id="grafico-prox" aria-label="Próximo mês" title="Próximo mês">›</button>' +
+          '<button class="btn btn-neutro btn-mini" id="grafico-hoje">Mês atual</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="grafico-resumo" style="margin-bottom:12px">' +
+        '<span>Total no mês<b>' + totalMes + '</b></span>' +
+        '<span>Média por dia com entrada<b>' + mediaDia.toFixed(1).replace(".", ",") + '</b></span>' +
+        '<span>Pico<b>dia ' + pico + ' · ' + contagem[pico] + '</b></span>' +
+        (ehMesAtual ? '<span>Até hoje<b>dia ' + diaHoje + '</b></span>' : '') +
+      '</div>' +
+      (totalMes
+        ? '<svg class="grafico-mes" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Entradas por dia em ' + rotuloMes(chave) + '">' +
+            grade + eixoY +
+            '<path class="gm-area" d="' + area + '"/>' +
+            '<path class="gm-linha" d="' + linha.trim() + '"/>' +
+            pontos +
+          '</svg>'
+        : '<div class="vazio">Nenhuma entrada em ' + rotuloMes(chave) + '.</div>') +
+    '</div>';
+  }
+
+  function registrosSemData(){
+    var f = state.pesquisa;
+    var semData = {
+      incluirArquivo: f.incluirArquivo,
+      condicoes: (f.condicoes || []).filter(function(c){ return c.campo !== "data"; })
+    };
+    if(semData.condicoes.length) semData.condicoes[0].conector = "e";
+    var base = state.coleta.map(function(i){ return {item:i, mes:""}; });
+    if(f.incluirArquivo && state.arquivoCache) base = base.concat(state.arquivoCache);
+    var vistos = {};
+    return base.filter(function(r){
+      var id = String(r.item.id);
+      if(vistos[id]) return false;
+      vistos[id] = true;
+      return passaNosFiltros(r.item, semData);
+    }).map(function(r){ return r.item; });
+  }
+
   function blocoDashboard(){
     var regs = registrosDash();
     var itens = regs.map(function(r){ return r.item; });
+    var itensMes = registrosSemData();
     var cabecalho = '<div class="cartao-topo">' +
         '<h2>Painel · ' + regs.length + ' registro(s)</h2>' +
         '<div class="dash-topo-acoes">' +
@@ -2393,7 +2535,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         '</div>' +
       '</div>' +
       (state.arquivoCarregando ? '<div class="aviso-carregando" style="margin:-8px 0 14px"><span class="giro"></span>Carregando arquivo…</div>' : '');
-    return graficosDash(itens, cabecalho) + tabelaDash(regs);
+    return graficosDash(itens, cabecalho, itensMes) + tabelaDash(regs);
   }
 
   function valorCsv(v){
@@ -4071,6 +4213,10 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     liga("btn-atualizar", "click", atualizarDados);
     liga("base-importar", "click", importarBase);
     liga("dash-baixar", "click", baixarPlanilha);
+    liga("grafico-mes", "change", function(){ state.mesGrafico = this.value; render(); });
+    liga("grafico-ant", "click", function(){ state.mesGrafico = mesVizinho(state.mesGrafico || mesAtualChave(), -1); render(); });
+    liga("grafico-prox", "click", function(){ state.mesGrafico = mesVizinho(state.mesGrafico || mesAtualChave(), 1); render(); });
+    liga("grafico-hoje", "click", function(){ state.mesGrafico = mesAtualChave(); render(); });
     cada("[data-abrir-filtros]", function(b){
       b.addEventListener("click", function(){ abrirFiltros(b.getAttribute("data-abrir-filtros")); });
     });
