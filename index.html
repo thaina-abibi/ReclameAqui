@@ -462,6 +462,20 @@
   .resposta-meta{font-size:12px; color:var(--ink-soft); margin-top:2px;}
   .resposta-texto{font-size:13.5px; color:var(--ink); white-space:pre-wrap; max-height:150px; overflow:auto;}
   #resposta-texto{min-height:140px; resize:vertical;}
+  .num-resposta{
+    display:inline-block; font-family:var(--font-mono); font-size:12px; font-weight:600;
+    color:var(--amber-deep); background:var(--amber-soft); border:1px solid var(--gold);
+    border-radius:100px; padding:1px 8px; margin-right:8px;
+  }
+  .at-resposta-linha{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:end;}
+  .at-resposta-linha .campo{margin-bottom:0;}
+  .at-resposta-copiar{
+    display:inline-flex; align-items:center; gap:7px; padding:11px 13px; border-radius:8px; cursor:pointer;
+    background:var(--surface); border:1px solid var(--line-strong); color:var(--ink); font-size:13.5px; font-weight:600;
+  }
+  .at-resposta-copiar:hover{border-color:var(--amber); color:var(--amber-deep);}
+  .at-resposta-copiar[disabled]{opacity:.45; cursor:not-allowed;}
+  .at-resposta-copiar svg{width:16px; height:16px;}
 
   .historico{
     margin:4px 0 16px; padding:12px 14px; border:1px solid var(--line); border-radius:9px;
@@ -691,6 +705,7 @@
       ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true)",
       "$id": {
         ".validate": "newData.hasChildren(['titulo','texto'])",
+        "numero": { ".validate": "newData.isNumber() && newData.val() >= 1" },
         "titulo": { ".validate": "newData.isString() && newData.val().length <= 140" },
         "assunto": { ".validate": "newData.isString() && newData.val().length <= 40" },
         "texto": { ".validate": "newData.isString() && newData.val().length <= 8000" },
@@ -741,6 +756,9 @@
         },
         "sustentacao": {
           ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "resposta": {
+          ".validate": "newData.isString() && newData.val().matches(/^[0-9]{0,6}$/)"
         },
         "nome": {
           ".validate": "newData.isString() && newData.val().length <= 80"
@@ -1212,8 +1230,12 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       var v = snap.val() || {};
       state.respostas = Object.keys(v).map(function(k){
         var r = v[k] || {};
-        return {id:k, titulo:r.titulo || "", assunto:r.assunto || "", texto:r.texto || "", por:r.por || "", em:r.em || ""};
-      }).sort(function(a,b){ return a.titulo.localeCompare(b.titulo); });
+        return {id:k, numero: Number(r.numero) || 0, titulo:r.titulo || "", assunto:r.assunto || "", texto:r.texto || "", por:r.por || "", em:r.em || ""};
+      }).sort(function(a,b){
+        if(a.numero !== b.numero) return a.numero - b.numero;
+        return a.titulo.localeCompare(b.titulo);
+      });
+      numerarRespostasAntigas();
       if(state.screen === "painel" && state.painelAba === "respostas" && !digitandoNoFormulario()) render();
     }, function(){});
     refListas = db.ref("listas");
@@ -1461,6 +1483,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
     state.currentUser = cadastro;
     state.error = "";
+    numerarRespostasAntigas();
 
     if(ehAdministrativo() && (!cadastro.uid || !cadastro.email)){
       cadastro.uid = authUser.uid;
@@ -1969,7 +1992,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   function textoBusca(item){
     return normalizarBusca([
       item.id, item.data, item.assunto, item.cpf, item.cpf ? formatCPF(item.cpf) : "", item.placa,
-      item.nome, item.descricao, item.observacao, item.sac, item.sustentacao,
+      item.nome, item.descricao, item.resposta ? rotuloResposta(item.resposta) : "", item.observacao, item.sac, item.sustentacao,
       item.situacao, item.responsavel, (typeof item.nota === "number" ? "nota " + item.nota : "")
     ].join(" | "));
   }
@@ -2008,6 +2031,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     {chave:"cpf", rotulo:"CPF", tipo:"lista", ops:["um","nao_um","contem","vazio","nao_vazio"]},
     {chave:"placa", rotulo:"Placa", tipo:"lista", ops:["um","nao_um","contem","vazio","nao_vazio"]},
     {chave:"nota", rotulo:"Nota", tipo:"numero", ops:["igual","maior_igual","menor_igual","vazio","nao_vazio"]},
+    {chave:"resposta", rotulo:"Resposta (nº)", tipo:"lista", ops:["um","nao_um","vazio","nao_vazio"]},
     {chave:"observacao", rotulo:"Observação", tipo:"texto", ops:["contem","nao_contem","vazio","nao_vazio"]},
     {chave:"sac", rotulo:"SAC", tipo:"texto", ops:["contem","vazio","nao_vazio"]},
     {chave:"sustentacao", rotulo:"Sustentação", tipo:"texto", ops:["contem","vazio","nao_vazio"]},
@@ -2467,6 +2491,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         celula(i.nome) +
         celula(nomeDoResponsavel(i.responsavel)) +
         celula(i.descricao ? capitalizar(i.descricao) : "") +
+        celula(i.resposta ? rotuloResposta(i.resposta) : "", true) +
         celula(i.observacao) +
         celula(i.sac, true) +
         celula(i.sustentacao, true) +
@@ -2483,9 +2508,9 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       '</div>' +
       '<div class="rolagem"><table class="tabela-pesquisa"><thead><tr>' +
         '<th>DATA</th><th>ID</th><th>ASSUNTO</th><th>SITUAÇÃO</th><th>CPF</th><th>PLACA</th><th>NOME</th><th>ATRIBUÍDO A</th>' +
-        '<th>DESCRIÇÃO</th><th>OBSERVAÇÃO</th><th>SAC</th><th>SUSTENTAÇÃO</th><th>NOTA</th><th>ATUALIZADO EM</th><th>LOCAL</th>' +
+        '<th>DESCRIÇÃO</th><th>RESPOSTA</th><th>OBSERVAÇÃO</th><th>SAC</th><th>SUSTENTAÇÃO</th><th>NOTA</th><th>ATUALIZADO EM</th><th>LOCAL</th>' +
       '</tr></thead><tbody>' +
-        (linhas || '<tr><td colspan="15" class="vazio">Nada encontrado com esses filtros.</td></tr>') +
+        (linhas || '<tr><td colspan="16" class="vazio">Nada encontrado com esses filtros.</td></tr>') +
       '</tbody></table></div>' +
     '</div>';
   }
@@ -2711,12 +2736,13 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var r = registrosDash();
     if(!r.length){ toast("Não há registros com esses filtros."); return; }
 
-    var cab = ["DATA","ID","ASSUNTO","SITUAÇÃO","CPF","PLACA","NOME","ATRIBUÍDO A","DESCRIÇÃO","OBSERVAÇÃO","SAC","SUSTENTAÇÃO","NOTA","ATUALIZADO EM","LOCAL"];
+    var cab = ["DATA","ID","ASSUNTO","SITUAÇÃO","CPF","PLACA","NOME","ATRIBUÍDO A","DESCRIÇÃO","RESPOSTA","OBSERVAÇÃO","SAC","SUSTENTAÇÃO","NOTA","ATUALIZADO EM","LOCAL"];
     var linhas = r.map(function(x){
       var i = x.item;
       return [
         i.data, i.id, i.assunto, rotuloEstado(i), i.cpf ? digitos(i.cpf) : "", i.placa,
-        i.nome, nomeDoResponsavel(i.responsavel), i.descricao ? capitalizar(i.descricao) : "", i.observacao, i.sac, i.sustentacao,
+        i.nome, nomeDoResponsavel(i.responsavel), i.descricao ? capitalizar(i.descricao) : "",
+        i.resposta ? rotuloResposta(i.resposta) : "", i.observacao, i.sac, i.sustentacao,
         (typeof i.nota === "number" ? i.nota : ""), i.atualizadoEm ? dataHora(i.atualizadoEm) : "",
         x.mes ? "Arquivo " + rotuloMes(x.mes) : "Ativo"
       ].map(valorCsv).join(";");
@@ -3318,6 +3344,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     if(chave === "descricoes"){
       var t = [];
       if(item.descricao) t.push(rotuloDescricao(item.descricao));
+      if(item.resposta) t.push(rotuloResposta(item.resposta));
       if(item.sac) t.push("SAC " + item.sac);
       if(item.sustentacao) t.push("Sust. " + item.sustentacao);
       return t.join(" ");
@@ -3386,6 +3413,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
       var descricao = [];
       if(item.descricao) descricao.push(rotuloDescricao(item.descricao));
+      if(item.resposta) descricao.push(rotuloResposta(item.resposta));
       if(item.sac) descricao.push("SAC " + item.sac);
       if(item.sustentacao) descricao.push("Sust. " + item.sustentacao);
       var celulaDescricao = descricao.length
@@ -3809,6 +3837,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
             esc(capitalizar(d.nome)) + (d.tipo === "pendente" ? " …" : "") + '</option>';
         }).join('') +
       '</select></div>' +
+    blocoRespostaCaso(item) +
     '<div class="grade-2" id="at-aguardando" style="display:' + (aguardando ? "grid" : "none") + '">' +
       '<div class="campo"><label for="at-sac">SAC</label>' +
         '<input type="text" id="at-sac" maxlength="40" placeholder="SAC001234" value="' + esc(item.sac || "") + '"></div>' +
@@ -3829,6 +3858,45 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         '<select id="at-destino">' + opcoesDestino() + '</select></div>' +
       '<div class="campo" style="margin-bottom:0"><button class="btn btn-neutro btn-largo" id="at-confirmar-outro">Confirmar atribuição</button></div>' +
     '</div>';
+  }
+
+  function finalizaCaso(descricao){
+    return !!descricao && !ehPendente(descricao);
+  }
+
+  function opcoesRespostas(escolhida){
+    var atual = String(escolhida || "");
+    return '<option value="">Nenhuma</option>' + state.respostas.map(function(r){
+      var rotulo = rotuloResposta(r.numero) + " · " + r.titulo + (r.assunto ? " (" + r.assunto + ")" : "");
+      return '<option value="' + esc(r.numero) + '"' + (String(r.numero) === atual ? " selected" : "") + '>' + esc(rotulo) + '</option>';
+    }).join("");
+  }
+
+  function blocoRespostaCaso(item){
+    var mostrar = finalizaCaso(item.descricao);
+    var escolhida = String(item.resposta || "");
+    return '<div id="at-resposta-campo" style="display:' + (mostrar ? "block" : "none") + ';margin-bottom:16px">' +
+      '<div class="at-resposta-linha">' +
+        '<div class="campo">' +
+          '<label for="at-resposta">Resposta utilizada <span style="color:var(--ink-soft);font-weight:400">(opcional)</span></label>' +
+          '<select id="at-resposta">' + opcoesRespostas(escolhida) + '</select>' +
+        '</div>' +
+        '<button type="button" class="at-resposta-copiar" id="at-resposta-copiar"' + (escolhida ? '' : ' disabled') +
+          ' aria-label="Copiar texto da resposta" title="Copiar texto da resposta">' + IC_COPIAR + 'Copiar</button>' +
+      '</div>' +
+      '<div id="at-resposta-previa" class="resposta-texto" style="margin-top:10px;display:' + (escolhida ? "block" : "none") + '"></div>' +
+    '</div>';
+  }
+
+  function atualizarRespostaCaso(){
+    var sel = document.getElementById("at-resposta");
+    var botao = document.getElementById("at-resposta-copiar");
+    var previa = document.getElementById("at-resposta-previa");
+    if(!sel || !botao || !previa) return;
+    var r = acharRespostaPorNumero(sel.value);
+    botao.disabled = !r;
+    previa.style.display = r ? "block" : "none";
+    previa.textContent = r ? r.texto : "";
   }
 
   function opcoesDestino(){
@@ -3886,6 +3954,23 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     liga("at-descricao", "change", function(){
       var bloco = document.getElementById("at-aguardando");
       if(bloco) bloco.style.display = (this.value && ehPendente(this.value)) ? "grid" : "none";
+      var campoResposta = document.getElementById("at-resposta-campo");
+      if(campoResposta){
+        var mostrar = finalizaCaso(this.value);
+        campoResposta.style.display = mostrar ? "block" : "none";
+        if(!mostrar){
+          var sel = document.getElementById("at-resposta");
+          if(sel) sel.value = "";
+          atualizarRespostaCaso();
+        }
+      }
+    });
+
+    liga("at-resposta", "change", atualizarRespostaCaso);
+    liga("at-resposta-copiar", "click", function(){
+      var sel = document.getElementById("at-resposta");
+      var r = sel ? acharRespostaPorNumero(sel.value) : null;
+      if(r) copiar(r.texto, "Resposta " + rotuloResposta(r.numero) + " copiada.");
     });
 
     liga("at-salvar", "click", function(){ salvarAtendimento(false); });
@@ -3901,6 +3986,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     });
 
     atualizarRepetidos();
+    atualizarRespostaCaso();
   }
 
   var repetidosExpandido = false;
@@ -3964,7 +4050,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
   function resumoMudancas(antes, depois){
     var rotulos = {assunto:"Assunto", cpf:"CPF", placa:"Placa", descricao:"Descrição",
-      observacao:"Observação", sac:"SAC", sustentacao:"Sustentação", responsavel:"Atribuído a", nome:"Nome"};
+      observacao:"Observação", sac:"SAC", sustentacao:"Sustentação", resposta:"Resposta",
+      responsavel:"Atribuído a", nome:"Nome"};
     var partes = [];
     Object.keys(rotulos).forEach(function(k){
       if(!(k in depois)) return;
@@ -3973,6 +4060,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       if(de === para) return;
       if(k === "responsavel"){ de = nomeDoResponsavel(de); para = nomeDoResponsavel(para); }
       if(k === "descricao"){ de = capitalizar(de); para = capitalizar(para); }
+      if(k === "resposta"){ de = rotuloResposta(de); para = rotuloResposta(para); }
       partes.push(rotulos[k] + ": " + (de ? de + " → " : "") + (para || "vazio"));
     });
     return partes.join(" · ");
@@ -4010,6 +4098,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var sac = (document.getElementById("at-sac").value || "").trim().toUpperCase();
     var sustentacao = (document.getElementById("at-sustentacao").value || "").trim().toUpperCase();
     var observacao = (document.getElementById("at-observacao").value || "").trim();
+    var campoResposta = document.getElementById("at-resposta");
+    var resposta = (finalizaCaso(descricao) && campoResposta) ? digitos(campoResposta.value) : "";
 
     var guardaVinculos = !!destino || atribuir || (!!descricao && ehPendente(descricao));
     var assumeDono = !!destino || atribuir;
@@ -4023,6 +4113,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       observacao: observacao,
       sac: guardaVinculos ? sac : "",
       sustentacao: guardaVinculos ? sustentacao : "",
+      resposta: destino ? "" : resposta,
       responsavel: assumeDono ? ((alvo && alvo.username) || "") : "",
       atualizadoEm: new Date().toISOString()
     };
@@ -4111,7 +4202,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var busca = normalizarBusca(state.respostaBusca);
     var lista = state.respostas.filter(function(r){
       if(!busca) return true;
-      return normalizarBusca(r.titulo + " " + r.assunto + " " + r.texto).indexOf(busca) !== -1;
+      return normalizarBusca(rotuloResposta(r.numero) + " " + r.numero + " " + r.titulo + " " + r.assunto + " " + r.texto).indexOf(busca) !== -1;
     });
 
     var opcoesAssunto = '<option value="">Geral</option>' + nomesAssuntos().map(function(a){
@@ -4122,7 +4213,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       return '<div class="resposta-item">' +
         '<div class="resposta-topo">' +
           '<div>' +
-            '<strong>' + esc(r.titulo) + '</strong>' +
+            '<strong>' + (r.numero ? '<span class="num-resposta">' + esc(rotuloResposta(r.numero)) + '</span>' : '') + esc(r.titulo) + '</strong>' +
             '<div class="resposta-meta">' + esc(r.assunto || "Geral") + (r.por ? ' · ' + esc(r.por) : '') + (r.em ? ' · ' + esc(soData(r.em)) : '') + '</div>' +
           '</div>' +
           '<div class="acoes">' +
@@ -4138,7 +4229,9 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     }).join('');
 
     var formulario = !admin ? '' : '<div class="cartao">' +
-      '<h2>' + (edit && edit.id ? "Editar resposta" : "Nova resposta") + '</h2>' +
+      '<h2>' + (edit && edit.id
+        ? ("Editar resposta " + (edit.numero ? rotuloResposta(edit.numero) : ""))
+        : ("Nova resposta · " + rotuloResposta(proximoNumeroResposta()))) + '</h2>' +
       '<div class="grade-2">' +
         '<div class="campo"><label for="resposta-titulo">Título</label>' +
           '<input type="text" id="resposta-titulo" maxlength="140" placeholder="Ex.: CNH — segunda via em análise" value="' + esc(edit ? edit.titulo : "") + '"></div>' +
@@ -4176,6 +4269,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
     var edit = state.respostaEdit;
     var dados = {
+      numero: (edit && edit.id && edit.numero) ? edit.numero : proximoNumeroResposta(),
       titulo: titulo,
       assunto: assunto,
       texto: texto,
@@ -4189,12 +4283,47 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       if(edit && edit.id) await db.ref("respostas/" + edit.id).set(dados);
       else await db.ref("respostas").push(dados);
       state.respostaEdit = null;
-      toast(edit && edit.id ? "Resposta atualizada." : "Resposta salva.");
+      toast(edit && edit.id ? "Resposta atualizada." : ("Resposta salva como " + rotuloResposta(dados.numero) + "."));
       render();
     } catch(err){
       botao.disabled = false;
       feedback.innerHTML = '<div class="aviso aviso-erro">' + esc(msgBanco(err)) + '</div>';
     }
+  }
+
+  function rotuloResposta(numero){
+    var n = Number(numero) || 0;
+    if(!n) return "";
+    return "R-" + (n < 100 ? ("00" + n).slice(-3) : String(n));
+  }
+
+  function proximoNumeroResposta(){
+    var maior = 0;
+    state.respostas.forEach(function(r){ if(r.numero > maior) maior = r.numero; });
+    return maior + 1;
+  }
+
+  function acharRespostaPorNumero(numero){
+    var n = Number(numero) || 0;
+    if(!n) return null;
+    for(var i=0;i<state.respostas.length;i++){ if(state.respostas[i].numero === n) return state.respostas[i]; }
+    return null;
+  }
+
+  var numerandoRespostas = false;
+
+  function numerarRespostasAntigas(){
+    if(numerandoRespostas || !ehAdministrativo()) return;
+    var semNumero = state.respostas.filter(function(r){ return !r.numero; });
+    if(!semNumero.length) return;
+    numerandoRespostas = true;
+    var proximo = proximoNumeroResposta(), mudancas = {};
+    semNumero.sort(function(a,b){ return paraISO(a.em).localeCompare(paraISO(b.em)); }).forEach(function(r){
+      r.numero = proximo;
+      mudancas["respostas/" + r.id + "/numero"] = proximo;
+      proximo++;
+    });
+    db.ref().update(mudancas).catch(function(){}).then(function(){ numerandoRespostas = false; });
   }
 
   function acharResposta(id){
@@ -4589,7 +4718,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       b.addEventListener("click", function(){
         var r = acharResposta(b.getAttribute("data-editar-resposta"));
         if(!r) return;
-        state.respostaEdit = {id:r.id, titulo:r.titulo, assunto:r.assunto, texto:r.texto};
+        state.respostaEdit = {id:r.id, numero:r.numero, titulo:r.titulo, assunto:r.assunto, texto:r.texto};
         render();
       });
     });
