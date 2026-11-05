@@ -349,6 +349,29 @@
   .tabela-coleta th:nth-child(5), .tabela-coleta td:nth-child(5){width:150px;}
   .tabela-coleta th:last-child, .tabela-coleta td:last-child{width:126px;}
   .tabela-coleta select{padding:7px 8px; font-size:12.5px;}
+  .tabela-coleta th.ord{cursor:pointer; user-select:none; white-space:nowrap;}
+  .tabela-coleta th.ord:hover{color:var(--ink);}
+  .tabela-coleta th.ord.on{color:var(--ink);}
+  .ord-seta{font-size:9px; margin-left:5px; opacity:.3;}
+  th.ord.on .ord-seta{opacity:1; color:var(--amber-deep);}
+  .btn-icone{display:inline-flex; align-items:center; justify-content:center; padding:7px 9px;}
+  .btn-icone svg{width:17px; height:17px;}
+  .btn-icone[disabled]{opacity:.4; cursor:not-allowed;}
+  .btn-icone.ligado{border-color:var(--ink); box-shadow:inset 0 0 0 1px var(--line-strong);}
+  #popup-pedido, #popup-livre{
+    width:min(460px,calc(100vw - 32px)); margin:auto; padding:0;
+    border:1px solid var(--line-strong); border-radius:14px; background:var(--surface);
+    color:var(--ink); box-shadow:0 24px 80px #0008;
+  }
+  #popup-pedido::backdrop, #popup-livre::backdrop{background:rgba(0,0,0,.55);}
+  html.tema-claro #popup-pedido::backdrop, html.tema-claro #popup-livre::backdrop{background:rgba(20,22,26,0.35);}
+  .aviso-topo{display:flex; justify-content:space-between; align-items:center; gap:16px; padding:18px 22px; border-bottom:1px solid var(--line);}
+  .aviso-topo h2{font-size:18px;}
+  .aviso-miolo{padding:20px 22px;}
+  .aviso-miolo p{margin:0 0 16px; font-size:14px; color:var(--ink-soft);}
+  .aviso-miolo p strong{color:var(--ink);}
+  .aviso-acoes{display:flex; gap:10px; flex-wrap:wrap;}
+  .aviso-acoes .btn{flex:1; min-width:140px;}
   @media (max-width:1180px){
     .tabela-coleta{min-width:1060px; table-layout:auto;}
   }
@@ -636,6 +659,14 @@
       ".write": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)"
     },
     "sessaoAtiva": {
+      ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
+      ".write": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)"
+    },
+    "pedidosAcesso": {
+      ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
+      ".write": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)"
+    },
+    "avisosLivre": {
       ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
       ".write": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)"
     },
@@ -931,6 +962,9 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     usoFiltro:{nome:"", data:"", periodo:"15"},
     mesGrafico:"",
     mesSecao:{descricao:"", grupo:"", assunto:"", avaliacoes:""},
+    ordemInicio:{campo:"", dir:"asc"},
+    pedidos:[],
+    avisosLivre:{},
     tema:"escuro"
   };
 
@@ -950,6 +984,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   var IC_CONTA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>';
   var IC_MENU = '<svg viewBox="0 0 30 20" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><line x1="2" y1="3" x2="28" y2="3"/><line x1="2" y1="10" x2="28" y2="10"/><line x1="2" y1="17" x2="28" y2="17"/></svg>';
   var IC_COPIAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11.5" height="11.5" rx="2.4"/><path d="M5.5 15H4.4A2.4 2.4 0 0 1 2 12.6V4.4A2.4 2.4 0 0 1 4.4 2h8.2A2.4 2.4 0 0 1 15 4.4v1.1"/></svg>';
+  var IC_MAO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V4.6a1.6 1.6 0 0 1 3.2 0V11"/><path d="M12.2 10.6V3.4a1.6 1.6 0 0 1 3.2 0v7.2"/><path d="M15.4 11.4V6.2a1.6 1.6 0 0 1 3.2 0V15a6 6 0 0 1-6 6h-1.2a5 5 0 0 1-3.9-1.9L4 14.4a1.6 1.6 0 0 1 2.4-2.1L9 14.6V11"/></svg>';
+  var IC_AVISO_LIVRE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.4 21.6 20.2H2.4z"/><text x="12" y="17.6" text-anchor="middle" font-size="9.5" font-weight="700" font-family="system-ui,sans-serif" fill="currentColor" stroke="none">?</text></svg>';
   var IC_SOL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><line x1="12" y1="1.8" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22.2"/><line x1="1.8" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22.2" y2="12"/><line x1="4.8" y1="4.8" x2="6.4" y2="6.4"/><line x1="17.6" y1="17.6" x2="19.2" y2="19.2"/><line x1="4.8" y1="19.2" x2="6.4" y2="17.6"/><line x1="17.6" y1="6.4" x2="19.2" y2="4.8"/></svg>';
   var IC_LUA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.2A8.6 8.6 0 0 1 9.8 3.5a8.6 8.6 0 1 0 10.7 10.7z"/></svg>';
 
@@ -966,6 +1002,17 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   function carregarTema(){
     try { if(localStorage.getItem("ra_tema") === "claro") state.tema = "claro"; } catch(e){}
     aplicarTema();
+  }
+
+  function carregarOrdem(){
+    try {
+      var salvo = JSON.parse(localStorage.getItem("ra_ordem_inicio") || "null");
+      if(salvo && salvo.campo) state.ordemInicio = {campo:String(salvo.campo), dir: salvo.dir === "desc" ? "desc" : "asc"};
+    } catch(e){}
+  }
+
+  function guardarOrdem(){
+    try { localStorage.setItem("ra_ordem_inicio", JSON.stringify(state.ordemInicio)); } catch(e){}
   }
 
   function alternarTema(){
@@ -1143,7 +1190,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       (state.currentUser.username||"").toLowerCase() === (username||"").toLowerCase());
   }
 
-  var refUsuarios = null, refLogs = null, refSessao = null, refUso = null, refListas = null, refIndice = null, refRespostas = null, refAlertas = null;
+  var refUsuarios = null, refLogs = null, refSessao = null, refUso = null, refListas = null, refIndice = null, refRespostas = null, refAlertas = null, refPedidos = null, refAvisos = null;
 
   function ligarBase(){
     if(refUsuarios) return;
@@ -1195,10 +1242,28 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       state.logs = toArray(snap.val());
       if(state.screen === "painel" && state.painelAba === "registro") render();
     }, function(){});
+    refPedidos = db.ref("pedidosAcesso");
+    refPedidos.on("value", function(snap){
+      var v = snap.val() || {};
+      state.pedidos = Object.keys(v).map(function(k){
+        var p = v[k] || {};
+        return {uid:k, username:p.username || "", nome:p.nome || "", para:p.para || "", resposta:p.resposta || "", em:p.em || ""};
+      });
+      conferirPedidos();
+      if(state.screen === "painel" && !digitandoNoFormulario()) render();
+    }, function(){});
+    refAvisos = db.ref("avisosLivre");
+    refAvisos.on("value", function(snap){
+      state.avisosLivre = snap.val() || {};
+      conferirLivre();
+      if(state.screen === "painel" && !digitandoNoFormulario()) render();
+    }, function(){});
     refSessao = db.ref("sessaoAtiva");
     refSessao.on("value", function(snap){
       var valor = snap.val();
       state.sessao = (valor && valor.username) ? valor : null;
+      conferirPedidos();
+      conferirLivre();
       if(state.screen === "painel" && !digitandoNoFormulario()) render();
     }, function(){});
     refUso = db.ref("usoRegistro");
@@ -1220,6 +1285,10 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     definirPeriodoPadrao();
     if(refUsuarios){ refUsuarios.off(); refUsuarios = null; }
     if(refLogs){ refLogs.off(); refLogs = null; }
+    if(refPedidos){ refPedidos.off(); refPedidos = null; } state.pedidos = [];
+    if(refAvisos){ refAvisos.off(); refAvisos = null; } state.avisosLivre = {};
+    pararAlarme();
+    ["popup-pedido","popup-livre"].forEach(function(id){ var el = document.getElementById(id); if(el) el.remove(); });
     if(refSessao){ refSessao.off(); refSessao = null; }
     if(refUso){ refUso.off(); refUso = null; }
     state.sessao = null;
@@ -1311,6 +1380,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
   function iniciar(){
     carregarTema();
+    carregarOrdem();
     definirPeriodoPadrao();
     if(!configOk){
       state.booted = true;
@@ -1552,6 +1622,35 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     '</div>';
   }
 
+  function souEuNaFila(){
+    var uid = (auth && auth.currentUser) ? auth.currentUser.uid : "";
+    return !!(uid && state.avisosLivre && state.avisosLivre[uid]);
+  }
+
+  function pediAcesso(){
+    var uid = (auth && auth.currentUser) ? auth.currentUser.uid : "";
+    for(var i=0;i<state.pedidos.length;i++){ if(state.pedidos[i].uid === uid) return true; }
+    return false;
+  }
+
+  function botoesAviso(){
+    var ocupadoPorOutro = !!(state.sessao && state.sessao.username) && !ehMinhaSessao();
+    var jaPedi = pediAcesso();
+    var naFila = souEuNaFila();
+
+    return '<button class="btn btn-neutro btn-mini btn-icone' + (jaPedi ? ' ligado' : '') + '" id="btn-pedir-acesso"' +
+        (ocupadoPorOutro ? '' : ' disabled') +
+        ' aria-label="Solicitar acesso" title="' +
+        (ocupadoPorOutro ? (jaPedi ? 'Solicitação já enviada — clique para enviar de novo' : 'Solicitar acesso a quem está utilizando') : 'Disponível apenas quando o sistema estiver em uso por outra pessoa') +
+        '">' + IC_MAO + '</button>' +
+      '<button class="btn btn-neutro btn-mini btn-icone' + (naFila ? ' ligado' : '') + '" id="btn-avisar-livre"' +
+        (ocupadoPorOutro || naFila ? '' : ' disabled') +
+        ' aria-pressed="' + (naFila ? 'true' : 'false') + '"' +
+        ' aria-label="Avisar quando ficar livre" title="' +
+        (naFila ? 'Aviso ligado — clique para cancelar' : (ocupadoPorOutro ? 'Avisar quando o sistema ficar livre' : 'Disponível apenas quando o sistema estiver em uso por outra pessoa')) +
+        '">' + IC_AVISO_LIVRE + '</button>';
+  }
+
   function telaPainel(){
     var u = state.currentUser || {};
     var admin = ehAdministrativo(u);
@@ -1579,6 +1678,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       marcaTopo() +
       campoUso() +
       '<div class="acoes-topo">' +
+        botoesAviso() +
         '<button class="btn btn-neutro btn-mini" id="btn-coleta">COLETA</button>' +
         '<button class="btn btn-neutro btn-mini" id="sair">Sair</button>' +
       '</div>';
@@ -3193,6 +3293,67 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
 
 
+  var COLUNAS_INICIO = [
+    {chave:"data", rotulo:"DATA"},
+    {chave:"id", rotulo:"ID"},
+    {chave:"assunto", rotulo:"ASSUNTO"},
+    {chave:"dados", rotulo:"DADOS"},
+    {chave:"nome", rotulo:"NOME"},
+    {chave:"descricoes", rotulo:"DESCRIÇÕES"},
+    {chave:"observacao", rotulo:"OBSERVAÇÃO"},
+    {chave:"nota", rotulo:"NOTA", soAvaliadas:true},
+    {chave:"atualizadoEm", rotulo:"ATUALIZADO EM"}
+  ];
+
+  function valorOrdem(item, chave){
+    if(chave === "data") return chaveData(item.data);
+    if(chave === "id") return Number(item.id) || 0;
+    if(chave === "nota") return (typeof item.nota === "number") ? item.nota : null;
+    if(chave === "dados"){
+      var d = [];
+      if(item.cpf) d.push(digitos(item.cpf));
+      if(item.placa) d.push(String(item.placa).toUpperCase());
+      return d.join(" ");
+    }
+    if(chave === "descricoes"){
+      var t = [];
+      if(item.descricao) t.push(rotuloDescricao(item.descricao));
+      if(item.sac) t.push("SAC " + item.sac);
+      if(item.sustentacao) t.push("Sust. " + item.sustentacao);
+      return t.join(" ");
+    }
+    if(chave === "atualizadoEm") return paraISO(item.atualizadoEm || "");
+    return String(item[chave] == null ? "" : item[chave]);
+  }
+
+  function ordenarInicio(lista){
+    var ordem = state.ordemInicio;
+    if(!ordem || !ordem.campo) return lista;
+    var sinal = ordem.dir === "desc" ? -1 : 1;
+    return lista.slice().sort(function(a, b){
+      var va = valorOrdem(a, ordem.campo), vb = valorOrdem(b, ordem.campo);
+      var vazioA = (va === null || va === undefined || va === "");
+      var vazioB = (vb === null || vb === undefined || vb === "");
+      if(vazioA && vazioB) return String(a.id).localeCompare(String(b.id));
+      if(vazioA) return 1;
+      if(vazioB) return -1;
+      var r = (typeof va === "number" && typeof vb === "number")
+        ? (va - vb)
+        : String(va).localeCompare(String(vb), "pt-BR", {numeric:true, sensitivity:"base"});
+      if(r === 0) return String(a.id).localeCompare(String(b.id));
+      return r * sinal;
+    });
+  }
+
+  function cabecalhoInicio(comNota){
+    return COLUNAS_INICIO.filter(function(c){ return !c.soAvaliadas || comNota; }).map(function(c){
+      var ativa = state.ordemInicio.campo === c.chave;
+      var seta = ativa ? (state.ordemInicio.dir === "asc" ? "▲" : "▼") : "⇅";
+      return '<th class="ord' + (ativa ? ' on' : '') + '" data-ordenar="' + c.chave + '" title="Ordenar por ' + esc(c.rotulo) + '">' +
+        c.rotulo + '<span class="ord-seta">' + seta + '</span></th>';
+    }).join("");
+  }
+
   function blocoColeta(){
     var admin = ehAdministrativo();
     var visiveis = state.coleta.filter(function(i){ return passaNosFiltros(i, state.filtrosInicio); });
@@ -3205,7 +3366,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     });
 
     var aba = grupos[state.coletaAba] ? state.coletaAba : "naoRespondidas";
-    var lista = grupos[aba];
+    var lista = ordenarInicio(grupos[aba]);
     var comNota = (aba === "avaliadas");
     var colunas = comNota ? 9 : 8;
 
@@ -3267,9 +3428,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         '</div>' +
       '</div>' +
       '<div class="rolagem"><table class="tabela-coleta"><thead><tr>' +
-        '<th>DATA</th><th>ID</th><th>ASSUNTO</th><th>DADOS</th><th>NOME</th><th>DESCRIÇÕES</th><th>OBSERVAÇÃO</th>' +
-        (comNota ? '<th>NOTA</th>' : '') +
-        '<th>ATUALIZADO EM</th>' +
+        cabecalhoInicio(comNota) +
       '</tr></thead><tbody>' +
         (linhas || '<tr><td colspan="' + colunas + '" class="vazio">Nenhum registro nesta aba.</td></tr>') +
       '</tbody></table></div>' +
@@ -4273,6 +4432,17 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     });
     liga("btn-uso", "click", alternarUso);
     liga("btn-coleta", "click", abrirColeta);
+    liga("btn-pedir-acesso", "click", pedirAcesso);
+    liga("btn-avisar-livre", "click", alternarAvisoLivre);
+    cada("[data-ordenar]", function(th){
+      th.addEventListener("click", function(){
+        var campo = th.getAttribute("data-ordenar");
+        if(state.ordemInicio.campo === campo) state.ordemInicio.dir = (state.ordemInicio.dir === "asc") ? "desc" : "asc";
+        else state.ordemInicio = {campo:campo, dir:"asc"};
+        guardarOrdem();
+        render();
+      });
+    });
     liga("btn-atualizar", "click", atualizarDados);
     liga("base-importar", "click", importarBase);
     liga("dash-baixar", "click", baixarPlanilha);
@@ -4553,6 +4723,194 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   window.addEventListener("pagehide", registrarSaidaAbrupta);
   window.addEventListener("beforeunload", registrarSaidaAbrupta);
 
+  // ===== avisos entre pessoas: pedido de acesso e aviso de sistema livre =====
+
+  var somCtx = null, alarme = null, pedidoMostrado = {}, respostaMostrada = {}, alertaLivreAberto = false;
+
+  function bip(freq, inicio, duracao, volume){
+    try {
+      if(!somCtx) somCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if(somCtx.state === "suspended") somCtx.resume();
+      var osc = somCtx.createOscillator(), ganho = somCtx.createGain();
+      var t = somCtx.currentTime + inicio;
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, t);
+      ganho.gain.setValueAtTime(0.0001, t);
+      ganho.gain.exponentialRampToValueAtTime(volume || 0.18, t + 0.02);
+      ganho.gain.exponentialRampToValueAtTime(0.0001, t + duracao);
+      osc.connect(ganho); ganho.connect(somCtx.destination);
+      osc.start(t); osc.stop(t + duracao + 0.05);
+    } catch(e){}
+  }
+
+  function tocarPedido(){
+    bip(880, 0, 0.18);
+    bip(660, 0.24, 0.22);
+  }
+
+  function tocarLivre(){
+    bip(988, 0, 0.16);
+    bip(1319, 0.2, 0.16);
+    bip(988, 0.4, 0.26);
+  }
+
+  function iniciarAlarme(){
+    if(alarme) return;
+    tocarLivre();
+    alarme = setInterval(tocarLivre, 2600);
+  }
+
+  function pararAlarme(){
+    if(alarme) clearInterval(alarme);
+    alarme = null;
+  }
+
+  function pedirPermissaoAviso(){
+    try {
+      if(typeof Notification !== "undefined" && Notification.permission === "default") Notification.requestPermission();
+    } catch(e){}
+  }
+
+  function avisoDoNavegador(titulo, texto){
+    try {
+      if(typeof Notification === "undefined" || Notification.permission !== "granted") return null;
+      var n = new Notification(titulo, {body:texto, tag:"ra-detran-livre", requireInteraction:true});
+      n.onclick = function(){ try { window.focus(); } catch(e){} n.close(); };
+      return n;
+    } catch(e){ return null; }
+  }
+
+  function meuUid(){
+    return (auth && auth.currentUser) ? auth.currentUser.uid : "";
+  }
+
+  async function pedirAcesso(){
+    var s = state.sessao;
+    if(!s || !s.username){ toast("O sistema já está livre."); return; }
+    if(ehMinhaSessao()){ toast("Você é quem está utilizando."); return; }
+    var uid = meuUid();
+    if(!uid) return;
+    try {
+      await db.ref("pedidosAcesso/" + uid).set({
+        username: (state.currentUser && state.currentUser.username) || "",
+        nome: nomeExibido(state.currentUser),
+        para: s.username,
+        em: new Date().toISOString(),
+        resposta: ""
+      });
+      toast("Solicitação enviada para " + (s.nome || s.username) + ".");
+    } catch(err){ toast(msgBanco(err)); }
+  }
+
+  function pedidosParaMim(){
+    if(!ehMinhaSessao()) return [];
+    var eu = ((state.currentUser && state.currentUser.username) || "").toLowerCase();
+    return state.pedidos.filter(function(p){
+      return !p.resposta && String(p.para || "").toLowerCase() === eu && p.uid !== meuUid();
+    });
+  }
+
+  function conferirPedidos(){
+    var meuPedido = null;
+    for(var i=0;i<state.pedidos.length;i++){ if(state.pedidos[i].uid === meuUid()) meuPedido = state.pedidos[i]; }
+    if(meuPedido && meuPedido.resposta && !respostaMostrada[meuPedido.em]){
+      respostaMostrada[meuPedido.em] = true;
+      bip(760, 0, 0.2);
+      toast(meuPedido.resposta === "liberando"
+        ? "Sua solicitação foi aceita: a pessoa vai finalizar em instantes."
+        : "A pessoa pediu mais um tempo antes de liberar.");
+      db.ref("pedidosAcesso/" + meuPedido.uid).remove().catch(function(){});
+    }
+
+    var novos = pedidosParaMim().filter(function(p){ return !pedidoMostrado[p.uid + p.em]; });
+    if(!novos.length) return;
+    novos.forEach(function(p){ pedidoMostrado[p.uid + p.em] = true; });
+    mostrarPedido(novos[novos.length - 1]);
+  }
+
+  function mostrarPedido(pedido){
+    var d = document.getElementById("popup-pedido");
+    if(d) d.remove();
+    d = document.createElement("dialog");
+    d.id = "popup-pedido";
+    d.innerHTML = '<div class="aviso-topo"><h2>Solicitação de acesso</h2></div>' +
+      '<div class="aviso-miolo">' +
+        '<p><strong>' + esc(pedido.nome || pedido.username) + '</strong> está pedindo o sistema. ' +
+          'Enviado às ' + esc(dataHora(pedido.em)) + '.</p>' +
+        '<div class="aviso-acoes">' +
+          '<button class="btn btn-principal" id="pedido-liberar">Já vou finalizar</button>' +
+          '<button class="btn btn-neutro" id="pedido-negar">Agora não dá</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(d);
+    tocarPedido();
+    avisoDoNavegador("RA Detran-SP", (pedido.nome || pedido.username) + " está pedindo o sistema.");
+
+    function responder(valor){
+      db.ref("pedidosAcesso/" + pedido.uid + "/resposta").set(valor).catch(function(){});
+      d.close(); d.remove();
+    }
+    d.querySelector("#pedido-liberar").onclick = function(){ responder("liberando"); };
+    d.querySelector("#pedido-negar").onclick = function(){ responder("negado"); };
+    d.addEventListener("cancel", function(e){ e.preventDefault(); responder("negado"); });
+    d.showModal();
+  }
+
+  async function alternarAvisoLivre(){
+    var uid = meuUid();
+    if(!uid) return;
+    if(souEuNaFila()){
+      try { await db.ref("avisosLivre/" + uid).remove(); toast("Aviso cancelado."); }
+      catch(err){ toast(msgBanco(err)); }
+      return;
+    }
+    if(!state.sessao || !state.sessao.username){ toast("O sistema já está livre."); return; }
+    if(ehMinhaSessao()){ toast("Você é quem está utilizando."); return; }
+    pedirPermissaoAviso();
+    try {
+      await db.ref("avisosLivre/" + uid).set({
+        username: (state.currentUser && state.currentUser.username) || "",
+        nome: nomeExibido(state.currentUser),
+        em: new Date().toISOString()
+      });
+      toast("Você será avisado assim que ficar livre.");
+    } catch(err){ toast(msgBanco(err)); }
+  }
+
+  function conferirLivre(){
+    var livre = !(state.sessao && state.sessao.username);
+    if(!livre || !souEuNaFila() || alertaLivreAberto) return;
+    alertaLivreAberto = true;
+    mostrarLivre();
+  }
+
+  function mostrarLivre(){
+    var d = document.getElementById("popup-livre");
+    if(d) d.remove();
+    d = document.createElement("dialog");
+    d.id = "popup-livre";
+    d.innerHTML = '<div class="aviso-topo"><h2>O sistema está livre</h2></div>' +
+      '<div class="aviso-miolo">' +
+        '<p>Ninguém está utilizando agora. Clique em OK para parar o alerta e, em seguida, use o botão INICIAR.</p>' +
+        '<div class="aviso-acoes"><button class="btn btn-principal" id="livre-ok">OK</button></div>' +
+      '</div>';
+    document.body.appendChild(d);
+    iniciarAlarme();
+    var nota = avisoDoNavegador("RA Detran-SP — sistema livre", "Ninguém está utilizando agora. Abra o app para iniciar.");
+
+    d.querySelector("#livre-ok").onclick = function(){
+      pararAlarme();
+      if(nota){ try { nota.close(); } catch(e){} }
+      alertaLivreAberto = false;
+      var uid = meuUid();
+      if(uid) db.ref("avisosLivre/" + uid).remove().catch(function(){});
+      d.close(); d.remove();
+      render();
+    };
+    d.addEventListener("cancel", function(e){ e.preventDefault(); });
+    d.showModal();
+  }
+
   async function alternarUso(){
     if(state.ocupadoUso) return;
     if(ehMinhaSessao()) await finalizarUso(false);
@@ -4594,6 +4952,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
         return;
       }
       prepararSaida(u);
+      db.ref("pedidosAcesso").remove().catch(function(){});
 
       state.sessao = dados;
       await registrarUso("INICIAR");
@@ -4625,6 +4984,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     try {
       encerrarSaida();
       await db.ref("sessaoAtiva").remove();
+      db.ref("pedidosAcesso").remove().catch(function(){});
       state.sessao = null;
       await registrarUso("FINALIZAR");
       if(!silencioso) toast("Uso finalizado.");
