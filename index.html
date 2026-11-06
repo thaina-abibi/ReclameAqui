@@ -980,7 +980,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     arquivoModo:"respondidas",
     usoFiltro:{nome:"", data:"", periodo:"15"},
     mesGrafico:"",
-    mesSecao:{descricao:"", grupo:"", assunto:"", avaliacoes:""},
+    mesSecao:{situacao:"", grupo:"", assunto:"", avaliacoes:""},
     ordemInicio:{campo:"", dir:"asc"},
     pedidos:[],
     avisosLivre:{},
@@ -1857,14 +1857,16 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
     var base = itensMes || itens;
 
-    // ----- por descrição -----
-    var itDesc = itensDoMes(base, mesDaSecao("descricao"));
-    var porDescricao = {};
-    state.descricoes.forEach(function(d){ porDescricao[d.nome] = 0; });
-    itDesc.forEach(function(i){ if(i.descricao && porDescricao[i.descricao] !== undefined) porDescricao[i.descricao]++; });
-    var nomesDescricao = Object.keys(porDescricao);
-    var maiorDescricao = Math.max.apply(null, nomesDescricao.map(function(n){ return porDescricao[n]; }).concat([1]));
-    var totalDescricao = nomesDescricao.reduce(function(a, n){ return a + porDescricao[n]; }, 0);
+    // ----- por situação -----
+    var itSit = itensDoMes(base, mesDaSecao("situacao"));
+    var porSituacao = {naoRespondidas:0, pendentes:0, respondidas:0};
+    itSit.forEach(function(i){ porSituacao[estadoColeta(i)]++; });
+    var linhasSituacao = [
+      ["Não respondidas", porSituacao.naoRespondidas, "vermelha"],
+      ["Pendentes", porSituacao.pendentes, "ambar"],
+      ["Respondidas", porSituacao.respondidas, "verde"]
+    ];
+    var maiorSituacao = Math.max(porSituacao.naoRespondidas, porSituacao.pendentes, porSituacao.respondidas, 1);
 
     // ----- por grupo -----
     var itGrupo = itensDoMes(base, mesDaSecao("grupo"));
@@ -1935,10 +1937,10 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     '</div>' +
     '<div class="dupla">' +
       '<div class="cartao">' +
-        topoSecao("Por descrição", "descricao") +
-        (totalDescricao
-          ? nomesDescricao.map(function(n3){ return barra(capitalizar(n3), porDescricao[n3], maiorDescricao, "", totalDescricao); }).join('')
-          : '<div class="vazio">Nenhuma descrição neste período.</div>') +
+        topoSecao("Por situação", "situacao") +
+        (itSit.length
+          ? linhasSituacao.map(function(l){ return barra(l[0], l[1], maiorSituacao, l[2], itSit.length); }).join('')
+          : '<div class="vazio">Nenhum registro neste período.</div>') +
       '</div>' +
       '<div class="cartao">' +
         topoSecao("Por grupo", "grupo") +
