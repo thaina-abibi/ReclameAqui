@@ -504,6 +504,16 @@
     font:600 12.5px var(--font-mono);cursor:pointer;box-shadow:0 8px 24px #0005;text-align:left;
   }
   .doca-atendimento button:hover{background:var(--amber-deep);}
+  #popup-analise{
+    width:min(860px,calc(100vw - 32px)); max-height:calc(100dvh - 48px); overflow:auto;
+    margin:auto; padding:0; border:1px solid var(--line-strong); border-radius:14px;
+    background:var(--surface); color:var(--ink); box-shadow:0 24px 80px #0008;
+  }
+  #popup-analise::backdrop{background:rgba(0,0,0,.55);}
+  html.tema-claro #popup-analise::backdrop{background:rgba(20,22,26,0.35);}
+  #popup-analise .aviso-topo h2{font-size:17px; word-break:break-word;}
+  #analise-dados{min-height:200px;resize:vertical;font-family:var(--font-mono);font-size:12.5px;}
+  #analise-feedback{margin-top:14px;font-size:13.5px;white-space:pre-wrap;}
   #base-dados{min-height:260px;resize:vertical;font-family:var(--font-mono);font-size:13.5px;}
   #base-feedback{margin-top:14px;font-size:13.5px;white-space:pre-wrap;}
 
@@ -684,6 +694,18 @@
     "avisosLivre": {
       ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
       ".write": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)"
+    },
+    "analises": {
+      ".read": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true)",
+      ".write": "auth != null && (auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true)",
+      "$id": {
+        ".validate": "newData.hasChildren(['id']) && $id.matches(/^[0-9]{6,15}$/)",
+        "reclamacao": { ".validate": "newData.isString() && newData.val().length <= 12000" },
+        "respostas": { ".validate": "newData.isString() && newData.val().length <= 20000" },
+        "replicas": { ".validate": "newData.isString() && newData.val().length <= 12000" },
+        "avaliacao": { ".validate": "newData.isString() && newData.val().length <= 4000" },
+        "nota": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" }
+      }
     },
     "arquivo": {
       ".read": "auth != null && ((auth.uid === 'SEFaMdmhNNNtXdSuUvOhjFNiXDJ3' || root.child('acessos').child(auth.uid).child('admin').val() === true) || root.child('acessos').child(auth.uid).child('active').val() === true)",
@@ -903,6 +925,188 @@ chk.onchange=function(){auto(chk.checked);};x.onclick=function(){auto(false);cai
 document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 })();
 </script>
+<script type="text/plain" id="codigo-analises">
+(function(){
+"use strict";
+if(document.getElementById("ra-analises")) return;
+var CHAVE="ra_detran_analises_v1";
+var itens=[];
+try { itens=JSON.parse(localStorage.getItem(CHAVE)||"[]")||[]; } catch(e){ itens=[]; }
+function salvar(){ try{ localStorage.setItem(CHAVE,JSON.stringify(itens)); }catch(e){} }
+
+var RUIDO=/^(Rea[çc][õo]es|Imagens e documentos anexados:?|Enviar considera[çc][ãa]o final|Escreva sua resposta aqui|Reclama[çc][ãa]o (n[ãa]o )?resolvida|Avalia[çc][ãa]o e considera[çc][ãa]o final do consumidor|\d+\s+(concordam|tamb[ée]m passaram por isso|acharam revoltante)|Voltaria a fazer|Nota do atendimento|Hist[óo]rico|Precisa de ajuda|Ver tutorial|Voltar|Conhe[çc]a os planos|Solicite mais informa[çc][õo]es)/i;
+var MARCADOR=/^(A reclama[çc][ãa]o|Resposta da empresa|R[ée]plica do consumidor|Trataiva|Avalia[çc][ãa]o e considera[çc][ãa]o final do consumidor)$/i;
+var DATA_LINHA=/^\d{2}\/\d{2}\/\d{2,4}\s*(às|as)\s*\d{1,2}[h:]\d{2}$/i;
+
+function linhasDaPagina(){
+ return String(document.body.innerText||"").replace(/\r/g,"").split("\n")
+  .map(function(l){ return l.trim(); }).filter(function(l){ return l !== ""; });
+}
+
+function acharIndice(linhas,re,inicio){
+ for(var i=inicio||0;i<linhas.length;i++){ if(re.test(linhas[i])) return i; }
+ return -1;
+}
+
+function blocoDe(linhas,inicio,fim){
+ var saida=[];
+ for(var i=inicio;i<fim;i++){
+  var l=linhas[i];
+  if(MARCADOR.test(l)) break;
+  if(RUIDO.test(l)) break;
+  if(DATA_LINHA.test(l) && saida.length===0) continue;
+  saida.push(l);
+ }
+ return saida.join("\n").trim();
+}
+
+function capturar(){
+ var linhas=linhasDaPagina();
+ var iId=acharIndice(linhas,/^ID:\s*\d{6,}/);
+ if(iId<0) return null;
+ var id=(linhas[iId].match(/(\d{6,})/)||[])[1];
+ if(!id) return null;
+
+ var iCod=acharIndice(linhas,/^COD:/);
+ var titulo=iCod>0?linhas[iCod-1]:"";
+ var situacao=iCod>1?linhas[iCod-2]:"";
+ if(!/resolvid|respondid|avaliad|r[ée]plica|moderad|encerrad|finalizad/i.test(situacao)) situacao="";
+ var cod=iCod>=0?(linhas[iCod].replace(/^COD:\s*/,"")):"";
+
+ var cidade="",dataAbertura="",horaAbertura="";
+ for(var k=iId+1;k<Math.min(iId+5,linhas.length);k++){
+  var m=linhas[k].match(/^(\d{2}\/\d{2}\/\d{2,4})\s*(?:às|as)\s*(\d{1,2})[h:](\d{2})/i);
+  if(m){ dataAbertura=m[1]; horaAbertura=m[2]+":"+m[3]; break; }
+  if(!cidade && !/^(Telefones|CPF|E-mail)/i.test(linhas[k])) cidade=linhas[k];
+ }
+
+ var iCpf=acharIndice(linhas,/^CPF:/);
+ var nome=iCpf>0?linhas[iCpf-1]:"";
+ var cpf=iCpf>=0?(linhas[iCpf].replace(/\D/g,"")):"";
+ var textoTudo=linhas.join("\n");
+ var email=(textoTudo.match(/E-mail:\s*([^\s|]+@[^\s|]+)/i)||[])[1]||"";
+ var telefone=(textoTudo.match(/(\(?\d{2}\)?\s?9?\d{4}-?\d{4})/)||[])[1]||"";
+
+ var reclamacao="",respostas=[],replicas=[],avaliacao="",anexos=[];
+ for(var i=0;i<linhas.length;i++){
+  if(!MARCADOR.test(linhas[i])) continue;
+  var tipo=linhas[i].toLowerCase();
+  var quando="";
+  if(DATA_LINHA.test(linhas[i+1]||"")) quando=linhas[i+1];
+  var corpo=blocoDe(linhas,i+1,linhas.length);
+  if(!corpo) continue;
+  if(/^a reclama/.test(tipo)){ if(!reclamacao) reclamacao=corpo; }
+  else if(/^resposta/.test(tipo)) respostas.push((quando?quando+"\n":"")+corpo);
+  else if(/plica/.test(tipo)) replicas.push((quando?quando+"\n":"")+corpo);
+  else if(/^avalia/.test(tipo)) avaliacao=corpo;
+ }
+
+ var iAnexo=acharIndice(linhas,/^Imagens e documentos anexados:?$/i);
+ if(iAnexo>=0){
+  for(var a=iAnexo+1;a<linhas.length;a++){
+   if(MARCADOR.test(linhas[a])||RUIDO.test(linhas[a])) break;
+   anexos.push(linhas[a]);
+  }
+ }
+
+ var nota=(textoTudo.match(/Nota do atendimento:\s*(\d{1,2})/i)||[])[1];
+ var voltaria=(textoTudo.match(/Voltaria a fazer neg[óo]cios?\?\s*(Sim|N[ãa]o)/i)||[])[1]||"";
+
+ return {
+  id:String(id), cod:cod, titulo:titulo, situacao:situacao, cidade:cidade,
+  data:dataAbertura, hora:horaAbertura, nome:nome, cpf:cpf, email:email, telefone:telefone,
+  reclamacao:reclamacao, respostas:respostas.join("\n\n---\n\n"), replicas:replicas.join("\n\n---\n\n"),
+  avaliacao:avaliacao, nota:(nota===undefined?"":Number(nota)), voltaria:voltaria.toUpperCase(),
+  anexos:anexos.join(" | "), url:location.href
+ };
+}
+
+function guardar(registro){
+ if(!registro) return "nao";
+ for(var i=0;i<itens.length;i++){
+  if(String(itens[i].id)===String(registro.id)){ itens[i]=registro; salvar(); return "atualizado"; }
+ }
+ itens.push(registro); salvar(); return "novo";
+}
+
+function copiar(texto,msg){
+ function manual(){
+  var ta=document.createElement("textarea");ta.value=texto;ta.style.position="fixed";ta.style.opacity="0";
+  document.body.appendChild(ta);ta.select();
+  try{ if(!document.execCommand("copy")) throw new Error(); status(msg); }
+  catch(e){ status("Erro ao copiar. Dados no console."); console.log(texto); }
+  ta.remove();
+ }
+ if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(texto).then(function(){status(msg);},manual);
+ else manual();
+}
+
+var caixa=document.createElement("div");caixa.id="ra-analises";
+caixa.style.cssText="position:fixed;right:18px;bottom:18px;width:270px;z-index:2147483647;background:#22242a;color:#e3e2e0;font:13px/1.45 system-ui,-apple-system,sans-serif;border:1px solid #4a4e56;border-radius:12px;padding:14px 15px;box-shadow:0 14px 34px rgba(0,0,0,.45)";
+function botao(rotulo,principal){
+ var b=document.createElement("button");b.textContent=rotulo;
+ b.style.cssText="display:block;width:100%;margin-top:7px;padding:8px 10px;border-radius:7px;cursor:pointer;font:600 12.5px system-ui,sans-serif;border:1px solid "+(principal?"#b0c628;background:#b0c628;color:#1a1c05":"#4a4e56;background:#2a2d34;color:#e3e2e0");
+ caixa.appendChild(b);return b;
+}
+var topo=document.createElement("div");topo.style.cssText="display:flex;align-items:center;justify-content:space-between;gap:8px";
+var tit=document.createElement("strong");tit.textContent="Análises • conteúdo das reclamações";
+var x=document.createElement("button");x.textContent="\u00d7";x.setAttribute("aria-label","Fechar");
+x.style.cssText="background:none;border:none;color:#a3a89a;font-size:18px;line-height:1;cursor:pointer";
+topo.appendChild(tit);topo.appendChild(x);caixa.appendChild(topo);
+var contador=document.createElement("div");contador.style.cssText="font:700 24px system-ui,sans-serif;color:#c9d94a;margin:8px 0 2px";caixa.appendChild(contador);
+var recado=document.createElement("div");recado.style.cssText="font-size:11.5px;color:#a3a89a;min-height:30px";caixa.appendChild(recado);
+function status(msg){
+ contador.textContent=itens.length+" reclamação(ões)";
+ recado.textContent=msg||"";
+}
+var bCapturar=botao("Capturar esta reclamação",true);
+var bCopiar=botao("Copiar tudo para o app");
+var bLimpar=botao("Limpar lista");
+var rodape=document.createElement("label");rodape.style.cssText="display:flex;align-items:center;gap:7px;margin-top:10px;font-size:11.5px;color:#a3a89a;cursor:pointer";
+var chk=document.createElement("input");chk.type="checkbox";chk.checked=true;
+rodape.appendChild(chk);rodape.appendChild(document.createTextNode("Capturar ao abrir cada reclamação"));caixa.appendChild(rodape);
+
+bCapturar.onclick=function(){
+ var r=capturar();
+ if(!r) return status("Abra uma reclamação (tela Responder reclamação).");
+ var efeito=guardar(r);
+ status(efeito==="novo"?("ID "+r.id+" capturado."):("ID "+r.id+" atualizado."));
+};
+bCopiar.onclick=function(){
+ if(!itens.length) return status("A lista está vazia.");
+ copiar(JSON.stringify(itens), itens.length+" reclamação(ões) copiadas. Cole no app, aba Análises.");
+};
+bLimpar.onclick=function(){ itens=[]; salvar(); status("Lista zerada."); };
+x.onclick=function(){ auto(false); caixa.remove(); };
+
+var observador=null,espera=null,ultimo="";
+function auto(ativo){
+ if(ativo&&!observador){
+  observador=new MutationObserver(function(mudancas){
+   if(mudancas.every(function(m){ return caixa.contains(m.target); })) return;
+   clearTimeout(espera);
+   espera=setTimeout(function(){
+    var r=capturar();
+    if(!r) return;
+    var marca=r.id+"|"+(r.respostas.length+r.replicas.length+r.avaliacao.length);
+    if(marca===ultimo) return;
+    ultimo=marca;
+    var efeito=guardar(r);
+    status(efeito==="novo"?("ID "+r.id+" capturado automaticamente."):("ID "+r.id+" atualizado."));
+   },900);
+  });
+  observador.observe(document.body,{childList:true,subtree:true});
+ } else if(!ativo){ clearTimeout(espera); if(observador) observador.disconnect(); observador=null; }
+}
+chk.onchange=function(){ auto(chk.checked); };
+
+document.body.appendChild(caixa);
+var inicial=capturar();
+if(inicial){ guardar(inicial); status("ID "+inicial.id+" capturado."); }
+else status("Abra uma reclamação para capturar.");
+auto(true);
+})();
+</script>
 
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -984,6 +1188,8 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     ordemInicio:{campo:"", dir:"asc"},
     pedidos:[],
     avisosLivre:{},
+    analises:[],
+    analiseBusca:"",
     tema:"escuro"
   };
 
@@ -1005,6 +1211,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
   var IC_COPIAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11.5" height="11.5" rx="2.4"/><path d="M5.5 15H4.4A2.4 2.4 0 0 1 2 12.6V4.4A2.4 2.4 0 0 1 4.4 2h8.2A2.4 2.4 0 0 1 15 4.4v1.1"/></svg>';
   var IC_MAO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V4.6a1.6 1.6 0 0 1 3.2 0V11"/><path d="M12.2 10.6V3.4a1.6 1.6 0 0 1 3.2 0v7.2"/><path d="M15.4 11.4V6.2a1.6 1.6 0 0 1 3.2 0V15a6 6 0 0 1-6 6h-1.2a5 5 0 0 1-3.9-1.9L4 14.4a1.6 1.6 0 0 1 2.4-2.1L9 14.6V11"/></svg>';
   var IC_AVISO_LIVRE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.4 21.6 20.2H2.4z"/><text x="12" y="17.6" text-anchor="middle" font-size="9.5" font-weight="700" font-family="system-ui,sans-serif" fill="currentColor" stroke="none">?</text></svg>';
+  var IC_ANALISE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h9l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M13.5 3v5.5H19"/><line x1="8" y1="13" x2="15" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>';
   var IC_SOL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><line x1="12" y1="1.8" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22.2"/><line x1="1.8" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22.2" y2="12"/><line x1="4.8" y1="4.8" x2="6.4" y2="6.4"/><line x1="17.6" y1="17.6" x2="19.2" y2="19.2"/><line x1="4.8" y1="19.2" x2="6.4" y2="17.6"/><line x1="17.6" y1="6.4" x2="19.2" y2="4.8"/></svg>';
   var IC_LUA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.2A8.6 8.6 0 0 1 9.8 3.5a8.6 8.6 0 1 0 10.7 10.7z"/></svg>';
 
@@ -1209,7 +1416,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       (state.currentUser.username||"").toLowerCase() === (username||"").toLowerCase());
   }
 
-  var refUsuarios = null, refLogs = null, refSessao = null, refUso = null, refListas = null, refIndice = null, refRespostas = null, refAlertas = null, refPedidos = null, refAvisos = null;
+  var refUsuarios = null, refLogs = null, refSessao = null, refUso = null, refListas = null, refIndice = null, refRespostas = null, refAlertas = null, refPedidos = null, refAvisos = null, refAnalises = null;
 
   function ligarBase(){
     if(refUsuarios) return;
@@ -1238,6 +1445,16 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       });
       numerarRespostasAntigas();
       if(state.screen === "painel" && state.painelAba === "respostas" && !digitandoNoFormulario()) render();
+    }, function(){});
+    refAnalises = db.ref("analises");
+    refAnalises.on("value", function(snap){
+      var v = snap.val() || {};
+      state.analises = Object.keys(v).map(function(k){
+        var a = v[k] || {};
+        a.id = a.id || k;
+        return a;
+      }).sort(function(a,b){ return chaveData(b.data).localeCompare(chaveData(a.data)); });
+      if(state.screen === "painel" && state.painelAba === "analises" && !digitandoNoFormulario()) render();
     }, function(){});
     refListas = db.ref("listas");
     refListas.on("value", function(snap){
@@ -1300,6 +1517,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
   function desligarBase(){
     if(coletaRef){coletaRef.off();coletaRef=null;} state.coleta=[];
+    if(refAnalises){refAnalises.off(); refAnalises=null;} state.analises=[];
     if(refListas){refListas.off(); refListas=null;}
     if(refRespostas){refRespostas.off(); refRespostas=null;} state.respostas=[]; state.respostaEdit=null;
     if(refAlertas){refAlertas.off(); refAlertas=null;} state.alertas=[];
@@ -1393,7 +1611,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
 
   function digitandoNoFormulario(){
     if(state.painelAba === "listas" && document.getElementById("area-listas")) return true;
-    var ids = ["resposta-titulo","resposta-texto","base-dados","editar-nome","editar-cpf","coleta-dados","novo-nome","novo-usuario","novo-cpf","login-usuario","conta-senha1","senha-nova"];
+    var ids = ["analise-dados","analise-busca","resposta-titulo","resposta-texto","base-dados","editar-nome","editar-cpf","coleta-dados","novo-nome","novo-usuario","novo-cpf","login-usuario","conta-senha1","senha-nova"];
     for(var i=0;i<ids.length;i++){
       var campo = document.getElementById(ids[i]);
       if(campo && campo.value) return true;
@@ -1679,7 +1897,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     var u = state.currentUser || {};
     var admin = ehAdministrativo(u);
 
-    if(!admin && (state.painelAba === "usuarios" || state.painelAba === "registro" || state.painelAba === "importar" || state.painelAba === "listas" || state.painelAba === "arquivo" || state.painelAba === "alertas")){
+    if(!admin && (state.painelAba === "usuarios" || state.painelAba === "registro" || state.painelAba === "importar" || state.painelAba === "listas" || state.painelAba === "arquivo" || state.painelAba === "alertas" || state.painelAba === "analises")){
       state.painelAba = "inicio";
     }
 
@@ -1691,6 +1909,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
       nav += itemNav("registro", "Registro", IC_REGISTRO, state.painelAba === "registro");
       nav += itemNav("alertas", "Alertas" + (state.alertas.length ? " (" + state.alertas.length + ")" : ""), IC_ALERTA, state.painelAba === "alertas");
       nav += itemNav("arquivo", "Arquivo", IC_ARQUIVO, state.painelAba === "arquivo");
+      nav += itemNav("analises", "Análises", IC_ANALISE, state.painelAba === "analises");
       nav += itemNav("importar", "Importar", IC_IMPORTAR, state.painelAba === "importar");
       nav += itemNav("listas", "Edições Admin", IC_LISTAS, state.painelAba === "listas");
     }
@@ -1715,6 +1934,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     else if(state.painelAba === "conta") conteudo = blocoConta(u);
     else if(state.painelAba === "usuarios" && admin) conteudo = blocoUsuarios();
     else if(state.painelAba === "registro" && admin) conteudo = blocoRegistro();
+    else if(state.painelAba === "analises" && admin) conteudo = blocoAnalises();
     else if(state.painelAba === "importar" && admin) conteudo = blocoImportar();
     else if(state.painelAba === "listas" && admin) conteudo = blocoListas();
     else conteudo = blocoInicio();
@@ -3181,6 +3401,287 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     }
   }
 
+  var STOPWORDS = ("a,o,as,os,um,uma,uns,umas,de,do,da,dos,das,em,no,na,nos,nas,por,para,pra,pro,com,sem,sob,sobre,ao,aos,à,às,e,ou,mas,que,se,não,nao,sim,já,ja,também,tambem,ainda,como,quando,onde,porque,pois,então,entao,isso,isto,aquilo,este,esta,esse,essa,aquele,aquela,meu,minha,seu,sua,dele,dela,eu,ele,ela,nós,nos,eles,elas,me,mim,lhe,te,foi,fui,ser,sou,é,e,são,sao,era,eram,está,esta,estão,estao,estou,estava,ter,tem,tenho,tinha,têm,tem,havia,há,ha,haver,fazer,faz,fiz,feito,ficar,fica,fiquei,muito,muita,muitos,muitas,mais,menos,todo,toda,todos,todas,outro,outra,outros,outras,mesmo,mesma,até,ate,apenas,só,so,depois,antes,agora,hoje,ontem,sempre,nunca,nada,algo,alguns,alguma,qualquer,cada,entre,desde,após,apos,pelo,pela,pelos,pelas,num,numa,dia,dias,mês,mes,meses,ano,anos,vez,vezes,ser,estar,fazer,poder,pode,posso,quero,gostaria,favor,boa,bom,senhor,senhora,prezado,prezada,atenciosamente,equipe").split(",");
+
+  function mapaStopwords(){
+    var m = {};
+    STOPWORDS.forEach(function(p){ m[normalizarBusca(p)] = 1; });
+    return m;
+  }
+
+  function textoDaAnalise(a){
+    return [a.titulo, a.reclamacao, a.replicas, a.avaliacao].filter(Boolean).join("\n");
+  }
+
+  function termosFrequentes(lista, quantos){
+    var paradas = mapaStopwords(), contagem = {};
+    lista.forEach(function(a){
+      var vistos = {};
+      normalizarBusca(textoDaAnalise(a)).split(/[^a-z0-9ç]+/).forEach(function(p){
+        if(p.length < 4 || paradas[p] || /^\d+$/.test(p)) return;
+        if(vistos[p]) return;
+        vistos[p] = 1;
+        contagem[p] = (contagem[p] || 0) + 1;
+      });
+    });
+    return Object.keys(contagem).sort(function(a,b){
+      if(contagem[b] !== contagem[a]) return contagem[b] - contagem[a];
+      return a.localeCompare(b);
+    }).slice(0, quantos || 30).map(function(p){ return [p, contagem[p]]; });
+  }
+
+  function acharAnalise(id){
+    for(var i=0;i<state.analises.length;i++){ if(String(state.analises[i].id) === String(id)) return state.analises[i]; }
+    return null;
+  }
+
+  function casoDaBase(id){
+    for(var i=0;i<state.coleta.length;i++){ if(String(state.coleta[i].id) === String(id)) return state.coleta[i]; }
+    if(state.arquivoCache){
+      for(var k=0;k<state.arquivoCache.length;k++){
+        if(String(state.arquivoCache[k].item.id) === String(id)) return state.arquivoCache[k].item;
+      }
+    }
+    return null;
+  }
+
+  function analisesFiltradas(){
+    var busca = normalizarBusca(state.analiseBusca).split(/\s+/).filter(Boolean);
+    if(!busca.length) return state.analises;
+    return state.analises.filter(function(a){
+      var alvo = normalizarBusca([a.id, a.titulo, a.nome, a.cidade, a.cpf, a.situacao, textoDaAnalise(a), a.respostas].join(" | "));
+      return busca.every(function(t){ return alvo.indexOf(t) !== -1; });
+    });
+  }
+
+  function blocoAnalises(){
+    var lista = analisesFiltradas();
+    var comNota = lista.filter(function(a){ return typeof a.nota === "number"; });
+    var baixas = comNota.filter(function(a){ return a.nota <= 6; }).length;
+    var naoVoltam = lista.filter(function(a){ return String(a.voltaria || "").indexOf("N") === 0; }).length;
+    var termos = termosFrequentes(lista, 30);
+    var maiorTermo = termos.length ? termos[0][1] : 1;
+
+    var cartoes = lista.slice(0, 200).map(function(a){
+      var caso = casoDaBase(a.id);
+      var trecho = String(a.reclamacao || "").replace(/\s+/g, " ").slice(0, 260);
+      return '<div class="resposta-item">' +
+        '<div class="resposta-topo">' +
+          '<div style="min-width:0">' +
+            '<strong><span class="num-resposta">' + esc(a.id) + '</span>' + esc(a.titulo || "Sem título") + '</strong>' +
+            '<div class="resposta-meta">' +
+              [a.data ? a.data + (a.hora ? " " + a.hora : "") : "", a.cidade, caso ? caso.assunto : "",
+               a.situacao, (typeof a.nota === "number" ? "nota " + a.nota : ""),
+               a.voltaria ? "voltaria: " + capitalizar(a.voltaria) : ""]
+              .filter(Boolean).map(esc).join(" · ") +
+            '</div>' +
+          '</div>' +
+          '<div class="acoes">' +
+            '<button class="btn btn-neutro btn-mini" data-ver-analise="' + esc(a.id) + '">Ver completo</button>' +
+            '<button class="btn btn-risco btn-mini" data-excluir-analise="' + esc(a.id) + '">Excluir</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="resposta-texto" style="max-height:96px">' + esc(trecho || "Sem texto capturado.") + (String(a.reclamacao || "").length > 260 ? "…" : "") + '</div>' +
+      '</div>';
+    }).join('');
+
+    return '<div class="cartao">' +
+      '<h2>Coletor de conteúdo</h2>' +
+      '<p style="font-size:14px;color:var(--ink-soft);margin:0 0 16px">' +
+        'Copie o código, cole no console do Reclame Aqui e abra as reclamações uma a uma: o painel captura o texto do cliente, as respostas, as réplicas e a avaliação. ' +
+        'Ao terminar, clique em “Copiar tudo para o app” e cole abaixo.</p>' +
+      '<button class="btn btn-neutro btn-largo" id="analise-copiar-codigo">COPIAR CÓDIGO</button>' +
+      '<div class="campo" style="margin-top:20px">' +
+        '<label for="analise-dados">Conteúdo copiado do coletor</label>' +
+        '<textarea id="analise-dados" spellcheck="false" placeholder="Cole aqui o que o coletor copiou"></textarea>' +
+      '</div>' +
+      '<button class="btn btn-principal" style="width:auto;" id="analise-importar">IMPORTAR CONTEÚDO</button>' +
+      '<div id="analise-feedback" role="status" aria-live="polite"></div>' +
+    '</div>' +
+    '<div class="cartao">' +
+      '<div class="painel-totais quatro">' +
+        '<div class="total-item"><span>Reclamações</span><b>' + lista.length + '</b></div>' +
+        '<div class="total-item"><span>Com avaliação</span><b>' + comNota.length + '</b></div>' +
+        '<div class="total-item"><span>Nota 0 a 6</span><b>' + baixas + '</b></div>' +
+        '<div class="total-item destaque"><span>Não voltariam</span><b>' + naoVoltam + '</b></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="cartao">' +
+      '<div class="cartao-topo">' +
+        '<h2>Termos mais frequentes</h2>' +
+        '<span class="voce">Clique em um termo para filtrar</span>' +
+      '</div>' +
+      (termos.length
+        ? '<div class="filtro-chips">' + termos.map(function(t){
+            var forca = Math.round((t[1] / maiorTermo) * 100);
+            return '<button class="assunto-opcao" data-termo="' + esc(t[0]) + '" style="cursor:pointer;background:linear-gradient(90deg,var(--amber-soft) ' + forca + '%,var(--paper) ' + forca + '%)">' +
+              esc(t[0]) + ' <strong style="font-family:var(--font-mono);font-size:12px">' + t[1] + '</strong></button>';
+          }).join('') + '</div>'
+        : '<div class="vazio">Importe conteúdo para ver os termos.</div>') +
+    '</div>' +
+    '<div class="cartao">' +
+      '<div class="cartao-topo">' +
+        '<h2>' + lista.length + ' reclamação(ões)' + (lista.length > 200 ? ' · exibindo 200' : '') + '</h2>' +
+        '<div class="dash-topo-acoes">' +
+          '<input type="text" id="analise-busca" placeholder="Buscar no conteúdo" style="max-width:280px" value="' + esc(state.analiseBusca) + '">' +
+          '<button class="btn btn-neutro btn-mini" id="analise-baixar">Baixar CSV</button>' +
+        '</div>' +
+      '</div>' +
+      (cartoes || '<div class="vazio">Nenhum conteúdo coletado ainda.</div>') +
+    '</div>';
+  }
+
+  function abrirAnalise(id){
+    var a = acharAnalise(id);
+    if(!a) return;
+    var velho = document.getElementById("popup-analise");
+    if(velho) velho.remove();
+
+    var caso = casoDaBase(id);
+    function secao(titulo, texto){
+      if(!texto) return "";
+      return '<h3 style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:18px 0 8px">' +
+        esc(titulo) + '</h3><div class="resposta-texto" style="max-height:none">' + esc(texto) + '</div>';
+    }
+
+    var d = document.createElement("dialog");
+    d.id = "popup-analise";
+    d.innerHTML = '<div class="aviso-topo">' +
+        '<h2>' + esc(a.id) + ' · ' + esc(a.titulo || "Sem título") + '</h2>' +
+        '<div class="acoes">' +
+          '<button class="btn btn-neutro btn-mini" id="analise-copiar-texto">Copiar texto</button>' +
+          '<button class="btn btn-neutro btn-mini" id="analise-fechar">×</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="aviso-miolo">' +
+        '<div class="linha-dado"><span>Aberta em</span><span>' + esc((a.data || "—") + (a.hora ? " " + a.hora : "")) + '</span></div>' +
+        '<div class="linha-dado"><span>Cidade</span><span>' + esc(a.cidade || "—") + '</span></div>' +
+        '<div class="linha-dado"><span>Consumidor</span><span>' + esc(a.nome || "—") + (a.cpf ? ' · ' + esc(digitos(a.cpf)) : '') + '</span></div>' +
+        '<div class="linha-dado"><span>Contato</span><span class="mono">' + esc([a.email, a.telefone].filter(Boolean).join(" · ") || "—") + '</span></div>' +
+        (caso ? '<div class="linha-dado"><span>Na base</span><span>' + esc(caso.assunto || "—") + ' · ' + esc(rotuloEstado(caso)) + '</span></div>' : '') +
+        '<div class="linha-dado"><span>Avaliação</span><span>' +
+          esc(a.situacao || "—") + (typeof a.nota === "number" ? ' · nota ' + a.nota : '') +
+          (a.voltaria ? ' · voltaria: ' + esc(capitalizar(a.voltaria)) : '') + '</span></div>' +
+        (a.anexos ? '<div class="linha-dado"><span>Anexos</span><span>' + esc(a.anexos) + '</span></div>' : '') +
+        secao("Reclamação", a.reclamacao) +
+        secao("Respostas da empresa", a.respostas) +
+        secao("Réplicas", a.replicas) +
+        secao("Consideração final", a.avaliacao) +
+      '</div>';
+    document.body.appendChild(d);
+
+    d.querySelector("#analise-fechar").onclick = function(){ d.close(); d.remove(); };
+    d.querySelector("#analise-copiar-texto").onclick = function(){
+      copiar(textoDaAnalise(a), "Texto da reclamação " + a.id + " copiado.");
+    };
+    d.addEventListener("cancel", function(){ d.remove(); });
+    d.showModal();
+  }
+
+  function limparAnalise(bruto){
+    var id = digitos(String(bruto.id || ""));
+    if(!/^\d{6,15}$/.test(id)) throw new Error("ID inválido");
+    function texto(v, limite){ return String(v == null ? "" : v).trim().slice(0, limite); }
+    var item = {
+      id: id,
+      cod: texto(bruto.cod, 60),
+      titulo: texto(bruto.titulo, 240),
+      situacao: texto(bruto.situacao, 60),
+      cidade: texto(bruto.cidade, 80),
+      data: texto(bruto.data, 10),
+      hora: texto(bruto.hora, 5),
+      nome: texto(bruto.nome, 120),
+      cpf: digitos(String(bruto.cpf || "")).slice(0,11),
+      email: texto(bruto.email, 120),
+      telefone: texto(bruto.telefone, 30),
+      reclamacao: texto(bruto.reclamacao, 12000),
+      respostas: texto(bruto.respostas, 20000),
+      replicas: texto(bruto.replicas, 12000),
+      avaliacao: texto(bruto.avaliacao, 4000),
+      voltaria: texto(bruto.voltaria, 10).toUpperCase(),
+      anexos: texto(bruto.anexos, 400),
+      coletadoEm: new Date().toISOString(),
+      por: nomeExibido(state.currentUser)
+    };
+    var n = Number(bruto.nota);
+    if(bruto.nota !== "" && bruto.nota !== null && bruto.nota !== undefined && !isNaN(n) && n >= 0 && n <= 10) item.nota = n;
+    return item;
+  }
+
+  async function importarAnalises(){
+    if(!ehAdministrativo()) return toast("Só o perfil administrativo pode importar análises.");
+    var campo = document.getElementById("analise-dados");
+    var feedback = document.getElementById("analise-feedback");
+    var botao = document.getElementById("analise-importar");
+    if(botao.disabled) return;
+
+    var texto = (campo.value || "").trim();
+    if(!texto){ feedback.textContent = "Cole o conteúdo copiado do coletor."; campo.focus(); return; }
+
+    var bruto;
+    try { bruto = JSON.parse(texto); }
+    catch(e){ feedback.textContent = "O conteúdo colado não está no formato do coletor. Use o botão “Copiar tudo para o app”."; return; }
+    if(!Array.isArray(bruto)) bruto = [bruto];
+
+    var itens = [], erros = 0;
+    bruto.forEach(function(b){
+      try { itens.push(limparAnalise(b || {})); } catch(e){ erros++; }
+    });
+    if(!itens.length){ feedback.textContent = "Nenhuma reclamação válida no conteúdo colado."; return; }
+
+    botao.disabled = true;
+    var gravados = 0;
+    try {
+      for(var ini = 0; ini < itens.length; ini += 20){
+        var lote = {};
+        itens.slice(ini, ini + 20).forEach(function(i){ lote["analises/" + i.id] = i; });
+        await db.ref().update(lote);
+        gravados += Object.keys(lote).length;
+        feedback.textContent = gravados + " de " + itens.length + " gravadas…";
+      }
+      campo.value = "";
+      feedback.textContent = gravados + " reclamação(ões) gravada(s)" + (erros ? " — " + erros + " registro(s) fora do padrão foram ignorados" : "") + ".";
+      registrar("Conteúdo de reclamações importado (" + gravados + ")", "analises");
+      toast(gravados + " reclamação(ões) na base de análises.");
+      render();
+    } catch(err){
+      feedback.textContent = gravados + " de " + itens.length + " gravadas antes do erro: " + msgBanco(err);
+    } finally {
+      botao.disabled = false;
+    }
+  }
+
+  function baixarAnalises(){
+    var lista = analisesFiltradas();
+    if(!lista.length){ toast("Não há conteúdo com esse filtro."); return; }
+    var cab = ["ID","DATA","HORA","TITULO","SITUACAO","CIDADE","NOME","CPF","EMAIL","TELEFONE","ASSUNTO NA BASE","NOTA","VOLTARIA","RECLAMACAO","RESPOSTAS","REPLICAS","CONSIDERACAO FINAL","ANEXOS"];
+    var linhas = lista.map(function(a){
+      var caso = casoDaBase(a.id);
+      return [
+        a.id, a.data, a.hora, a.titulo, a.situacao, a.cidade, a.nome, a.cpf ? digitos(a.cpf) : "",
+        a.email, a.telefone, caso ? caso.assunto : "", (typeof a.nota === "number" ? a.nota : ""), a.voltaria,
+        a.reclamacao, a.respostas, a.replicas, a.avaliacao, a.anexos
+      ].map(valorCsv).join(";");
+    });
+    var conteudo = "\uFEFF" + cab.join(";") + "\r\n" + linhas.join("\r\n");
+    var blob = new Blob([conteudo], {type:"text/csv;charset=utf-8"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "analises_RA_" + iso(new Date()) + ".csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+    toast(lista.length + " reclamação(ões) baixada(s).");
+  }
+
+  function copiarCodigoAnalises(){
+    var el = document.getElementById("codigo-analises");
+    if(!el){ toast("Código do coletor de análises não encontrado no arquivo."); return; }
+    copiar(el.textContent.trim(), "Código copiado. Execute no Reclame Aqui e abra as reclamações.");
+  }
+
   function blocoImportar(){
     return '<div class="cartao">' +
       '<h2>Importar base</h2>' +
@@ -4577,6 +5078,27 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     });
     liga("btn-atualizar", "click", atualizarDados);
     liga("base-importar", "click", importarBase);
+    liga("analise-copiar-codigo", "click", copiarCodigoAnalises);
+    liga("analise-importar", "click", importarAnalises);
+    liga("analise-baixar", "click", baixarAnalises);
+    liga("analise-busca", "input", function(){ state.analiseBusca = this.value; });
+    liga("analise-busca", "change", function(){ state.analiseBusca = this.value; render(); });
+    cada("[data-termo]", function(b){
+      b.addEventListener("click", function(){ state.analiseBusca = b.getAttribute("data-termo"); render(); });
+    });
+    cada("[data-ver-analise]", function(b){
+      b.addEventListener("click", function(){ abrirAnalise(b.getAttribute("data-ver-analise")); });
+    });
+    cada("[data-excluir-analise]", function(b){
+      b.addEventListener("click", function(){
+        if(!ehAdministrativo()) return toast("Só o perfil administrativo pode excluir.");
+        var id = b.getAttribute("data-excluir-analise");
+        if(!confirm("Excluir o conteúdo coletado do ID " + id + "?")) return;
+        db.ref("analises/" + id).remove()
+          .then(function(){ toast("Conteúdo excluído."); })
+          .catch(function(err){ toast(msgBanco(err)); });
+      });
+    });
     liga("dash-baixar", "click", baixarPlanilha);
     liga("grafico-mes", "change", function(){ state.mesGrafico = this.value; render(); });
     cada("[data-mes-sel]", function(sel){
