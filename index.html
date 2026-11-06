@@ -358,13 +358,14 @@
   .btn-icone svg{width:17px; height:17px;}
   .btn-icone[disabled]{opacity:.4; cursor:not-allowed;}
   .btn-icone.ligado{border-color:var(--ink); box-shadow:inset 0 0 0 1px var(--line-strong);}
-  #popup-pedido, #popup-livre{
+  #popup-pedido, #popup-livre, #popup-resposta{
     width:min(460px,calc(100vw - 32px)); margin:auto; padding:0;
     border:1px solid var(--line-strong); border-radius:14px; background:var(--surface);
     color:var(--ink); box-shadow:0 24px 80px #0008;
   }
-  #popup-pedido::backdrop, #popup-livre::backdrop{background:rgba(0,0,0,.55);}
-  html.tema-claro #popup-pedido::backdrop, html.tema-claro #popup-livre::backdrop{background:rgba(20,22,26,0.35);}
+  #popup-pedido::backdrop, #popup-livre::backdrop, #popup-resposta::backdrop{background:rgba(0,0,0,.55);}
+  html.tema-claro #popup-pedido::backdrop, html.tema-claro #popup-livre::backdrop,
+  html.tema-claro #popup-resposta::backdrop{background:rgba(20,22,26,0.35);}
   .aviso-topo{display:flex; justify-content:space-between; align-items:center; gap:16px; padding:18px 22px; border-bottom:1px solid var(--line);}
   .aviso-topo h2{font-size:18px;}
   .aviso-miolo{padding:20px 22px;}
@@ -1310,7 +1311,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     if(refPedidos){ refPedidos.off(); refPedidos = null; } state.pedidos = [];
     if(refAvisos){ refAvisos.off(); refAvisos = null; } state.avisosLivre = {};
     pararAlarme();
-    ["popup-pedido","popup-livre"].forEach(function(id){ var el = document.getElementById(id); if(el) el.remove(); });
+    ["popup-pedido","popup-livre","popup-resposta"].forEach(function(id){ var el = document.getElementById(id); if(el) el.remove(); });
     if(refSessao){ refSessao.off(); refSessao = null; }
     if(refUso){ refUso.off(); refUso = null; }
     state.sessao = null;
@@ -4944,10 +4945,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     for(var i=0;i<state.pedidos.length;i++){ if(state.pedidos[i].uid === meuUid()) meuPedido = state.pedidos[i]; }
     if(meuPedido && meuPedido.resposta && !respostaMostrada[meuPedido.em]){
       respostaMostrada[meuPedido.em] = true;
-      bip(760, 0, 0.2);
-      toast(meuPedido.resposta === "liberando"
-        ? "Sua solicitação foi aceita: a pessoa vai finalizar em instantes."
-        : "A pessoa pediu mais um tempo antes de liberar.");
+      mostrarResposta(meuPedido);
       db.ref("pedidosAcesso/" + meuPedido.uid).remove().catch(function(){});
     }
 
@@ -4985,6 +4983,70 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     d.showModal();
   }
 
+  function mostrarResposta(pedido){
+    var velho = document.getElementById("popup-resposta");
+    if(velho) velho.remove();
+
+    var liberando = pedido.resposta === "liberando";
+    var quem = nomeDoResponsavel(pedido.para) ||
+      (state.sessao ? (state.sessao.nome || state.sessao.username) : "") || "A pessoa que está utilizando";
+    var jaNaFila = souEuNaFila();
+    var ocupado = !!(state.sessao && state.sessao.username) && !ehMinhaSessao();
+    var podeEscolher = liberando && ocupado && !jaNaFila;
+
+    var texto = liberando
+      ? '<strong>' + esc(quem) + '</strong> respondeu que <strong>já vai finalizar</strong>.'
+      : '<strong>' + esc(quem) + '</strong> respondeu que <strong>não consegue sair agora</strong>.';
+    if(jaNaFila) texto += ' Você já está na fila e será avisado quando o sistema ficar livre.';
+    else if(liberando && !ocupado) texto += ' O sistema já está livre.';
+
+    var d = document.createElement("dialog");
+    d.id = "popup-resposta";
+    d.innerHTML = '<div class="aviso-topo"><h2>Resposta à sua solicitação</h2></div>' +
+      '<div class="aviso-miolo">' +
+        '<p>' + texto + '</p>' +
+        (podeEscolher ? '<p>Quer ser avisado com alerta sonoro assim que o sistema ficar livre?</p>' : '') +
+        '<div class="aviso-acoes">' +
+          (podeEscolher
+            ? '<button class="btn btn-principal" id="resposta-quero-alerta">Sim, me avise</button>' +
+              '<button class="btn btn-neutro" id="resposta-sem-alerta">Não precisa</button>'
+            : '<button class="btn btn-principal" id="resposta-ok">OK</button>') +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(d);
+    bip(760, 0, 0.18);
+    bip(liberando ? 988 : 560, 0.22, 0.22);
+    avisoDoNavegador("RA Detran-SP", quem + (liberando ? " vai finalizar em instantes." : " não consegue sair agora."));
+
+    function fechar(){ d.close(); d.remove(); render(); }
+    if(podeEscolher){
+      d.querySelector("#resposta-quero-alerta").onclick = function(){
+        entrarNaFilaDeAviso(true);
+        fechar();
+      };
+      d.querySelector("#resposta-sem-alerta").onclick = fechar;
+    } else {
+      d.querySelector("#resposta-ok").onclick = fechar;
+    }
+    d.addEventListener("cancel", function(e){ e.preventDefault(); fechar(); });
+    d.showModal();
+  }
+
+  async function entrarNaFilaDeAviso(avisar){
+    var uid = meuUid();
+    if(!uid) return false;
+    pedirPermissaoAviso();
+    try {
+      await db.ref("avisosLivre/" + uid).set({
+        username: (state.currentUser && state.currentUser.username) || "",
+        nome: nomeExibido(state.currentUser),
+        em: new Date().toISOString()
+      });
+      if(avisar) toast("Você será avisado assim que ficar livre.");
+      return true;
+    } catch(err){ toast(msgBanco(err)); return false; }
+  }
+
   async function alternarAvisoLivre(){
     var uid = meuUid();
     if(!uid) return;
@@ -4995,15 +5057,7 @@ document.body.appendChild(caixa);varrer();auto(true);status("Painel pronto.");
     }
     if(!state.sessao || !state.sessao.username){ toast("O sistema já está livre."); return; }
     if(ehMinhaSessao()){ toast("Você é quem está utilizando."); return; }
-    pedirPermissaoAviso();
-    try {
-      await db.ref("avisosLivre/" + uid).set({
-        username: (state.currentUser && state.currentUser.username) || "",
-        nome: nomeExibido(state.currentUser),
-        em: new Date().toISOString()
-      });
-      toast("Você será avisado assim que ficar livre.");
-    } catch(err){ toast(msgBanco(err)); }
+    await entrarNaFilaDeAviso(true);
   }
 
   function conferirLivre(){
