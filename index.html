@@ -4575,7 +4575,10 @@ auto(true);
         '<select id="at-assunto">' +
           nomesAssuntos().map(function(op){ return '<option' + (op === item.assunto ? ' selected' : '') + '>' + esc(op) + '</option>'; }).join('') +
         '</select></div>' +
-      '<div class="campo"><label for="at-cpf">CPF <span style="color:var(--amber-deep)">*</span></label>' +
+      '<div class="campo"><label for="at-cpf">CPF ' +
+        '<span id="at-cpf-obrig" style="color:var(--amber-deep);display:' + (dispensaCpf(item.descricao) ? "none" : "inline") + '">*</span>' +
+        '<span id="at-cpf-livre" style="color:var(--ink-soft);font-weight:400;display:' + (dispensaCpf(item.descricao) ? "inline" : "none") + '">(opcional nesta descrição)</span>' +
+      '</label>' +
         '<input type="text" id="at-cpf" inputmode="numeric" maxlength="11" placeholder="00000000000" value="' + esc(item.cpf ? digitos(item.cpf) : "") + '"></div>' +
     '</div>' +
     '<div class="campo" id="at-placa-campo" style="display:' + (placaVisivel ? "block" : "none") + '">' +
@@ -4611,6 +4614,11 @@ auto(true);
         '<select id="at-destino">' + opcoesDestino() + '</select></div>' +
       '<div class="campo" style="margin-bottom:0"><button class="btn btn-neutro btn-largo" id="at-confirmar-outro">Confirmar atribuição</button></div>' +
     '</div>';
+  }
+
+  function dispensaCpf(descricao){
+    var d = normalizarBusca(descricao);
+    return d.indexOf("nao localiz") === 0;
   }
 
   function finalizaCaso(descricao){
@@ -4705,6 +4713,10 @@ auto(true);
     });
 
     liga("at-descricao", "change", function(){
+      var obrig = document.getElementById("at-cpf-obrig");
+      var livre = document.getElementById("at-cpf-livre");
+      if(obrig) obrig.style.display = dispensaCpf(this.value) ? "none" : "inline";
+      if(livre) livre.style.display = dispensaCpf(this.value) ? "inline" : "none";
       var bloco = document.getElementById("at-aguardando");
       if(bloco) bloco.style.display = (this.value && ehPendente(this.value)) ? "grid" : "none";
       var campoResposta = document.getElementById("at-resposta-campo");
@@ -4854,8 +4866,9 @@ auto(true);
     var campoResposta = document.getElementById("at-resposta");
     var resposta = (finalizaCaso(descricao) && campoResposta) ? digitos(campoResposta.value) : "";
 
-    if(cpf.length !== 11){
-      feedback.innerHTML = '<div class="aviso aviso-erro">Informe o CPF do cidadão (11 dígitos) para salvar ou atribuir o caso.</div>';
+    if(cpf.length !== 11 && !dispensaCpf(descricao)){
+      feedback.innerHTML = '<div class="aviso aviso-erro">Informe o CPF do cidadão (11 dígitos). ' +
+        'Só a descrição “' + esc(capitalizar("NÃO LOCALIZADO")) + '” dispensa o CPF.</div>';
       var foco = document.getElementById("at-cpf");
       if(foco) foco.focus();
       return;
