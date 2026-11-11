@@ -468,6 +468,12 @@
     color:var(--amber-deep); background:var(--amber-soft); border:1px solid var(--gold);
     border-radius:100px; padding:1px 8px; margin-right:8px;
   }
+  .num-analise{
+    display:inline-block; font-family:var(--font-mono); font-size:12px; font-weight:600;
+    color:var(--olive-soft); background:rgba(35,94,155,0.14); border:1px solid var(--olive);
+    border-radius:100px; padding:1px 8px; margin-right:8px;
+  }
+  html.tema-claro .num-analise{background:rgba(35,94,155,0.10);}
   .at-resposta-linha{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:end;}
   .at-resposta-linha .campo{margin-bottom:0;}
   .at-resposta-copiar{
@@ -704,6 +710,8 @@
         "respostas": { ".validate": "newData.isString() && newData.val().length <= 20000" },
         "replicas": { ".validate": "newData.isString() && newData.val().length <= 12000" },
         "avaliacao": { ".validate": "newData.isString() && newData.val().length <= 4000" },
+        "consideracaoFinal": { ".validate": "newData.isString() && newData.val().length <= 8000" },
+        "telefones": { ".validate": "newData.isString() && newData.val().length <= 120" },
         "nota": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" }
       }
     },
@@ -934,26 +942,69 @@ var itens=[];
 try { itens=JSON.parse(localStorage.getItem(CHAVE)||"[]")||[]; } catch(e){ itens=[]; }
 function salvar(){ try{ localStorage.setItem(CHAVE,JSON.stringify(itens)); }catch(e){} }
 
-var RUIDO=/^(Rea[çc][õo]es|Imagens e documentos anexados:?|Enviar considera[çc][ãa]o final|Escreva sua resposta aqui|Reclama[çc][ãa]o (n[ãa]o )?resolvida|Avalia[çc][ãa]o e considera[çc][ãa]o final do consumidor|\d+\s+(concordam|tamb[ée]m passaram por isso|acharam revoltante)|Voltaria a fazer|Nota do atendimento|Hist[óo]rico|Precisa de ajuda|Ver tutorial|Voltar|Conhe[çc]a os planos|Solicite mais informa[çc][õo]es)/i;
-var MARCADOR=/^(A reclama[çc][ãa]o|Resposta da empresa|R[ée]plica do consumidor|Trataiva|Avalia[çc][ãa]o e considera[çc][ãa]o final do consumidor)$/i;
-var DATA_LINHA=/^\d{2}\/\d{2}\/\d{2,4}\s*(às|as)\s*\d{1,2}[h:]\d{2}$/i;
-
-function linhasDaPagina(){
- return String(document.body.innerText||"").replace(/\r/g,"").split("\n")
-  .map(function(l){ return l.trim(); }).filter(function(l){ return l !== ""; });
+function semAcento(t){
+ return String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+}
+function soLetras(t){
+ return semAcento(t).replace(/^[^a-z]+/,"").replace(/\s+/g," ").trim();
 }
 
-function acharIndice(linhas,re,inicio){
- for(var i=inicio||0;i<linhas.length;i++){ if(re.test(linhas[i])) return i; }
+var RUIDO=/^(reacoes|imagens e documentos anexados|enviar consideracao final|escreva sua resposta aqui|reclamacao (nao )?resolvida|reclamacao resolvida|\d+\s+(concordam|tambem passaram por isso|acharam revoltante)|voltaria a fazer|nota do atendimento|historico|precisa de ajuda|ver tutorial|voltar|conheca os planos|solicite mais informacoes|responder reclamacao|seu consumidor comunicou|confira aqui as melhores|contatos do cadastro|telefones do consumidor|forms$)/;
+var MARCADORES=[
+ {chave:"reclamacao", re:/^a reclamacao\b/},
+ {chave:"resposta",   re:/^resposta da empresa\b/},
+ {chave:"replica",    re:/^replica do consumidor\b/},
+ {chave:"tratativa",  re:/^(tratativa|interacao|mensagem da empresa)\b/},
+ {chave:"avaliacao",  re:/^avaliacao e consideracao final\b/},
+ {chave:"final",      re:/^(consideracao final da empresa|resposta final da empresa|consideracao final$)/}
+];
+var DATA_LINHA=/^\d{2}\/\d{2}\/\d{2,4}\s*(?:às|as)\s*\d{1,2}[h:]\d{2}/i;
+
+function marcadorDa(linha){
+ var t=soLetras(linha);
+ if(!t || t.length>60) return null;
+ for(var i=0;i<MARCADORES.length;i++){ if(MARCADORES[i].re.test(t)) return MARCADORES[i].chave; }
+ return null;
+}
+function ehRuido(linha){ return RUIDO.test(soLetras(linha)); }
+
+function linhasDaPagina(){
+ var bruto = document.body.innerText || document.body.textContent || "";
+ return String(bruto).replace(/\r/g,"").split("\n")
+  .map(function(l){ return l.replace(/\u00a0/g," ").trim(); })
+  .filter(function(l){ return l !== ""; });
+}
+
+function valorDepois(linhas, i){
+ for(var k=i+1;k<Math.min(i+4,linhas.length);k++){
+  if(linhas[k]) return linhas[k];
+ }
+ return "";
+}
+
+function achar(linhas, teste, inicio){
+ for(var i=(inicio||0);i<linhas.length;i++){ if(teste(linhas[i], i)) return i; }
  return -1;
 }
 
-function blocoDe(linhas,inicio,fim){
+function capturaRotulo(linhas, texto, rotulo, regexValor){
+ var direto = texto.match(new RegExp(rotulo + "\\s*:?\\s*(" + regexValor + ")", "i"));
+ if(direto) return direto[1].trim();
+ var i = achar(linhas, function(l){ return new RegExp("^" + rotulo + "\\s*:?\\s*$", "i").test(l.trim()); });
+ if(i >= 0){
+  var v = valorDepois(linhas, i);
+  var m = v.match(new RegExp("^(" + regexValor + ")", "i"));
+  if(m) return m[1].trim();
+ }
+ return "";
+}
+
+function blocoDe(linhas, inicio){
  var saida=[];
- for(var i=inicio;i<fim;i++){
+ for(var i=inicio;i<linhas.length;i++){
   var l=linhas[i];
-  if(MARCADOR.test(l)) break;
-  if(RUIDO.test(l)) break;
+  if(marcadorDa(l)) break;
+  if(ehRuido(l)) break;
   if(DATA_LINHA.test(l) && saida.length===0) continue;
   saida.push(l);
  }
@@ -962,63 +1013,139 @@ function blocoDe(linhas,inicio,fim){
 
 function capturar(){
  var linhas=linhasDaPagina();
- var iId=acharIndice(linhas,/^ID:\s*\d{6,}/);
- if(iId<0) return null;
- var id=(linhas[iId].match(/(\d{6,})/)||[])[1];
+ var texto=linhas.join("\n");
+
+ var id = capturaRotulo(linhas, texto, "ID", "\\d{6,}");
+ if(!id){
+  var naUrl = location.pathname.match(/(\d{8,})/);
+  if(naUrl) id = naUrl[1];
+ }
  if(!id) return null;
 
- var iCod=acharIndice(linhas,/^COD:/);
- var titulo=iCod>0?linhas[iCod-1]:"";
- var situacao=iCod>1?linhas[iCod-2]:"";
- if(!/resolvid|respondid|avaliad|r[ée]plica|moderad|encerrad|finalizad/i.test(situacao)) situacao="";
- var cod=iCod>=0?(linhas[iCod].replace(/^COD:\s*/,"")):"";
+ var cod = capturaRotulo(linhas, texto, "COD", "[A-Za-z0-9_\\-]{5,}");
+ var cpf = capturaRotulo(linhas, texto, "CPF", "[\\d][\\d.\\-\\s]{9,17}\\d").replace(/\D/g,"").slice(0,11);
+ var email = capturaRotulo(linhas, texto, "E-?mail", "[^\\s|]+@[^\\s|]+");
+ var iHistorico = achar(linhas, function(l){ return soLetras(l) === "historico"; });
+ var fimCabecalho = iHistorico > 0 ? iHistorico : Math.min(linhas.length, 60);
+ var tels = [], vistosTel = {};
+ for(var ft = 0; ft < fimCabecalho; ft++){
+  if(/^CPF\s*:?/i.test(linhas[ft])) continue;
+  var achados = linhas[ft].match(/\(?\d{2}\)?\s?9?\d{4}[-\s.]?\d{4}/g);
+  if(!achados) continue;
+  achados.forEach(function(t){
+   var d = t.replace(/\D/g, "");
+   if(d.length < 10 || d.length > 11) return;
+   if(vistosTel[d]) return;
+   vistosTel[d] = 1;
+   if(tels.length < 4) tels.push(t.trim());
+  });
+ }
+ var telefone = tels[0] || "";
 
- var cidade="",dataAbertura="",horaAbertura="";
- for(var k=iId+1;k<Math.min(iId+5,linhas.length);k++){
-  var m=linhas[k].match(/^(\d{2}\/\d{2}\/\d{2,4})\s*(?:às|as)\s*(\d{1,2})[h:](\d{2})/i);
-  if(m){ dataAbertura=m[1]; horaAbertura=m[2]+":"+m[3]; break; }
-  if(!cidade && !/^(Telefones|CPF|E-mail)/i.test(linhas[k])) cidade=linhas[k];
+ var iCod = achar(linhas, function(l){ return /^COD\s*:?/i.test(l) || (l.trim() === cod && cod); });
+ var titulo = "", situacao = "", iTitulo = -1;
+ function ehSelo(l){
+  return !!l && l.length < 40 && /resolvid|respondid|avaliad|r[ée]plica|moderad|encerrad|finalizad|aguardando/i.test(l);
+ }
+ if(iCod > 0){
+  for(var t = iCod - 1; t >= 0 && t >= iCod - 4; t--){
+   var cand = linhas[t];
+   if(!cand || ehRuido(cand)) continue;
+   if(ehSelo(cand)){ situacao = cand; continue; }
+   if(cand.length > 8){ titulo = cand; iTitulo = t; break; }
+  }
+ }
+ if(!situacao && iTitulo > 0){
+  for(var sp = iTitulo - 1; sp >= 0 && sp >= iTitulo - 3; sp--){
+   if(ehSelo(linhas[sp])){ situacao = linhas[sp]; break; }
+  }
+ }
+ if(!titulo){
+  var iHist = achar(linhas, function(l){ return soLetras(l) === "historico"; });
+  for(var h = 0; h < (iHist > 0 ? iHist : linhas.length); h++){
+   if(!ehRuido(linhas[h]) && linhas[h].length > 20 && !/^(COD|ID|CPF|E-?mail)\s*:?/i.test(linhas[h])){ titulo = linhas[h]; break; }
+  }
  }
 
- var iCpf=acharIndice(linhas,/^CPF:/);
- var nome=iCpf>0?linhas[iCpf-1]:"";
- var cpf=iCpf>=0?(linhas[iCpf].replace(/\D/g,"")):"";
- var textoTudo=linhas.join("\n");
- var email=(textoTudo.match(/E-mail:\s*([^\s|]+@[^\s|]+)/i)||[])[1]||"";
- var telefone=(textoTudo.match(/(\(?\d{2}\)?\s?9?\d{4}-?\d{4})/)||[])[1]||"";
+ var dataAbertura="", horaAbertura="", cidade="";
+ var iData = achar(linhas, function(l){ return DATA_LINHA.test(l); });
+ if(iData >= 0){
+  var md = linhas[iData].match(/(\d{2}\/\d{2}\/\d{2,4})\s*(?:às|as)\s*(\d{1,2})[h:](\d{2})/i);
+  if(md){ dataAbertura = md[1]; horaAbertura = md[2] + ":" + md[3]; }
+  for(var c = iData - 1; c >= 0 && c >= iData - 3; c--){
+   var lc = linhas[c];
+   if(!lc || ehRuido(lc)) continue;
+   if(/^(COD|ID|CPF|E-?mail)\s*:?/i.test(lc) || /^\d+$/.test(lc) || lc === cod || lc === id) continue;
+   if(lc.length <= 60 && /[a-zà-ú]/i.test(lc)){ cidade = lc; break; }
+  }
+ }
 
- var reclamacao="",respostas=[],replicas=[],avaliacao="",anexos=[];
+ var nome = "";
+ var iCpf = achar(linhas, function(l){ return /^CPF\s*:?/i.test(l); });
+ if(iCpf > 0){
+  for(var n = iCpf - 1; n >= 0 && n >= iCpf - 3; n--){
+   var ln = linhas[n];
+   if(!ln || ehRuido(ln) || /^(COD|ID|E-?mail)\s*:?/i.test(ln) || /\d{4}/.test(ln)) continue;
+   nome = ln; break;
+  }
+ }
+
+ var reclamacao="", respostas=[], replicas=[], avaliacao="", consideracaoFinal="", jaAvaliou=false;
  for(var i=0;i<linhas.length;i++){
-  if(!MARCADOR.test(linhas[i])) continue;
-  var tipo=linhas[i].toLowerCase();
-  var quando="";
-  if(DATA_LINHA.test(linhas[i+1]||"")) quando=linhas[i+1];
-  var corpo=blocoDe(linhas,i+1,linhas.length);
+  var tipo = marcadorDa(linhas[i]);
+  if(!tipo) continue;
+  var quando = DATA_LINHA.test(linhas[i+1]||"") ? linhas[i+1] : "";
+  var corpo = blocoDe(linhas, i+1);
   if(!corpo) continue;
-  if(/^a reclama/.test(tipo)){ if(!reclamacao) reclamacao=corpo; }
-  else if(/^resposta/.test(tipo)) respostas.push((quando?quando+"\n":"")+corpo);
-  else if(/plica/.test(tipo)) replicas.push((quando?quando+"\n":"")+corpo);
-  else if(/^avalia/.test(tipo)) avaliacao=corpo;
+  if(tipo === "reclamacao"){ if(!reclamacao) reclamacao = corpo; }
+  else if(tipo === "final"){ consideracaoFinal = (quando ? quando + "\n" : "") + corpo; }
+  else if(tipo === "resposta" || tipo === "tratativa"){
+   if(jaAvaliou && !consideracaoFinal) consideracaoFinal = (quando ? quando + "\n" : "") + corpo;
+   else respostas.push((quando ? quando + "\n" : "") + corpo);
+  }
+  else if(tipo === "replica") replicas.push((quando ? quando + "\n" : "") + corpo);
+  else if(tipo === "avaliacao"){ avaliacao = corpo; jaAvaliou = true; }
  }
 
- var iAnexo=acharIndice(linhas,/^Imagens e documentos anexados:?$/i);
- if(iAnexo>=0){
-  for(var a=iAnexo+1;a<linhas.length;a++){
-   if(MARCADOR.test(linhas[a])||RUIDO.test(linhas[a])) break;
+ var anexos=[];
+ var iAnexo = achar(linhas, function(l){ return /^imagens e documentos anexados/.test(soLetras(l)); });
+ if(iAnexo >= 0){
+  for(var a = iAnexo + 1; a < linhas.length; a++){
+   if(marcadorDa(linhas[a]) || ehRuido(linhas[a])) break;
    anexos.push(linhas[a]);
   }
  }
 
- var nota=(textoTudo.match(/Nota do atendimento:\s*(\d{1,2})/i)||[])[1];
- var voltaria=(textoTudo.match(/Voltaria a fazer neg[óo]cios?\?\s*(Sim|N[ãa]o)/i)||[])[1]||"";
+ var nota=(texto.match(/Nota do atendimento:?\s*(\d{1,2})/i)||[])[1];
+ if(nota === undefined){
+  var iNota = achar(linhas, function(l){ return /^nota do atendimento/.test(soLetras(l)); });
+  if(iNota >= 0){ var vn = valorDepois(linhas, iNota).match(/^(\d{1,2})$/); if(vn) nota = vn[1]; }
+ }
+ var voltaria=(texto.match(/Voltaria a fazer neg[óo]cios?\??\s*:?\s*(Sim|N[ãa]o)/i)||[])[1]||"";
+ if(!voltaria){
+  var iVolta = achar(linhas, function(l){ return /^voltaria a fazer negocio/.test(soLetras(l)); });
+  if(iVolta >= 0){ var vv = valorDepois(linhas, iVolta); if(/^(sim|n[ãa]o)$/i.test(vv)) voltaria = vv; }
+ }
 
  return {
   id:String(id), cod:cod, titulo:titulo, situacao:situacao, cidade:cidade,
   data:dataAbertura, hora:horaAbertura, nome:nome, cpf:cpf, email:email, telefone:telefone,
+  telefones:tels.join(" | "),
   reclamacao:reclamacao, respostas:respostas.join("\n\n---\n\n"), replicas:replicas.join("\n\n---\n\n"),
-  avaliacao:avaliacao, nota:(nota===undefined?"":Number(nota)), voltaria:voltaria.toUpperCase(),
+  avaliacao:avaliacao, consideracaoFinal:consideracaoFinal,
+  nota:(nota===undefined?"":Number(nota)), voltaria:voltaria.toUpperCase(),
   anexos:anexos.join(" | "), url:location.href
  };
+}
+
+function faltando(r){
+ var f=[];
+ if(!r.id) f.push("ID");
+ if(!r.cpf) f.push("CPF");
+ if(!r.telefones) f.push("telefone");
+ if(!r.reclamacao) f.push("texto da reclamação");
+ if(!r.respostas) f.push("resposta da empresa");
+ return f;
 }
 
 function guardar(registro){
@@ -1041,20 +1168,21 @@ function copiar(texto,msg){
  else manual();
 }
 
+var AZUL="#235e9b", AZUL_CLARO="#5fa0e8";
 var caixa=document.createElement("div");caixa.id="ra-analises";
-caixa.style.cssText="position:fixed;right:18px;bottom:18px;width:270px;z-index:2147483647;background:#22242a;color:#e3e2e0;font:13px/1.45 system-ui,-apple-system,sans-serif;border:1px solid #4a4e56;border-radius:12px;padding:14px 15px;box-shadow:0 14px 34px rgba(0,0,0,.45)";
+caixa.style.cssText="position:fixed;right:18px;bottom:18px;width:280px;z-index:2147483647;background:#1b2430;color:#e3e2e0;font:13px/1.45 system-ui,-apple-system,sans-serif;border:2px solid "+AZUL+";border-radius:12px;padding:14px 15px;box-shadow:0 14px 34px rgba(0,0,0,.45)";
 function botao(rotulo,principal){
  var b=document.createElement("button");b.textContent=rotulo;
- b.style.cssText="display:block;width:100%;margin-top:7px;padding:8px 10px;border-radius:7px;cursor:pointer;font:600 12.5px system-ui,sans-serif;border:1px solid "+(principal?"#b0c628;background:#b0c628;color:#1a1c05":"#4a4e56;background:#2a2d34;color:#e3e2e0");
+ b.style.cssText="display:block;width:100%;margin-top:7px;padding:8px 10px;border-radius:7px;cursor:pointer;font:600 12.5px system-ui,sans-serif;border:1px solid "+(principal?AZUL+";background:"+AZUL+";color:#ffffff":"#3c4a5c;background:#243040;color:#e3e2e0");
  caixa.appendChild(b);return b;
 }
 var topo=document.createElement("div");topo.style.cssText="display:flex;align-items:center;justify-content:space-between;gap:8px";
-var tit=document.createElement("strong");tit.textContent="Análises • conteúdo das reclamações";
+var tit=document.createElement("strong");tit.textContent="Análises • conteúdo das reclamações";tit.style.color=AZUL_CLARO;
 var x=document.createElement("button");x.textContent="\u00d7";x.setAttribute("aria-label","Fechar");
-x.style.cssText="background:none;border:none;color:#a3a89a;font-size:18px;line-height:1;cursor:pointer";
+x.style.cssText="background:none;border:none;color:#9fb2c9;font-size:18px;line-height:1;cursor:pointer";
 topo.appendChild(tit);topo.appendChild(x);caixa.appendChild(topo);
-var contador=document.createElement("div");contador.style.cssText="font:700 24px system-ui,sans-serif;color:#c9d94a;margin:8px 0 2px";caixa.appendChild(contador);
-var recado=document.createElement("div");recado.style.cssText="font-size:11.5px;color:#a3a89a;min-height:30px";caixa.appendChild(recado);
+var contador=document.createElement("div");contador.style.cssText="font:700 24px system-ui,sans-serif;color:"+AZUL_CLARO+";margin:8px 0 2px";caixa.appendChild(contador);
+var recado=document.createElement("div");recado.style.cssText="font-size:11.5px;color:#9fb2c9;min-height:30px";caixa.appendChild(recado);
 function status(msg){
  contador.textContent=itens.length+" reclamação(ões)";
  recado.textContent=msg||"";
@@ -1062,21 +1190,34 @@ function status(msg){
 var bCapturar=botao("Capturar esta reclamação",true);
 var bCopiar=botao("Copiar tudo para o app");
 var bLimpar=botao("Limpar lista");
-var rodape=document.createElement("label");rodape.style.cssText="display:flex;align-items:center;gap:7px;margin-top:10px;font-size:11.5px;color:#a3a89a;cursor:pointer";
+var bBruto=botao("Copiar texto da página (ajuda)");
+bBruto.style.marginTop="12px";
+bBruto.style.fontSize="11.5px";
+var rodape=document.createElement("label");rodape.style.cssText="display:flex;align-items:center;gap:7px;margin-top:10px;font-size:11.5px;color:#9fb2c9;cursor:pointer";
 var chk=document.createElement("input");chk.type="checkbox";chk.checked=true;
 rodape.appendChild(chk);rodape.appendChild(document.createTextNode("Capturar ao abrir cada reclamação"));caixa.appendChild(rodape);
 
-bCapturar.onclick=function(){
+function capturarAgora(){
  var r=capturar();
- if(!r) return status("Abra uma reclamação (tela Responder reclamação).");
+ if(!r){
+  status("Não achei o ID nesta página. Abra a reclamação (tela Responder reclamação) e tente de novo — ou use “Copiar texto da página”.");
+  return null;
+ }
  var efeito=guardar(r);
- status(efeito==="novo"?("ID "+r.id+" capturado."):("ID "+r.id+" atualizado."));
-};
+ var f=faltando(r);
+ status((efeito==="novo"?"ID "+r.id+" capturado.":"ID "+r.id+" atualizado.") + (f.length?" Sem: "+f.join(", ")+".":""));
+ return r;
+}
+
+bCapturar.onclick=capturarAgora;
 bCopiar.onclick=function(){
  if(!itens.length) return status("A lista está vazia.");
  copiar(JSON.stringify(itens), itens.length+" reclamação(ões) copiadas. Cole no app, aba Análises.");
 };
 bLimpar.onclick=function(){ itens=[]; salvar(); status("Lista zerada."); };
+bBruto.onclick=function(){
+ copiar(linhasDaPagina().join("\n"), "Texto da página copiado — cole no chat para ajustar o coletor.");
+};
 x.onclick=function(){ auto(false); caixa.remove(); };
 
 var observador=null,espera=null,ultimo="";
@@ -1088,11 +1229,12 @@ function auto(ativo){
    espera=setTimeout(function(){
     var r=capturar();
     if(!r) return;
-    var marca=r.id+"|"+(r.respostas.length+r.replicas.length+r.avaliacao.length);
+    var marca=r.id+"|"+(r.reclamacao.length+r.respostas.length+r.replicas.length+r.avaliacao.length);
     if(marca===ultimo) return;
     ultimo=marca;
     var efeito=guardar(r);
-    status(efeito==="novo"?("ID "+r.id+" capturado automaticamente."):("ID "+r.id+" atualizado."));
+    var f=faltando(r);
+    status((efeito==="novo"?"ID "+r.id+" capturado automaticamente.":"ID "+r.id+" atualizado.") + (f.length?" Sem: "+f.join(", ")+".":""));
    },900);
   });
   observador.observe(document.body,{childList:true,subtree:true});
@@ -1101,9 +1243,8 @@ function auto(ativo){
 chk.onchange=function(){ auto(chk.checked); };
 
 document.body.appendChild(caixa);
-var inicial=capturar();
-if(inicial){ guardar(inicial); status("ID "+inicial.id+" capturado."); }
-else status("Abra uma reclamação para capturar.");
+status("Painel pronto.");
+capturarAgora();
 auto(true);
 })();
 </script>
@@ -3449,7 +3590,8 @@ auto(true);
     var busca = normalizarBusca(state.analiseBusca).split(/\s+/).filter(Boolean);
     if(!busca.length) return state.analises;
     return state.analises.filter(function(a){
-      var alvo = normalizarBusca([a.id, a.titulo, a.nome, a.cidade, a.cpf, a.situacao, textoDaAnalise(a), a.respostas].join(" | "));
+      var alvo = normalizarBusca([a.id, a.titulo, a.nome, a.cidade, a.cpf, a.telefones, a.situacao,
+        textoDaAnalise(a), a.respostas, a.consideracaoFinal].join(" | "));
       return busca.every(function(t){ return alvo.indexOf(t) !== -1; });
     });
   }
@@ -3468,11 +3610,12 @@ auto(true);
       return '<div class="resposta-item">' +
         '<div class="resposta-topo">' +
           '<div style="min-width:0">' +
-            '<strong><span class="num-resposta">' + esc(a.id) + '</span>' + esc(a.titulo || "Sem título") + '</strong>' +
+            '<strong><span class="num-analise">' + esc(a.id) + '</span>' + esc(a.titulo || "Sem título") + '</strong>' +
             '<div class="resposta-meta">' +
               [a.data ? a.data + (a.hora ? " " + a.hora : "") : "", a.cidade, caso ? caso.assunto : "",
                a.situacao, (typeof a.nota === "number" ? "nota " + a.nota : ""),
-               a.voltaria ? "voltaria: " + capitalizar(a.voltaria) : ""]
+               a.voltaria ? "voltaria: " + capitalizar(a.voltaria) : "",
+               a.replicas ? "com réplica" : "", a.consideracaoFinal ? "com consideração final" : ""]
               .filter(Boolean).map(esc).join(" · ") +
             '</div>' +
           '</div>' +
@@ -3557,7 +3700,7 @@ auto(true);
         '<div class="linha-dado"><span>Aberta em</span><span>' + esc((a.data || "—") + (a.hora ? " " + a.hora : "")) + '</span></div>' +
         '<div class="linha-dado"><span>Cidade</span><span>' + esc(a.cidade || "—") + '</span></div>' +
         '<div class="linha-dado"><span>Consumidor</span><span>' + esc(a.nome || "—") + (a.cpf ? ' · ' + esc(digitos(a.cpf)) : '') + '</span></div>' +
-        '<div class="linha-dado"><span>Contato</span><span class="mono">' + esc([a.email, a.telefone].filter(Boolean).join(" · ") || "—") + '</span></div>' +
+        '<div class="linha-dado"><span>Contato</span><span class="mono">' + esc([a.email, a.telefones || a.telefone].filter(Boolean).join(" · ") || "—") + '</span></div>' +
         (caso ? '<div class="linha-dado"><span>Na base</span><span>' + esc(caso.assunto || "—") + ' · ' + esc(rotuloEstado(caso)) + '</span></div>' : '') +
         '<div class="linha-dado"><span>Avaliação</span><span>' +
           esc(a.situacao || "—") + (typeof a.nota === "number" ? ' · nota ' + a.nota : '') +
@@ -3566,7 +3709,8 @@ auto(true);
         secao("Reclamação", a.reclamacao) +
         secao("Respostas da empresa", a.respostas) +
         secao("Réplicas", a.replicas) +
-        secao("Consideração final", a.avaliacao) +
+        secao("Comentário final do consumidor", a.avaliacao) +
+        secao("Nossa consideração final", a.consideracaoFinal) +
       '</div>';
     document.body.appendChild(d);
 
@@ -3594,10 +3738,12 @@ auto(true);
       cpf: digitos(String(bruto.cpf || "")).slice(0,11),
       email: texto(bruto.email, 120),
       telefone: texto(bruto.telefone, 30),
+      telefones: texto(bruto.telefones || bruto.telefone, 120),
       reclamacao: texto(bruto.reclamacao, 12000),
       respostas: texto(bruto.respostas, 20000),
       replicas: texto(bruto.replicas, 12000),
       avaliacao: texto(bruto.avaliacao, 4000),
+      consideracaoFinal: texto(bruto.consideracaoFinal, 8000),
       voltaria: texto(bruto.voltaria, 10).toUpperCase(),
       anexos: texto(bruto.anexos, 400),
       coletadoEm: new Date().toISOString(),
@@ -3654,13 +3800,13 @@ auto(true);
   function baixarAnalises(){
     var lista = analisesFiltradas();
     if(!lista.length){ toast("Não há conteúdo com esse filtro."); return; }
-    var cab = ["ID","DATA","HORA","TITULO","SITUACAO","CIDADE","NOME","CPF","EMAIL","TELEFONE","ASSUNTO NA BASE","NOTA","VOLTARIA","RECLAMACAO","RESPOSTAS","REPLICAS","CONSIDERACAO FINAL","ANEXOS"];
+    var cab = ["ID","DATA","HORA","TITULO","SITUACAO","CIDADE","NOME","CPF","EMAIL","TELEFONES","ASSUNTO NA BASE","NOTA","VOLTARIA","RECLAMACAO","RESPOSTAS","REPLICAS","COMENTARIO FINAL","NOSSA CONSIDERACAO FINAL","ANEXOS"];
     var linhas = lista.map(function(a){
       var caso = casoDaBase(a.id);
       return [
         a.id, a.data, a.hora, a.titulo, a.situacao, a.cidade, a.nome, a.cpf ? digitos(a.cpf) : "",
-        a.email, a.telefone, caso ? caso.assunto : "", (typeof a.nota === "number" ? a.nota : ""), a.voltaria,
-        a.reclamacao, a.respostas, a.replicas, a.avaliacao, a.anexos
+        a.email, a.telefones || a.telefone, caso ? caso.assunto : "", (typeof a.nota === "number" ? a.nota : ""), a.voltaria,
+        a.reclamacao, a.respostas, a.replicas, a.avaliacao, a.consideracaoFinal, a.anexos
       ].map(valorCsv).join(";");
     });
     var conteudo = "\uFEFF" + cab.join(";") + "\r\n" + linhas.join("\r\n");
