@@ -1177,7 +1177,7 @@ function botao(rotulo,principal){
  caixa.appendChild(b);return b;
 }
 var topo=document.createElement("div");topo.style.cssText="display:flex;align-items:center;justify-content:space-between;gap:8px";
-var tit=document.createElement("strong");tit.textContent="Análises • conteúdo das reclamações";tit.style.color=AZUL_CLARO;
+var tit=document.createElement("strong");tit.textContent="Análises v2 • conteúdo das reclamações";tit.style.color=AZUL_CLARO;
 var x=document.createElement("button");x.textContent="\u00d7";x.setAttribute("aria-label","Fechar");
 x.style.cssText="background:none;border:none;color:#9fb2c9;font-size:18px;line-height:1;cursor:pointer";
 topo.appendChild(tit);topo.appendChild(x);caixa.appendChild(topo);
@@ -3633,6 +3633,9 @@ auto(true);
       '<p style="font-size:14px;color:var(--ink-soft);margin:0 0 16px">' +
         'Copie o código, cole no console do Reclame Aqui e abra as reclamações uma a uma: o painel captura o texto do cliente, as respostas, as réplicas e a avaliação. ' +
         'Ao terminar, clique em “Copiar tudo para o app” e cole abaixo.</p>' +
+      '<p style="font-size:13px;color:var(--ink-soft);margin:-8px 0 16px">' +
+        'O painel certo é <strong>azul</strong>, tem o título <strong>Análises v2</strong> e quatro botões. ' +
+        'Se o que aparecer no Reclame Aqui for de outra cor ou tiver três botões, feche no × e cole este código de novo.</p>' +
       '<button class="btn btn-neutro btn-largo" id="analise-copiar-codigo">COPIAR CÓDIGO</button>' +
       '<div class="campo" style="margin-top:20px">' +
         '<label for="analise-dados">Conteúdo copiado do coletor</label>' +
