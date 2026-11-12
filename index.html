@@ -481,7 +481,66 @@
     #popup-atendimento.largo{width:min(640px,calc(100vw - 32px));}
   }
   .at-cabeca{display:flex;align-items:center;gap:10px;min-width:0;}
-  .at-cabeca h2{font-family:var(--font-mono);font-size:21px;letter-spacing:0;color:var(--amber-deep);word-break:break-all;}
+  .at-titulo{
+    background:none; border:none; padding:0; cursor:pointer; text-align:left;
+    font:700 19px var(--font-display); color:var(--ink); letter-spacing:-0.02em; word-break:break-all;
+  }
+  .at-titulo.com-id{font-family:var(--font-mono); font-size:21px; font-weight:600; color:var(--amber-deep);}
+  .at-titulo:disabled{cursor:default;}
+  .at-titulo.com-id:hover{text-decoration:underline; text-underline-offset:4px;}
+  .at-acoes-topo{display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end;}
+  .at-data{font-size:11.5px; color:var(--ink-soft); white-space:nowrap; margin-right:4px;}
+  .at-acoes-topo .btn-icone.on{border-color:var(--amber); color:var(--amber-deep);}
+
+  .desc-opcoes{display:flex; flex-wrap:wrap; gap:8px;}
+  .desc-opcao{
+    background:var(--paper); border:1px solid var(--line-strong); color:var(--ink);
+    padding:9px 16px; border-radius:100px; font-size:13.5px; font-weight:600; cursor:pointer;
+  }
+  .desc-opcao:hover{border-color:var(--amber); color:var(--amber-deep);}
+  .desc-opcao.on{background:var(--amber); border-color:var(--amber); color:#1a1c05;}
+
+  .at-resposta-info{
+    padding:11px 13px; border:1px dashed var(--line-strong); border-radius:8px;
+    background:var(--paper); font-size:13.5px; color:var(--ink-soft);
+  }
+  .at-resposta-info.on{border-style:solid; border-color:var(--gold); background:var(--amber-soft); color:var(--ink);}
+
+  .historico-area{margin:4px 0 16px;}
+  .historico-area .link{padding-left:0;}
+  .at-atribuir{margin:0 0 14px; padding:14px; border:1px solid var(--line); border-radius:10px; background:var(--paper);}
+  .at-acoes .btn-neutro.on{border-color:var(--amber); color:var(--amber-deep);}
+  .btn-salvar{background:var(--sage); color:#06210f; border:none;}
+  .btn-salvar:hover{background:#2ab85c;}
+  .btn-salvar:disabled{opacity:.6; cursor:not-allowed;}
+  .at-acoes{justify-content:space-between;}
+  .at-acoes .btn{flex:0 0 auto; min-width:140px;}
+
+  .resp-card{display:block; width:100%; text-align:left; cursor:pointer;}
+  .resp-card:focus-visible{outline:2px solid var(--olive); outline-offset:2px;}
+  .resp-card-marca{margin-top:9px; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--amber-deep);}
+
+  .an-cabeca{margin-bottom:14px;}
+  .an-titulo{font-family:var(--font-display); font-weight:700; font-size:15px; line-height:1.35; margin-bottom:8px;}
+  .an-selos{display:flex; flex-wrap:wrap; gap:6px;}
+  .an-nota{border:1px solid var(--line-strong); background:var(--paper); color:var(--ink);}
+  .an-nota.esmeralda{color:#2ee08a; border-color:#2ee08a;}
+  .an-nota.ambar{color:#f0c84a; border-color:#f0c84a;}
+  .an-nota.coral{color:#ef7a5f; border-color:#ef7a5f;}
+  .an-grade{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:16px;}
+  .an-item{background:var(--surface); border:1px solid var(--line); border-radius:9px; padding:8px 11px; min-width:0;}
+  .an-item span{display:block; font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-soft);}
+  .an-item strong{display:block; font-size:13px; font-weight:600; word-break:break-word;}
+  .an-secao{margin-bottom:14px;}
+  .an-secao h3{
+    font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-soft);
+    margin:0 0 7px; font-family:var(--font-body); font-weight:600;
+  }
+  .an-texto{
+    background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--line-strong);
+    border-radius:9px; padding:12px 14px; font-size:13px; line-height:1.6; white-space:pre-wrap; color:var(--ink);
+  }
+  .an-secao.destaque .an-texto{border-left-color:var(--amber);}
   .at-copiar{background:none;border:1px solid var(--line-strong);color:var(--ink-soft);border-radius:7px;padding:5px 6px;cursor:pointer;display:flex;align-items:center;}
   .at-copiar:hover{color:var(--amber-deep);border-color:var(--amber);}
   .at-copiar svg{width:16px;height:16px;}
@@ -3627,24 +3686,41 @@ auto(true);
 
   function detalheAnalise(a){
     var caso = casoDaBase(a.id);
-    function secao(titulo, texto){
+    function secao(titulo, texto, destaque){
       if(!texto) return "";
-      return '<h3 style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:18px 0 8px">' +
-        esc(titulo) + '</h3><div class="resposta-texto" style="max-height:none">' + esc(texto) + '</div>';
+      return '<div class="an-secao' + (destaque ? " destaque" : "") + '">' +
+        '<h3>' + esc(titulo) + '</h3>' +
+        '<div class="an-texto">' + esc(texto) + '</div>' +
+      '</div>';
     }
-    return '' +
-      '<div class="linha-dado"><span>Aberta em</span><span>' + esc((a.data || "—") + (a.hora ? " " + a.hora : "")) + '</span></div>' +
-      '<div class="linha-dado"><span>Cidade</span><span>' + esc(a.cidade || "—") + '</span></div>' +
-      '<div class="linha-dado"><span>Consumidor</span><span>' + esc(a.nome || "—") + '</span></div>' +
-      '<div class="linha-dado"><span>CPF</span><span class="mono">' + esc(a.cpf ? digitos(a.cpf) : "—") + '</span></div>' +
-      '<div class="linha-dado"><span>Telefones</span><span class="mono">' + esc(a.telefones || a.telefone || "—") + '</span></div>' +
-      '<div class="linha-dado"><span>E-mail</span><span class="mono">' + esc(a.email || "—") + '</span></div>' +
-      (caso ? '<div class="linha-dado"><span>Na base</span><span>' + esc(caso.assunto || "—") + ' · ' + esc(rotuloEstado(caso)) + '</span></div>' : '') +
-      '<div class="linha-dado"><span>Avaliação</span><span>' +
-        esc(a.situacao || "—") + (typeof a.nota === "number" ? ' · nota ' + a.nota : '') +
-        (a.voltaria ? ' · voltaria: ' + esc(capitalizar(a.voltaria)) : '') + '</span></div>' +
-      (a.anexos ? '<div class="linha-dado"><span>Anexos</span><span>' + esc(a.anexos) + '</span></div>' : '') +
-      secao("Reclamação", a.reclamacao) +
+    function etiqueta(rotulo, valor, mono){
+      if(!valor) return "";
+      return '<div class="an-item"><span>' + esc(rotulo) + '</span>' +
+        '<strong' + (mono ? ' class="mono"' : '') + '>' + esc(valor) + '</strong></div>';
+    }
+
+    var nota = (typeof a.nota === "number") ? a.nota : null;
+    var cabecalho = '<div class="an-cabeca">' +
+      '<div class="an-titulo">' + esc(a.titulo || "Sem título") + '</div>' +
+      '<div class="an-selos">' +
+        (a.situacao ? '<span class="selo selo-leitura">' + esc(a.situacao) + '</span>' : '') +
+        (nota !== null ? '<span class="selo an-nota ' + faixaNota(nota) + '">Nota ' + nota + '</span>' : '') +
+        (a.voltaria ? '<span class="selo selo-leitura">Voltaria: ' + esc(capitalizar(a.voltaria)) + '</span>' : '') +
+      '</div>' +
+    '</div>';
+
+    return cabecalho +
+      '<div class="an-grade">' +
+        etiqueta("Aberta em", (a.data || "—") + (a.hora ? " " + a.hora : "")) +
+        etiqueta("Cidade", a.cidade) +
+        etiqueta("Consumidor", a.nome) +
+        etiqueta("CPF", a.cpf ? digitos(a.cpf) : "", true) +
+        etiqueta("Telefones", a.telefones || a.telefone, true) +
+        etiqueta("E-mail", a.email, true) +
+        etiqueta("Na base", caso ? (caso.assunto + " · " + rotuloEstado(caso)) : "") +
+        etiqueta("Anexos", a.anexos) +
+      '</div>' +
+      secao("Reclamação", a.reclamacao, true) +
       secao("Respostas da empresa", a.respostas) +
       secao("Réplicas", a.replicas) +
       secao("Comentário final do consumidor", a.avaliacao) +
@@ -4471,23 +4547,29 @@ auto(true);
     d.setAttribute("aria-labelledby","titulo-atendimento");
     d.innerHTML = '<div class="at-topo">' +
         '<div class="at-cabeca">' +
-          '<h2 id="titulo-atendimento" class="at-titulo">Atendimento</h2>' +
-          '<button class="at-copiar" id="at-copiar" aria-label="Copiar ID" title="Copiar ID" hidden>' + IC_COPIAR + '</button>' +
+          '<button type="button" id="titulo-atendimento" class="at-titulo" title="Clique para copiar o ID">Atendimento</button>' +
           '<button class="at-copiar at-mais-analise" id="at-abrir-analise" aria-label="Ver conteúdo coletado" title="Ver conteúdo coletado da reclamação" hidden>+</button>' +
         '</div>' +
-        '<div class="acoes">' +
+        '<div class="at-acoes-topo">' +
+          '<span class="at-data" id="at-data"></span>' +
+          '<button class="btn btn-neutro btn-mini btn-icone" id="at-buscar-resposta" aria-label="Procurar resposta pronta" title="Procurar resposta pronta" hidden>' + IC_BUSCA + '</button>' +
           '<button class="btn btn-neutro btn-mini" id="minimizar-atendimento" aria-label="Minimizar" title="Minimizar">−</button>' +
           '<button class="btn btn-neutro btn-mini" id="fechar-atendimento" aria-label="Fechar" title="Fechar">×</button>' +
         '</div></div>' +
       '<div class="at-corpo"><div class="at-miolo"></div><aside class="at-lateral" hidden></aside></div>';
     document.body.appendChild(d);
 
-    document.getElementById("at-copiar").onclick = function(){
+    document.getElementById("titulo-atendimento").onclick = function(){
       if(atendimento.item) copiar(String(atendimento.item.id), "ID copiado.");
     };
     document.getElementById("at-abrir-analise").onclick = function(){
       atendimento.painelAnalise = !atendimento.painelAnalise;
       if(atendimento.painelAnalise) atendimento.painelRespostas = false;
+      renderLateral();
+    };
+    document.getElementById("at-buscar-resposta").onclick = function(){
+      atendimento.painelRespostas = !atendimento.painelRespostas;
+      if(atendimento.painelRespostas) atendimento.painelAnalise = false;
       renderLateral();
     };
     document.getElementById("minimizar-atendimento").onclick = function(){
@@ -4508,20 +4590,24 @@ auto(true);
     if(!d) return;
     var corpo = d.querySelector(".at-miolo");
     var titulo = d.querySelector(".at-titulo");
-    var copiarBtn = d.querySelector("#at-copiar");
+    var dataTopo = d.querySelector("#at-data");
+    var lupa = d.querySelector("#at-buscar-resposta");
 
     if(!atendimento.item){
       titulo.textContent = "Escolher assuntos";
-      titulo.style.fontFamily = "var(--font-display)";
-      titulo.style.color = "var(--ink)";
-      copiarBtn.hidden = true;
+      titulo.classList.remove("com-id");
+      titulo.disabled = true;
+      dataTopo.textContent = "";
+      lupa.hidden = true;
+      atendimento.painelRespostas = false;
       corpo.innerHTML = telaAssuntos();
     } else {
       repetidosExpandido = false;
       titulo.textContent = atendimento.item.id;
-      titulo.style.fontFamily = "var(--font-mono)";
-      titulo.style.color = "var(--amber-deep)";
-      copiarBtn.hidden = false;
+      titulo.classList.add("com-id");
+      titulo.disabled = false;
+      dataTopo.textContent = atendimento.item.data ? "Aberto em " + atendimento.item.data : "";
+      lupa.hidden = false;
       corpo.innerHTML = telaCaso(atendimento.item);
     }
     renderLateral();
@@ -4533,14 +4619,16 @@ auto(true);
     if(!d) return;
     var lado = d.querySelector(".at-lateral");
     var botaoMais = d.querySelector("#at-abrir-analise");
-    var botaoBusca = document.getElementById("at-buscar-resposta");
+    var lupa = d.querySelector("#at-buscar-resposta");
     if(!lado) return;
 
     var analise = atendimento.item ? acharAnalise(atendimento.item.id) : null;
     if(botaoMais){
-      if(!analise){
+      if(!analise || !atendimento.item){
         atendimento.painelAnalise = false;
         botaoMais.hidden = true;
+        botaoMais.textContent = "+";
+        botaoMais.classList.remove("on");
       } else {
         botaoMais.hidden = false;
         botaoMais.textContent = atendimento.painelAnalise ? "−" : "+";
@@ -4548,22 +4636,17 @@ auto(true);
         botaoMais.classList.toggle("on", atendimento.painelAnalise);
       }
     }
-    if(botaoBusca) botaoBusca.classList.toggle("on", atendimento.painelRespostas);
+    if(lupa) lupa.classList.toggle("on", atendimento.painelRespostas);
 
-    var aberto = atendimento.painelAnalise || atendimento.painelRespostas;
+    var aberto = !!atendimento.item && (atendimento.painelAnalise || atendimento.painelRespostas);
     lado.hidden = !aberto;
     d.classList.toggle("largo", aberto);
     if(!aberto){ lado.innerHTML = ""; return; }
 
     if(atendimento.painelAnalise){
       lado.innerHTML = '<div class="at-lateral-topo"><strong>Conteúdo coletado</strong>' +
-        '<div class="acoes">' +
-          '<button class="btn btn-neutro btn-mini" id="at-copiar-analise">Copiar texto</button>' +
           '<button class="btn btn-neutro btn-mini" id="at-fechar-lateral" aria-label="Fechar" title="Fechar">×</button>' +
-        '</div></div>' + detalheAnalise(analise);
-      liga("at-copiar-analise", "click", function(){
-        copiar(textoDaAnalise(analise), "Texto da reclamação " + analise.id + " copiado.");
-      });
+        '</div>' + detalheAnalise(analise);
       liga("at-fechar-lateral", "click", function(){ atendimento.painelAnalise = false; renderLateral(); });
       return;
     }
@@ -4598,6 +4681,16 @@ auto(true);
     desenharListaRespostas();
   }
 
+  function descricaoQueResponde(){
+    for(var i=0;i<state.descricoes.length;i++){
+      if(normalizarBusca(state.descricoes[i].nome).indexOf("respond") === 0 && state.descricoes[i].tipo !== "pendente") return state.descricoes[i].nome;
+    }
+    for(var k=0;k<state.descricoes.length;k++){
+      if(state.descricoes[k].tipo !== "pendente") return state.descricoes[k].nome;
+    }
+    return "";
+  }
+
   function desenharListaRespostas(){
     var area = document.getElementById("at-lista-respostas");
     if(!area) return;
@@ -4610,7 +4703,7 @@ auto(true);
     var lista = state.respostas.filter(function(r){
       if(atendimento.soDoAssunto && assunto && r.assunto && r.assunto !== assunto) return false;
       if(!termos.length) return true;
-      var alvo = normalizarBusca(rotuloResposta(r.numero) + " " + r.numero + " " + r.titulo + " " + r.assunto + " " + r.texto);
+      var alvo = normalizarBusca(rotuloResposta(r) + " " + r.numero + " " + r.titulo + " " + r.assunto + " " + r.texto);
       return termos.every(function(t){ return alvo.indexOf(t) !== -1; });
     });
 
@@ -4622,39 +4715,42 @@ auto(true);
 
     area.innerHTML = lista.map(function(r){
       var ativa = String(r.numero) === escolhida;
-      var trecho = String(r.texto || "").replace(/\s+/g, " ").slice(0, 150);
-      return '<div class="resp-card' + (ativa ? " on" : "") + '">' +
+      var trecho = String(r.texto || "").replace(/\s+/g, " ").slice(0, 170);
+      return '<button type="button" class="resp-card' + (ativa ? " on" : "") + '" data-usar-resposta="' + esc(r.numero) + '"' +
+        ' title="Copiar o texto e registrar esta resposta no caso">' +
         '<div class="resp-card-topo">' +
-          '<strong><span class="num-resposta">' + esc(rotuloResposta(r.numero)) + '</span>' + esc(r.titulo) + '</strong>' +
+          '<strong><span class="num-resposta">' + esc(rotuloResposta(r)) + '</span>' + esc(r.titulo) + '</strong>' +
           '<span class="resp-card-assunto">' + esc(r.assunto || "Geral") + '</span>' +
         '</div>' +
-        '<div class="resp-card-texto">' + esc(trecho) + (String(r.texto || "").length > 150 ? "…" : "") + '</div>' +
-        '<div class="acoes" style="margin-top:10px">' +
-          '<button class="btn ' + (ativa ? "btn-neutro" : "btn-principal") + ' btn-mini" style="width:auto" data-usar-resposta="' + esc(r.numero) + '">' +
-            (ativa ? "Selecionada" : "Usar esta") + '</button>' +
-          '<button class="btn btn-neutro btn-mini" data-copiar-pronta="' + esc(r.numero) + '">Copiar</button>' +
-        '</div>' +
-      '</div>';
+        '<div class="resp-card-texto">' + esc(trecho) + (String(r.texto || "").length > 170 ? "…" : "") + '</div>' +
+        (ativa ? '<div class="resp-card-marca">Usada neste caso</div>' : '') +
+      '</button>';
     }).join("");
 
     cada("[data-usar-resposta]", function(b){
       b.addEventListener("click", function(){
-        var numero = b.getAttribute("data-usar-resposta");
-        var campo = document.getElementById("at-resposta");
-        if(!campo){ toast("Escolha uma descrição que finaliza o caso para registrar a resposta."); return; }
-        campo.value = numero;
-        atualizarRespostaCaso();
-        var r = acharRespostaPorNumero(numero);
-        copiar(r ? r.texto : "", "Resposta " + rotuloResposta(numero) + " selecionada e copiada.");
-        desenharListaRespostas();
+        usarRespostaPronta(b.getAttribute("data-usar-resposta"));
       });
     });
-    cada("[data-copiar-pronta]", function(b){
-      b.addEventListener("click", function(){
-        var r = acharRespostaPorNumero(b.getAttribute("data-copiar-pronta"));
-        if(r) copiar(r.texto, "Resposta " + rotuloResposta(r.numero) + " copiada.");
-      });
-    });
+  }
+
+  function usarRespostaPronta(numero){
+    var r = acharRespostaPorNumero(numero);
+    if(!r) return;
+
+    var campoDescricao = document.getElementById("at-descricao");
+    if(campoDescricao && !finalizaCaso(campoDescricao.value)){
+      var responde = descricaoQueResponde();
+      if(responde) definirDescricao(responde);
+    }
+
+    var campo = document.getElementById("at-resposta");
+    if(campo){
+      campo.value = String(r.numero);
+      atualizarRespostaCaso();
+    }
+    copiar(r.texto, "Resposta " + rotuloResposta(r) + " copiada e registrada no caso.");
+    desenharListaRespostas();
   }
 
   function telaAssuntos(){
@@ -4676,7 +4772,6 @@ auto(true);
     var aguardando = !!item.descricao && ehPendente(item.descricao);
 
     return '' +
-    '<div class="linha-dado" style="margin-bottom:16px"><span>Aberto em</span><span>' + esc(item.data || "—") + '</span></div>' +
     '<div class="grade-2">' +
       '<div class="campo"><label for="at-assunto">Assunto</label>' +
         '<select id="at-assunto">' +
@@ -4692,14 +4787,16 @@ auto(true);
       '<label for="at-placa">Placa</label>' +
       '<input type="text" id="at-placa" maxlength="7" placeholder="ABC1D23" value="' + esc(String(item.placa || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase()) + '"></div>' +
     '<div id="at-repetidos"></div>' +
-    '<div class="campo"><label for="at-descricao">Descrição</label>' +
-      '<select id="at-descricao">' +
-        '<option value=""' + (item.descricao ? '' : ' selected') + '>Selecione</option>' +
+    '<div class="campo">' +
+      '<label>Descrição</label>' +
+      '<div class="desc-opcoes">' +
         state.descricoes.map(function(d){
-          return '<option value="' + esc(d.nome) + '"' + (item.descricao === d.nome ? ' selected' : '') + '>' +
-            esc(capitalizar(d.nome)) + (d.tipo === "pendente" ? " …" : "") + '</option>';
+          return '<button type="button" class="desc-opcao' + (item.descricao === d.nome ? " on" : "") + '" data-descricao="' + esc(d.nome) + '">' +
+            esc(capitalizar(d.nome)) + (d.tipo === "pendente" ? " …" : "") + '</button>';
         }).join('') +
-      '</select></div>' +
+      '</div>' +
+      '<input type="hidden" id="at-descricao" value="' + esc(item.descricao || "") + '">' +
+    '</div>' +
     blocoRespostaCaso(item) +
     '<div class="grade-2" id="at-aguardando" style="display:' + (aguardando ? "grid" : "none") + '">' +
       '<div class="campo"><label for="at-sac">SAC</label>' +
@@ -4711,15 +4808,13 @@ auto(true);
       '<textarea id="at-observacao" maxlength="600">' + esc(item.observacao || "") + '</textarea></div>' +
     blocoHistorico(item) +
     '<div id="at-feedback"></div>' +
-    '<div class="at-acoes">' +
-      '<button class="btn btn-principal" id="at-salvar">SALVAR</button>' +
-      '<button class="btn btn-neutro" id="at-atribuir">ATRIBUIR</button>' +
-    '</div>' +
-    '<div class="at-outro-linha"><button class="link" id="at-mostrar-outro">Atribuir a outra pessoa</button></div>' +
-    '<div id="at-outro" class="grade-2" style="display:none;margin-top:10px;align-items:end">' +
-      '<div class="campo" style="margin-bottom:0"><label for="at-destino">Pessoa</label>' +
+    '<div id="at-outro" class="at-atribuir" style="display:none">' +
+      '<div class="campo" style="margin-bottom:0"><label for="at-destino">Atribuir para</label>' +
         '<select id="at-destino">' + opcoesDestino() + '</select></div>' +
-      '<div class="campo" style="margin-bottom:0"><button class="btn btn-neutro btn-largo" id="at-confirmar-outro">Confirmar atribuição</button></div>' +
+    '</div>' +
+    '<div class="at-acoes">' +
+      '<button class="btn btn-neutro" id="at-atribuir">ATRIBUIR</button>' +
+      '<button class="btn btn-salvar" id="at-salvar">SALVAR</button>' +
     '</div>';
   }
 
@@ -4732,50 +4827,72 @@ auto(true);
     return !!descricao && !ehPendente(descricao);
   }
 
-  function opcoesRespostas(escolhida){
-    var atual = String(escolhida || "");
-    return '<option value="">Nenhuma</option>' + state.respostas.map(function(r){
-      var rotulo = rotuloResposta(r.numero) + " · " + r.titulo + (r.assunto ? " (" + r.assunto + ")" : "");
-      return '<option value="' + esc(r.numero) + '"' + (String(r.numero) === atual ? " selected" : "") + '>' + esc(rotulo) + '</option>';
-    }).join("");
+  function definirDescricao(nome){
+    var campo = document.getElementById("at-descricao");
+    if(!campo) return;
+    campo.value = nome || "";
+
+    cada("[data-descricao]", function(b){
+      b.classList.toggle("on", b.getAttribute("data-descricao") === campo.value && !!campo.value);
+    });
+
+    var bloco = document.getElementById("at-aguardando");
+    if(bloco) bloco.style.display = (campo.value && ehPendente(campo.value)) ? "grid" : "none";
+
+    var obrig = document.getElementById("at-cpf-obrig");
+    var livre = document.getElementById("at-cpf-livre");
+    if(obrig) obrig.style.display = dispensaCpf(campo.value) ? "none" : "inline";
+    if(livre) livre.style.display = dispensaCpf(campo.value) ? "inline" : "none";
+
+    var campoResposta = document.getElementById("at-resposta-campo");
+    if(campoResposta){
+      var mostrar = finalizaCaso(campo.value);
+      campoResposta.style.display = mostrar ? "block" : "none";
+      if(!mostrar){
+        var sel = document.getElementById("at-resposta");
+        if(sel) sel.value = "";
+      }
+      atualizarRespostaCaso();
+    }
   }
 
   function blocoRespostaCaso(item){
     var mostrar = finalizaCaso(item.descricao);
     var escolhida = String(item.resposta || "");
-    return '<div id="at-resposta-campo" style="display:' + (mostrar ? "block" : "none") + ';margin-bottom:16px">' +
-      '<div class="at-resposta-linha">' +
-        '<div class="campo">' +
-          '<label for="at-resposta">Resposta utilizada <span style="color:var(--ink-soft);font-weight:400">(opcional)</span></label>' +
-          '<select id="at-resposta">' + opcoesRespostas(escolhida) + '</select>' +
-        '</div>' +
-        '<button type="button" class="at-resposta-copiar" id="at-buscar-resposta"' +
-          ' aria-label="Procurar resposta pronta" title="Procurar resposta pronta">' + IC_BUSCA + 'Procurar</button>' +
-        '<button type="button" class="at-resposta-copiar" id="at-resposta-copiar"' + (escolhida ? '' : ' disabled') +
-          ' aria-label="Copiar texto da resposta" title="Copiar texto da resposta">' + IC_COPIAR + 'Copiar</button>' +
-      '</div>' +
-      '<div id="at-resposta-previa" class="resposta-texto" style="margin-top:10px;display:' + (escolhida ? "block" : "none") + '"></div>' +
+    return '<div class="campo" id="at-resposta-campo" style="display:' + (mostrar ? "block" : "none") + '">' +
+      '<label>Resposta utilizada</label>' +
+      '<div class="at-resposta-info" id="at-resposta-info"></div>' +
+      '<input type="hidden" id="at-resposta" value="' + esc(escolhida) + '">' +
+      '<div id="at-resposta-previa" class="resposta-texto" style="margin-top:10px;display:none"></div>' +
     '</div>';
   }
 
   function atualizarRespostaCaso(){
     var sel = document.getElementById("at-resposta");
-    var botao = document.getElementById("at-resposta-copiar");
+    var info = document.getElementById("at-resposta-info");
     var previa = document.getElementById("at-resposta-previa");
-    if(!sel || !botao || !previa) return;
+    if(!sel || !info || !previa) return;
     var r = acharRespostaPorNumero(sel.value);
-    botao.disabled = !r;
-    previa.style.display = r ? "block" : "none";
-    previa.textContent = r ? r.texto : "";
+    if(r){
+      info.innerHTML = '<span class="num-resposta">' + esc(rotuloResposta(r)) + '</span>' + esc(r.titulo);
+      info.classList.add("on");
+      previa.style.display = "block";
+      previa.textContent = r.texto;
+    } else {
+      info.textContent = "Nenhuma registrada — use a lupa no topo para escolher.";
+      info.classList.remove("on");
+      previa.style.display = "none";
+      previa.textContent = "";
+    }
   }
 
   function opcoesDestino(){
     var eu = ((state.currentUser && state.currentUser.username) || "").toLowerCase();
+    var saida = '<option value="' + esc(eu) + '" selected>Para mim — ' + esc(nomeExibido(state.currentUser)) + '</option>';
     var pessoas = state.users.filter(function(u){
       return u && u.username && u.active !== false && String(u.username).toLowerCase() !== eu;
     }).sort(function(a,b){ return nomeExibido(a).localeCompare(nomeExibido(b)); });
-    if(!pessoas.length) return '<option value="">Nenhum outro acesso ativo</option>';
-    return pessoas.map(function(u){
+    return saida + pessoas.map(function(u){
       return '<option value="' + esc(u.username) + '">' + esc(nomeExibido(u)) + '</option>';
     }).join("");
   }
@@ -4822,49 +4939,35 @@ auto(true);
       if(atendimento.painelRespostas) renderLateral();
     });
 
-    liga("at-descricao", "change", function(){
-      var obrig = document.getElementById("at-cpf-obrig");
-      var livre = document.getElementById("at-cpf-livre");
-      if(obrig) obrig.style.display = dispensaCpf(this.value) ? "none" : "inline";
-      if(livre) livre.style.display = dispensaCpf(this.value) ? "inline" : "none";
-      var bloco = document.getElementById("at-aguardando");
-      if(bloco) bloco.style.display = (this.value && ehPendente(this.value)) ? "grid" : "none";
-      var campoResposta = document.getElementById("at-resposta-campo");
-      if(campoResposta){
-        var mostrar = finalizaCaso(this.value);
-        campoResposta.style.display = mostrar ? "block" : "none";
-        if(!mostrar){
-          var sel = document.getElementById("at-resposta");
-          if(sel) sel.value = "";
-          atualizarRespostaCaso();
-          if(atendimento.painelRespostas){ atendimento.painelRespostas = false; renderLateral(); }
-        }
+    cada("[data-descricao]", function(b){
+      b.addEventListener("click", function(){
+        var campo = document.getElementById("at-descricao");
+        var nome = b.getAttribute("data-descricao");
+        definirDescricao((campo && campo.value === nome) ? "" : nome);
+      });
+    });
+
+    liga("at-historico-ver", "click", function(){
+      var area = document.getElementById("at-historico");
+      if(!area) return;
+      var aberto = area.hasAttribute("hidden");
+      if(aberto) area.removeAttribute("hidden"); else area.setAttribute("hidden", "");
+      this.textContent = (aberto ? "Esconder histórico" : "Ver histórico") + this.getAttribute("data-sufixo");
+    });
+
+    liga("at-atribuir", "click", function(){
+      var bloco = document.getElementById("at-outro");
+      if(!bloco) return;
+      var abrindo = bloco.style.display === "none";
+      bloco.style.display = abrindo ? "block" : "none";
+      this.classList.toggle("on", abrindo);
+      if(abrindo){
+        var sel = document.getElementById("at-destino");
+        if(sel) sel.focus();
       }
     });
 
-    liga("at-resposta", "change", atualizarRespostaCaso);
-    liga("at-buscar-resposta", "click", function(){
-      atendimento.painelRespostas = !atendimento.painelRespostas;
-      if(atendimento.painelRespostas) atendimento.painelAnalise = false;
-      renderLateral();
-    });
-    liga("at-resposta-copiar", "click", function(){
-      var sel = document.getElementById("at-resposta");
-      var r = sel ? acharRespostaPorNumero(sel.value) : null;
-      if(r) copiar(r.texto, "Resposta " + rotuloResposta(r.numero) + " copiada.");
-    });
-
-    liga("at-salvar", "click", function(){ salvarAtendimento(false); });
-    liga("at-atribuir", "click", function(){ salvarAtendimento(true); });
-    liga("at-mostrar-outro", "click", function(){
-      var bloco = document.getElementById("at-outro");
-      if(bloco) bloco.style.display = (bloco.style.display === "none") ? "grid" : "none";
-    });
-    liga("at-confirmar-outro", "click", function(){
-      var destino = document.getElementById("at-destino").value;
-      if(!destino){ toast("Não há outra pessoa ativa para atribuir."); return; }
-      salvarAtendimento(true, destino);
-    });
+    liga("at-salvar", "click", function(){ salvarAtendimento(); });
 
     atualizarRepetidos();
     atualizarRespostaCaso();
@@ -4956,18 +5059,21 @@ auto(true);
   function blocoHistorico(item){
     var lista = historicoDoItem(item);
     if(!lista.length) return "";
-    return '<div class="historico">' +
-      '<span class="historico-titulo">Histórico</span>' +
-      lista.slice(0, 12).map(function(h){
-        return '<div class="historico-linha">' +
-          '<span class="mono">' + esc(dataHora(h.em)) + '</span> · ' + esc(h.por || "—") +
-          (h.mudancas ? ' — ' + esc(h.mudancas) : '') +
-        '</div>';
-      }).join('') +
+    var sufixo = " (" + lista.length + ")";
+    return '<div class="historico-area">' +
+      '<button type="button" class="link" id="at-historico-ver" data-sufixo="' + sufixo + '">Ver histórico' + sufixo + '</button>' +
+      '<div class="historico" id="at-historico" hidden>' +
+        lista.slice(0, 12).map(function(h){
+          return '<div class="historico-linha">' +
+            '<span class="mono">' + esc(dataHora(h.em)) + '</span> · ' + esc(h.por || "—") +
+            (h.mudancas ? ' — ' + esc(h.mudancas) : '') +
+          '</div>';
+        }).join('') +
+      '</div>' +
     '</div>';
   }
 
-  async function salvarAtendimento(atribuir, destino){
+  async function salvarAtendimento(){
     var item = atendimento.item;
     if(!item) return;
     var feedback = document.getElementById("at-feedback");
@@ -4990,8 +5096,15 @@ auto(true);
       return;
     }
 
-    var guardaVinculos = !!destino || atribuir || (!!descricao && ehPendente(descricao));
-    var assumeDono = !!destino || atribuir;
+    var bloco = document.getElementById("at-outro");
+    var atribuindo = !!bloco && bloco.style.display !== "none";
+    var escolhido = atribuindo ? (document.getElementById("at-destino").value || "") : "";
+    var eu = meuUsuario();
+    var paraOutro = atribuindo && !!escolhido && String(escolhido).toLowerCase() !== eu;
+    var destino = paraOutro ? escolhido : "";
+    var atribuir = atribuindo;
+
+    var guardaVinculos = atribuindo || (!!descricao && ehPendente(descricao));
     var alvo = destino ? (acharUsuario(destino) || state.currentUser) : state.currentUser;
     var descricaoFinal = destino ? "" : descricao;
     var dados = {
@@ -5003,16 +5116,15 @@ auto(true);
       sac: guardaVinculos ? sac : "",
       sustentacao: guardaVinculos ? sustentacao : "",
       resposta: destino ? "" : resposta,
-      responsavel: assumeDono ? ((alvo && alvo.username) || "") : "",
+      responsavel: atribuir ? ((alvo && alvo.username) || "") : "",
       atualizadoEm: new Date().toISOString()
     };
 
-    if(assumeDono || descricaoFinal) dados.nome = nomeExibido(alvo);
+    if(atribuir || descricaoFinal) dados.nome = nomeExibido(alvo);
 
     var salvar = document.getElementById("at-salvar");
     var atribui = document.getElementById("at-atribuir");
-    var outro = document.getElementById("at-confirmar-outro");
-    salvar.disabled = true; atribui.disabled = true; if(outro) outro.disabled = true;
+    salvar.disabled = true; if(atribui) atribui.disabled = true;
 
     var mudancas = resumoMudancas(item, dados);
 
@@ -5027,15 +5139,16 @@ auto(true);
         } catch(e){}
       }
       for(var k in dados){ if(Object.prototype.hasOwnProperty.call(dados,k)) item[k] = dados[k]; }
-      toast(destino ? ("Caso atribuído a " + nomeExibido(alvo) + ".") : (atribuir ? "Caso atribuído a você." : "Caso salvo, sem atribuição."));
+      toast(destino ? ("Caso salvo e atribuído a " + nomeExibido(alvo) + ".")
+        : (atribuir ? "Caso salvo e atribuído a você." : "Caso salvo, sem atribuição."));
     } catch(err){
-      salvar.disabled = false; atribui.disabled = false; if(outro) outro.disabled = false;
+      salvar.disabled = false; if(atribui) atribui.disabled = false;
       feedback.innerHTML = '<div class="aviso aviso-erro">' + esc(msgBanco(err)) + '</div>';
       return;
     }
 
-    if(!atribuir && !destino && !descricao){
-      salvar.disabled = false; atribui.disabled = false; if(outro) outro.disabled = false;
+    if(!atribuir && !descricao){
+      salvar.disabled = false; if(atribui) atribui.disabled = false;
       renderAtendimento();
       render();
       return;
@@ -5118,9 +5231,9 @@ auto(true);
     }).join('');
 
     var formulario = !admin ? '' : '<div class="cartao">' +
-      '<h2>' + (edit && edit.id
-        ? ("Editar resposta " + (edit.numero ? rotuloResposta(edit.numero) : ""))
-        : ("Nova resposta · " + rotuloResposta(proximoNumeroResposta()))) + '</h2>' +
+      '<h2 id="resposta-titulo-cartao">' + (edit && edit.id
+        ? ("Editar resposta " + (edit.numero ? rotuloResposta(edit) : ""))
+        : ("Nova resposta · " + rotuloPrevisto(edit ? edit.assunto : "", proximoNumeroResposta()))) + '</h2>' +
       '<div class="grade-2">' +
         '<div class="campo"><label for="resposta-titulo">Título</label>' +
           '<input type="text" id="resposta-titulo" maxlength="140" placeholder="Ex.: CNH — segunda via em análise" value="' + esc(edit ? edit.titulo : "") + '"></div>' +
@@ -5172,7 +5285,7 @@ auto(true);
       if(edit && edit.id) await db.ref("respostas/" + edit.id).set(dados);
       else await db.ref("respostas").push(dados);
       state.respostaEdit = null;
-      toast(edit && edit.id ? "Resposta atualizada." : ("Resposta salva como " + rotuloResposta(dados.numero) + "."));
+      toast(edit && edit.id ? "Resposta atualizada." : ("Resposta salva como " + rotuloPrevisto(dados.assunto, dados.numero) + "."));
       render();
     } catch(err){
       botao.disabled = false;
@@ -5180,10 +5293,24 @@ auto(true);
     }
   }
 
-  function rotuloResposta(numero){
-    var n = Number(numero) || 0;
+  function letraDoAssunto(assunto){
+    var a = normalizarBusca(assunto);
+    if(!a) return "G";
+    var letra = a.replace(/[^a-z]/g, "").charAt(0);
+    return (letra || "G").toUpperCase();
+  }
+
+  function rotuloResposta(valor){
+    var r = (valor && typeof valor === "object") ? valor : acharRespostaPorNumero(valor);
+    var n = r ? Number(r.numero) : (Number(valor) || 0);
     if(!n) return "";
-    return "R-" + (n < 100 ? ("00" + n).slice(-3) : String(n));
+    var numero = (n < 100 ? ("00" + n).slice(-3) : String(n));
+    return (r ? letraDoAssunto(r.assunto) : "R") + "-" + numero;
+  }
+
+  function rotuloPrevisto(assunto, numero){
+    var n = Number(numero) || 0;
+    return letraDoAssunto(assunto) + "-" + (n < 100 ? ("00" + n).slice(-3) : String(n));
   }
 
   function proximoNumeroResposta(){
@@ -5618,6 +5745,14 @@ auto(true);
     liga("copiar-credencial", "click", copiarCredencial);
     liga("conta-salvar-senha", "click", trocarMinhaSenha);
     liga("resposta-salvar", "click", salvarResposta);
+    liga("resposta-assunto", "change", function(){
+      var h2 = document.getElementById("resposta-titulo-cartao");
+      var edit = state.respostaEdit;
+      if(!h2) return;
+      h2.textContent = (edit && edit.id)
+        ? ("Editar resposta " + rotuloPrevisto(this.value, edit.numero))
+        : ("Nova resposta · " + rotuloPrevisto(this.value, proximoNumeroResposta()));
+    });
     liga("resposta-cancelar", "click", function(){ state.respostaEdit = null; render(); });
     liga("resposta-busca", "input", function(){ state.respostaBusca = this.value; });
     liga("resposta-busca", "change", function(){ state.respostaBusca = this.value; render(); });
