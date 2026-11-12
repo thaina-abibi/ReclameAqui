@@ -520,6 +520,33 @@
   .resp-card:focus-visible{outline:2px solid var(--olive); outline-offset:2px;}
   .resp-card-marca{margin-top:9px; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--amber-deep);}
 
+  .at-esquerda{
+    flex:0 0 360px; width:360px; border-right:1px solid var(--line); background:var(--paper);
+    padding:20px 22px; overflow:auto; max-height:calc(100dvh - 140px);
+  }
+  #popup-atendimento.largo-esq{width:min(1020px,calc(100vw - 32px));}
+  #popup-atendimento.largo.largo-esq{width:min(1480px,calc(100vw - 32px));}
+  .hist-item{border-left:2px solid var(--line-strong); padding:0 0 14px 12px; margin-bottom:2px;}
+  .hist-item:last-child{padding-bottom:0;}
+  .hist-topo{display:flex; justify-content:space-between; gap:10px; font-size:11.5px; color:var(--ink-soft); margin-bottom:4px;}
+  .hist-mudancas{font-size:13px; line-height:1.5; color:var(--ink);}
+  .at-historico-btn{position:relative; padding:11px 16px; font-size:17px; line-height:1;}
+  .at-historico-btn.on{border-color:var(--amber); color:var(--amber-deep);}
+  .at-historico-btn .hist-num{
+    position:absolute; top:-8px; left:50%; transform:translateX(-50%);
+    background:var(--amber); color:#1a1c05; border-radius:100px; padding:0 7px;
+    font:700 11px var(--font-mono); line-height:17px;
+  }
+  .at-acoes .at-historico-btn{flex:0 0 auto; min-width:0;}
+  .resp-grupo{
+    font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft);
+    margin:14px 0 8px; padding-bottom:5px; border-bottom:1px solid var(--line);
+  }
+  #at-lista-respostas .resp-grupo:first-child{margin-top:0;}
+  @media (max-width:980px){
+    .at-esquerda{flex:1 1 auto; width:auto; border-right:0; border-bottom:1px solid var(--line); max-height:none;}
+    #popup-atendimento.largo-esq, #popup-atendimento.largo.largo-esq{width:min(640px,calc(100vw - 32px));}
+  }
   .an-cabeca{margin-bottom:14px;}
   .an-titulo{font-family:var(--font-display); font-weight:700; font-size:15px; line-height:1.35; margin-bottom:8px;}
   .an-selos{display:flex; flex-wrap:wrap; gap:6px;}
@@ -544,6 +571,7 @@
   .at-copiar{background:none;border:1px solid var(--line-strong);color:var(--ink-soft);border-radius:7px;padding:5px 6px;cursor:pointer;display:flex;align-items:center;}
   .at-copiar:hover{color:var(--amber-deep);border-color:var(--amber);}
   .at-copiar svg{width:16px;height:16px;}
+  .at-copiar[hidden], .btn-icone[hidden], .at-acoes-topo [hidden]{display:none !important;}
   .resposta-item{border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:12px; background:var(--paper);}
   .resposta-item:last-child{margin-bottom:0;}
   .resposta-topo{display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap; margin-bottom:10px;}
@@ -1876,7 +1904,7 @@ auto(true);
       } else {
         desligarBase();
         ["popup-coleta","coleta-dock","popup-atendimento","doca-atendimento","popup-editar"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
-        atendimento = { assuntos: [], item: null, minimizados: [], painelAnalise: false, painelRespostas: false, buscaResposta: "", soDoAssunto: true };
+        atendimento = { assuntos: [], item: null, minimizados: [], painelAnalise: false, painelRespostas: false, painelHistorico: false, ultimoId: "", buscaResposta: "" };
         state.users = [];
         state.logs = [];
         state.currentUser = null;
@@ -4390,7 +4418,7 @@ auto(true);
     }
   }
 
-  var atendimento = { assuntos: [], item: null, minimizados: [], painelAnalise: false, painelRespostas: false, buscaResposta: "", soDoAssunto: true };
+  var atendimento = { assuntos: [], item: null, minimizados: [], painelAnalise: false, painelRespostas: false, painelHistorico: false, ultimoId: "", buscaResposta: "" };
 
   function ordenarCasos(lista){
     return lista.slice().sort(function(a,b){
@@ -4556,7 +4584,8 @@ auto(true);
           '<button class="btn btn-neutro btn-mini" id="minimizar-atendimento" aria-label="Minimizar" title="Minimizar">−</button>' +
           '<button class="btn btn-neutro btn-mini" id="fechar-atendimento" aria-label="Fechar" title="Fechar">×</button>' +
         '</div></div>' +
-      '<div class="at-corpo"><div class="at-miolo"></div><aside class="at-lateral" hidden></aside></div>';
+      '<div class="at-corpo"><aside class="at-esquerda" hidden></aside>' +
+        '<div class="at-miolo"></div><aside class="at-lateral" hidden></aside></div>';
     document.body.appendChild(d);
 
     document.getElementById("titulo-atendimento").onclick = function(){
@@ -4599,9 +4628,18 @@ auto(true);
       titulo.disabled = true;
       dataTopo.textContent = "";
       lupa.hidden = true;
+      atendimento.ultimoId = "";
       atendimento.painelRespostas = false;
+      atendimento.painelHistorico = false;
       corpo.innerHTML = telaAssuntos();
     } else {
+      if(String(atendimento.ultimoId || "") !== String(atendimento.item.id)){
+        atendimento.ultimoId = String(atendimento.item.id);
+        atendimento.painelRespostas = false;
+        atendimento.painelAnalise = false;
+        atendimento.painelHistorico = false;
+        atendimento.buscaResposta = "";
+      }
       repetidosExpandido = false;
       titulo.textContent = atendimento.item.id;
       titulo.classList.add("com-id");
@@ -4611,6 +4649,7 @@ auto(true);
       corpo.innerHTML = telaCaso(atendimento.item);
     }
     renderLateral();
+    renderHistoricoLateral();
     ligarAtendimento();
   }
 
@@ -4658,25 +4697,12 @@ auto(true);
       '<div class="campo" style="margin-bottom:10px">' +
         '<input type="text" id="at-busca-resposta" placeholder="Buscar por número, título ou texto" value="' + esc(atendimento.buscaResposta) + '">' +
       '</div>' +
-      '<div class="abas" style="margin-bottom:14px">' +
-        '<button class="aba aba-verde' + (atendimento.soDoAssunto ? " on" : "") + '" data-resp-filtro="assunto">' +
-          esc(assunto || "Do assunto") + '</button>' +
-        '<button class="aba aba-azul' + (atendimento.soDoAssunto ? "" : " on") + '" data-resp-filtro="todas">Todas</button>' +
-      '</div>' +
       '<div id="at-lista-respostas"></div>';
 
     liga("at-fechar-lateral", "click", function(){ atendimento.painelRespostas = false; renderLateral(); });
     liga("at-busca-resposta", "input", function(){
       atendimento.buscaResposta = this.value;
       desenharListaRespostas();
-    });
-    cada("[data-resp-filtro]", function(b){
-      b.addEventListener("click", function(){
-        atendimento.soDoAssunto = (b.getAttribute("data-resp-filtro") === "assunto");
-        renderLateral();
-        var campo = document.getElementById("at-busca-resposta");
-        if(campo) campo.focus();
-      });
     });
     desenharListaRespostas();
   }
@@ -4700,11 +4726,20 @@ auto(true);
     var assunto = (document.getElementById("at-assunto") || {}).value || (atendimento.item && atendimento.item.assunto) || "";
     var termos = normalizarBusca(atendimento.buscaResposta).split(/\s+/).filter(Boolean);
 
+    function ordemDaResposta(r){
+      if(!r.assunto) return 0;
+      if(assunto && r.assunto === assunto) return 1;
+      return 2;
+    }
+
     var lista = state.respostas.filter(function(r){
-      if(atendimento.soDoAssunto && assunto && r.assunto && r.assunto !== assunto) return false;
       if(!termos.length) return true;
       var alvo = normalizarBusca(rotuloResposta(r) + " " + r.numero + " " + r.titulo + " " + r.assunto + " " + r.texto);
       return termos.every(function(t){ return alvo.indexOf(t) !== -1; });
+    }).slice().sort(function(a, b){
+      var oa = ordemDaResposta(a), ob = ordemDaResposta(b);
+      if(oa !== ob) return oa - ob;
+      return (Number(a.numero) || 0) - (Number(b.numero) || 0);
     });
 
     if(!lista.length){
@@ -4713,10 +4748,19 @@ auto(true);
       return;
     }
 
+    var grupoAnterior = -1;
+    var rotulosGrupo = ["Gerais", assunto || "Do assunto", "Outros assuntos"];
+
     area.innerHTML = lista.map(function(r){
+      var grupo = ordemDaResposta(r);
+      var cabecalho = "";
+      if(grupo !== grupoAnterior){
+        grupoAnterior = grupo;
+        cabecalho = '<div class="resp-grupo">' + esc(rotulosGrupo[grupo]) + '</div>';
+      }
       var ativa = String(r.numero) === escolhida;
       var trecho = String(r.texto || "").replace(/\s+/g, " ").slice(0, 170);
-      return '<button type="button" class="resp-card' + (ativa ? " on" : "") + '" data-usar-resposta="' + esc(r.numero) + '"' +
+      return cabecalho + '<button type="button" class="resp-card' + (ativa ? " on" : "") + '" data-usar-resposta="' + esc(r.numero) + '"' +
         ' title="Copiar o texto e registrar esta resposta no caso">' +
         '<div class="resp-card-topo">' +
           '<strong><span class="num-resposta">' + esc(rotuloResposta(r)) + '</span>' + esc(r.titulo) + '</strong>' +
@@ -4806,7 +4850,6 @@ auto(true);
     '</div>' +
     '<div class="campo"><label for="at-observacao">Observação</label>' +
       '<textarea id="at-observacao" maxlength="600">' + esc(item.observacao || "") + '</textarea></div>' +
-    blocoHistorico(item) +
     '<div id="at-feedback"></div>' +
     '<div id="at-outro" class="at-atribuir" style="display:none">' +
       '<div class="campo" style="margin-bottom:0"><label for="at-destino">Atribuir para</label>' +
@@ -4814,6 +4857,7 @@ auto(true);
     '</div>' +
     '<div class="at-acoes">' +
       '<button class="btn btn-neutro" id="at-atribuir">ATRIBUIR</button>' +
+      botaoHistorico(item) +
       '<button class="btn btn-salvar" id="at-salvar">SALVAR</button>' +
     '</div>';
   }
@@ -4948,11 +4992,9 @@ auto(true);
     });
 
     liga("at-historico-ver", "click", function(){
-      var area = document.getElementById("at-historico");
-      if(!area) return;
-      var aberto = area.hasAttribute("hidden");
-      if(aberto) area.removeAttribute("hidden"); else area.setAttribute("hidden", "");
-      this.textContent = (aberto ? "Esconder histórico" : "Ver histórico") + this.getAttribute("data-sufixo");
+      atendimento.painelHistorico = !atendimento.painelHistorico;
+      this.classList.toggle("on", atendimento.painelHistorico);
+      renderHistoricoLateral();
     });
 
     liga("at-atribuir", "click", function(){
@@ -5056,21 +5098,44 @@ auto(true);
     });
   }
 
-  function blocoHistorico(item){
+  function botaoHistorico(item){
     var lista = historicoDoItem(item);
     if(!lista.length) return "";
-    var sufixo = " (" + lista.length + ")";
-    return '<div class="historico-area">' +
-      '<button type="button" class="link" id="at-historico-ver" data-sufixo="' + sufixo + '">Ver histórico' + sufixo + '</button>' +
-      '<div class="historico" id="at-historico" hidden>' +
-        lista.slice(0, 12).map(function(h){
-          return '<div class="historico-linha">' +
-            '<span class="mono">' + esc(dataHora(h.em)) + '</span> · ' + esc(h.por || "—") +
-            (h.mudancas ? ' — ' + esc(h.mudancas) : '') +
-          '</div>';
-        }).join('') +
+    return '<button type="button" class="btn btn-neutro at-historico-btn' + (atendimento.painelHistorico ? " on" : "") + '"' +
+      ' id="at-historico-ver" aria-label="Ver histórico de alterações" title="Ver histórico de alterações">' +
+      '<span class="hist-num">' + lista.length + '</span>' +
+      '<span class="hist-livro" aria-hidden="true">📖</span>' +
+    '</button>';
+  }
+
+  function renderHistoricoLateral(){
+    var d = document.getElementById("popup-atendimento");
+    if(!d) return;
+    var area = d.querySelector(".at-esquerda");
+    if(!area) return;
+
+    var lista = atendimento.item ? historicoDoItem(atendimento.item) : [];
+    var aberto = !!atendimento.item && atendimento.painelHistorico && lista.length > 0;
+    area.hidden = !aberto;
+    d.classList.toggle("largo-esq", aberto);
+    if(!aberto){ area.innerHTML = ""; return; }
+
+    area.innerHTML = '<div class="at-lateral-topo"><strong>Histórico</strong>' +
+        '<button class="btn btn-neutro btn-mini" id="at-fechar-historico" aria-label="Fechar" title="Fechar">×</button>' +
       '</div>' +
-    '</div>';
+      lista.map(function(h){
+        return '<div class="hist-item">' +
+          '<div class="hist-topo"><span class="mono">' + esc(dataHora(h.em)) + '</span><span>' + esc(h.por || "—") + '</span></div>' +
+          (h.mudancas ? '<div class="hist-mudancas">' + esc(h.mudancas) + '</div>' : '') +
+        '</div>';
+      }).join("");
+
+    liga("at-fechar-historico", "click", function(){
+      atendimento.painelHistorico = false;
+      renderHistoricoLateral();
+      var botao = document.getElementById("at-historico-ver");
+      if(botao) botao.classList.remove("on");
+    });
   }
 
   async function salvarAtendimento(){
@@ -6201,6 +6266,8 @@ auto(true);
     atendimento.minimizados = [];
     atendimento.painelAnalise = false;
     atendimento.painelRespostas = false;
+    atendimento.painelHistorico = false;
+    atendimento.ultimoId = "";
     var d = document.getElementById("popup-atendimento");
     if(d){ if(d.open) d.close(); d.remove(); }
     var doca = document.getElementById("doca-atendimento");
@@ -6477,7 +6544,7 @@ auto(true);
   async function sair(){
     state.error = "";
     ["popup-coleta","coleta-dock","popup-atendimento","doca-atendimento","popup-editar"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
-        atendimento = { assuntos: [], item: null, minimizados: [], painelAnalise: false, painelRespostas: false, buscaResposta: "", soDoAssunto: true };
+        atendimento = { assuntos: [], item: null, minimizados: [], painelAnalise: false, painelRespostas: false, painelHistorico: false, ultimoId: "", buscaResposta: "" };
     if(ehMinhaSessao()) await finalizarUso(true);
     if(auth) auth.signOut();
   }
