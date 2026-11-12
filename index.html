@@ -459,6 +459,18 @@
     padding:20px 22px; overflow:auto; max-height:calc(100dvh - 140px);
   }
   .at-lateral-topo{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px;}
+  .resp-card{
+    border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:10px;
+    background:var(--surface); transition:border-color .14s, transform .14s;
+  }
+  .resp-card:hover{border-color:var(--amber);}
+  .resp-card.on{border-color:var(--gold); background:var(--amber-soft);}
+  .resp-card-topo{display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:8px;}
+  .resp-card-topo strong{font-size:13.5px; line-height:1.35;}
+  .resp-card-assunto{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); white-space:nowrap;}
+  .resp-card-texto{font-size:12.5px; color:var(--ink-soft); line-height:1.5;}
+  #at-lista-respostas{max-height:none;}
+  .at-resposta-copiar.on{border-color:var(--amber); color:var(--amber-deep);}
   .at-lateral-topo strong{font-family:var(--font-display); font-size:15px;}
   #popup-atendimento.largo{width:min(1140px,calc(100vw - 32px));}
   .at-mais-analise{font:700 15px var(--font-display); line-height:1; padding:3px 9px;}
@@ -490,7 +502,8 @@
     border-radius:100px; padding:1px 8px; margin-right:8px;
   }
   html.tema-claro .num-analise{background:rgba(35,94,155,0.10);}
-  .at-resposta-linha{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:end;}
+  .at-resposta-linha{display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:10px; align-items:end;}
+  @media (max-width:560px){ .at-resposta-linha{grid-template-columns:1fr;} }
   .at-resposta-linha .campo{margin-bottom:0;}
   .at-resposta-copiar{
     display:inline-flex; align-items:center; gap:7px; padding:11px 13px; border-radius:8px; cursor:pointer;
@@ -1804,7 +1817,7 @@ auto(true);
       } else {
         desligarBase();
         ["popup-coleta","coleta-dock","popup-atendimento","doca-atendimento","popup-editar"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
-        atendimento = { assuntos: [], item: null, minimizados: [], painelAnalise: false };
+        atendimento = { assuntos: [], item: null, minimizados: [], painelAnalise: false, painelRespostas: false, buscaResposta: "", soDoAssunto: true };
         state.users = [];
         state.logs = [];
         state.currentUser = null;
@@ -4301,7 +4314,7 @@ auto(true);
     }
   }
 
-  var atendimento = { assuntos: [], item: null, minimizados: [], painelAnalise: false };
+  var atendimento = { assuntos: [], item: null, minimizados: [], painelAnalise: false, painelRespostas: false, buscaResposta: "", soDoAssunto: true };
 
   function ordenarCasos(lista){
     return lista.slice().sort(function(a,b){
@@ -4474,7 +4487,8 @@ auto(true);
     };
     document.getElementById("at-abrir-analise").onclick = function(){
       atendimento.painelAnalise = !atendimento.painelAnalise;
-      renderLateralAnalise();
+      if(atendimento.painelAnalise) atendimento.painelRespostas = false;
+      renderLateral();
     };
     document.getElementById("minimizar-atendimento").onclick = function(){
       guardarNaDoca(atendimento.item);
@@ -4510,44 +4524,137 @@ auto(true);
       copiarBtn.hidden = false;
       corpo.innerHTML = telaCaso(atendimento.item);
     }
-    renderLateralAnalise();
+    renderLateral();
     ligarAtendimento();
   }
 
-  function renderLateralAnalise(){
+  function renderLateral(){
     var d = document.getElementById("popup-atendimento");
     if(!d) return;
     var lado = d.querySelector(".at-lateral");
-    var botao = d.querySelector("#at-abrir-analise");
-    if(!lado || !botao) return;
+    var botaoMais = d.querySelector("#at-abrir-analise");
+    var botaoBusca = document.getElementById("at-buscar-resposta");
+    if(!lado) return;
 
     var analise = atendimento.item ? acharAnalise(atendimento.item.id) : null;
-    if(!analise){
-      atendimento.painelAnalise = false;
-      botao.hidden = true;
-      lado.hidden = true;
-      lado.innerHTML = "";
-      d.classList.remove("largo");
-      return;
+    if(botaoMais){
+      if(!analise){
+        atendimento.painelAnalise = false;
+        botaoMais.hidden = true;
+      } else {
+        botaoMais.hidden = false;
+        botaoMais.textContent = atendimento.painelAnalise ? "−" : "+";
+        botaoMais.title = atendimento.painelAnalise ? "Fechar o conteúdo coletado" : "Ver conteúdo coletado da reclamação";
+        botaoMais.classList.toggle("on", atendimento.painelAnalise);
+      }
     }
+    if(botaoBusca) botaoBusca.classList.toggle("on", atendimento.painelRespostas);
 
-    botao.hidden = false;
-    botao.textContent = atendimento.painelAnalise ? "−" : "+";
-    botao.title = atendimento.painelAnalise ? "Fechar o conteúdo coletado" : "Ver conteúdo coletado da reclamação";
-    botao.classList.toggle("on", atendimento.painelAnalise);
-    lado.hidden = !atendimento.painelAnalise;
-    d.classList.toggle("largo", atendimento.painelAnalise);
-    lado.innerHTML = atendimento.painelAnalise
-      ? '<div class="at-lateral-topo"><strong>Conteúdo coletado</strong>' +
-          '<button class="btn btn-neutro btn-mini" id="at-copiar-analise">Copiar texto</button></div>' +
-        detalheAnalise(analise)
-      : "";
+    var aberto = atendimento.painelAnalise || atendimento.painelRespostas;
+    lado.hidden = !aberto;
+    d.classList.toggle("largo", aberto);
+    if(!aberto){ lado.innerHTML = ""; return; }
 
     if(atendimento.painelAnalise){
+      lado.innerHTML = '<div class="at-lateral-topo"><strong>Conteúdo coletado</strong>' +
+        '<div class="acoes">' +
+          '<button class="btn btn-neutro btn-mini" id="at-copiar-analise">Copiar texto</button>' +
+          '<button class="btn btn-neutro btn-mini" id="at-fechar-lateral" aria-label="Fechar" title="Fechar">×</button>' +
+        '</div></div>' + detalheAnalise(analise);
       liga("at-copiar-analise", "click", function(){
         copiar(textoDaAnalise(analise), "Texto da reclamação " + analise.id + " copiado.");
       });
+      liga("at-fechar-lateral", "click", function(){ atendimento.painelAnalise = false; renderLateral(); });
+      return;
     }
+
+    var assunto = (document.getElementById("at-assunto") || {}).value || (atendimento.item && atendimento.item.assunto) || "";
+    lado.innerHTML = '<div class="at-lateral-topo"><strong>Respostas prontas</strong>' +
+        '<button class="btn btn-neutro btn-mini" id="at-fechar-lateral" aria-label="Fechar" title="Fechar">×</button>' +
+      '</div>' +
+      '<div class="campo" style="margin-bottom:10px">' +
+        '<input type="text" id="at-busca-resposta" placeholder="Buscar por número, título ou texto" value="' + esc(atendimento.buscaResposta) + '">' +
+      '</div>' +
+      '<div class="abas" style="margin-bottom:14px">' +
+        '<button class="aba aba-verde' + (atendimento.soDoAssunto ? " on" : "") + '" data-resp-filtro="assunto">' +
+          esc(assunto || "Do assunto") + '</button>' +
+        '<button class="aba aba-azul' + (atendimento.soDoAssunto ? "" : " on") + '" data-resp-filtro="todas">Todas</button>' +
+      '</div>' +
+      '<div id="at-lista-respostas"></div>';
+
+    liga("at-fechar-lateral", "click", function(){ atendimento.painelRespostas = false; renderLateral(); });
+    liga("at-busca-resposta", "input", function(){
+      atendimento.buscaResposta = this.value;
+      desenharListaRespostas();
+    });
+    cada("[data-resp-filtro]", function(b){
+      b.addEventListener("click", function(){
+        atendimento.soDoAssunto = (b.getAttribute("data-resp-filtro") === "assunto");
+        renderLateral();
+        var campo = document.getElementById("at-busca-resposta");
+        if(campo) campo.focus();
+      });
+    });
+    desenharListaRespostas();
+  }
+
+  function desenharListaRespostas(){
+    var area = document.getElementById("at-lista-respostas");
+    if(!area) return;
+
+    var sel = document.getElementById("at-resposta");
+    var escolhida = sel ? String(sel.value || "") : "";
+    var assunto = (document.getElementById("at-assunto") || {}).value || (atendimento.item && atendimento.item.assunto) || "";
+    var termos = normalizarBusca(atendimento.buscaResposta).split(/\s+/).filter(Boolean);
+
+    var lista = state.respostas.filter(function(r){
+      if(atendimento.soDoAssunto && assunto && r.assunto && r.assunto !== assunto) return false;
+      if(!termos.length) return true;
+      var alvo = normalizarBusca(rotuloResposta(r.numero) + " " + r.numero + " " + r.titulo + " " + r.assunto + " " + r.texto);
+      return termos.every(function(t){ return alvo.indexOf(t) !== -1; });
+    });
+
+    if(!lista.length){
+      area.innerHTML = '<div class="vazio" style="padding:22px 10px">' +
+        (state.respostas.length ? "Nenhuma resposta encontrada com esse filtro." : "Nenhuma resposta cadastrada ainda.") + '</div>';
+      return;
+    }
+
+    area.innerHTML = lista.map(function(r){
+      var ativa = String(r.numero) === escolhida;
+      var trecho = String(r.texto || "").replace(/\s+/g, " ").slice(0, 150);
+      return '<div class="resp-card' + (ativa ? " on" : "") + '">' +
+        '<div class="resp-card-topo">' +
+          '<strong><span class="num-resposta">' + esc(rotuloResposta(r.numero)) + '</span>' + esc(r.titulo) + '</strong>' +
+          '<span class="resp-card-assunto">' + esc(r.assunto || "Geral") + '</span>' +
+        '</div>' +
+        '<div class="resp-card-texto">' + esc(trecho) + (String(r.texto || "").length > 150 ? "…" : "") + '</div>' +
+        '<div class="acoes" style="margin-top:10px">' +
+          '<button class="btn ' + (ativa ? "btn-neutro" : "btn-principal") + ' btn-mini" style="width:auto" data-usar-resposta="' + esc(r.numero) + '">' +
+            (ativa ? "Selecionada" : "Usar esta") + '</button>' +
+          '<button class="btn btn-neutro btn-mini" data-copiar-pronta="' + esc(r.numero) + '">Copiar</button>' +
+        '</div>' +
+      '</div>';
+    }).join("");
+
+    cada("[data-usar-resposta]", function(b){
+      b.addEventListener("click", function(){
+        var numero = b.getAttribute("data-usar-resposta");
+        var campo = document.getElementById("at-resposta");
+        if(!campo){ toast("Escolha uma descrição que finaliza o caso para registrar a resposta."); return; }
+        campo.value = numero;
+        atualizarRespostaCaso();
+        var r = acharRespostaPorNumero(numero);
+        copiar(r ? r.texto : "", "Resposta " + rotuloResposta(numero) + " selecionada e copiada.");
+        desenharListaRespostas();
+      });
+    });
+    cada("[data-copiar-pronta]", function(b){
+      b.addEventListener("click", function(){
+        var r = acharRespostaPorNumero(b.getAttribute("data-copiar-pronta"));
+        if(r) copiar(r.texto, "Resposta " + rotuloResposta(r.numero) + " copiada.");
+      });
+    });
   }
 
   function telaAssuntos(){
@@ -4642,6 +4749,8 @@ auto(true);
           '<label for="at-resposta">Resposta utilizada <span style="color:var(--ink-soft);font-weight:400">(opcional)</span></label>' +
           '<select id="at-resposta">' + opcoesRespostas(escolhida) + '</select>' +
         '</div>' +
+        '<button type="button" class="at-resposta-copiar" id="at-buscar-resposta"' +
+          ' aria-label="Procurar resposta pronta" title="Procurar resposta pronta">' + IC_BUSCA + 'Procurar</button>' +
         '<button type="button" class="at-resposta-copiar" id="at-resposta-copiar"' + (escolhida ? '' : ' disabled') +
           ' aria-label="Copiar texto da resposta" title="Copiar texto da resposta">' + IC_COPIAR + 'Copiar</button>' +
       '</div>' +
@@ -4710,6 +4819,7 @@ auto(true);
     liga("at-assunto", "change", function(){
       var campo = document.getElementById("at-placa-campo");
       if(campo) campo.style.display = pedePlaca(this.value) ? "block" : "none";
+      if(atendimento.painelRespostas) renderLateral();
     });
 
     liga("at-descricao", "change", function(){
@@ -4727,11 +4837,17 @@ auto(true);
           var sel = document.getElementById("at-resposta");
           if(sel) sel.value = "";
           atualizarRespostaCaso();
+          if(atendimento.painelRespostas){ atendimento.painelRespostas = false; renderLateral(); }
         }
       }
     });
 
     liga("at-resposta", "change", atualizarRespostaCaso);
+    liga("at-buscar-resposta", "click", function(){
+      atendimento.painelRespostas = !atendimento.painelRespostas;
+      if(atendimento.painelRespostas) atendimento.painelAnalise = false;
+      renderLateral();
+    });
     liga("at-resposta-copiar", "click", function(){
       var sel = document.getElementById("at-resposta");
       var r = sel ? acharRespostaPorNumero(sel.value) : null;
@@ -5949,6 +6065,7 @@ auto(true);
     atendimento.assuntos = [];
     atendimento.minimizados = [];
     atendimento.painelAnalise = false;
+    atendimento.painelRespostas = false;
     var d = document.getElementById("popup-atendimento");
     if(d){ if(d.open) d.close(); d.remove(); }
     var doca = document.getElementById("doca-atendimento");
@@ -6225,7 +6342,7 @@ auto(true);
   async function sair(){
     state.error = "";
     ["popup-coleta","coleta-dock","popup-atendimento","doca-atendimento","popup-editar"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
-        atendimento = { assuntos: [], item: null, minimizados: [], painelAnalise: false };
+        atendimento = { assuntos: [], item: null, minimizados: [], painelAnalise: false, painelRespostas: false, buscaResposta: "", soDoAssunto: true };
     if(ehMinhaSessao()) await finalizarUso(true);
     if(auth) auth.signOut();
   }
