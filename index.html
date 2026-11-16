@@ -688,6 +688,7 @@
   }
   .sugestao-id:hover{text-decoration:underline; text-underline-offset:6px;}
   .sugestao-selo{display:inline-block; margin:0 auto 8px; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; background:var(--amber-soft); color:var(--amber-deep); border:1px solid var(--line-strong);}
+  .sugestao-dica{margin-top:10px; font-size:12px; color:var(--ink-soft);}
   .sugestao-rodape{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:12px;}
   .doca-analises{position:fixed; right:18px; bottom:18px; z-index:100; display:flex; flex-direction:column; gap:8px; max-width:220px;}
   .doca-analises button{
@@ -3965,9 +3966,39 @@ auto(true);
     return achados;
   }
 
-  function sugerirProtocolo(novo){
+  function atualizarFiltrosSugestao(){
+    var cm = document.getElementById("sugestao-mes");
+    if(cm){
+      var mes = cm.value;
+      cm.innerHTML = '<option value="">Todos os meses</option>' + mesesDaBase().map(function(m){
+        return '<option value="' + m + '">' + rotuloMes(m) + '</option>';
+      }).join("");
+      cm.value = mes;
+      if(cm.value !== mes) cm.value = "";
+    }
+    var cp = document.getElementById("sugestao-pessoa");
+    if(cp){
+      var pessoa = cp.value;
+      cp.innerHTML = '<option value="">Qualquer pessoa</option>' + pessoasDaBase().map(function(n){
+        return '<option value="' + esc(n) + '">' + esc(n) + '</option>';
+      }).join("");
+      cp.value = pessoa;
+      if(cp.value !== pessoa) cp.value = "";
+    }
+  }
+
+  async function sugerirProtocolo(novo){
     var area = document.getElementById("sugestao-area");
     if(!area) return;
+
+    if(!state.arquivoCache){
+      area.innerHTML = '<div class="vazio" style="padding:18px 10px">Carregando o arquivo dos meses anteriores…</div>';
+      try { await carregarArquivo(); }
+      catch(e){ area.innerHTML = '<div class="vazio" style="padding:18px 10px">Não foi possível ler o arquivo: ' + esc(msgBanco(e)) + '</div>'; return; }
+      atualizarFiltrosSugestao();
+      area = document.getElementById("sugestao-area");
+      if(!area) return;
+    }
 
     var mes = (document.getElementById("sugestao-mes") || {}).value || "";
     var pessoa = (document.getElementById("sugestao-pessoa") || {}).value || "";
@@ -4003,7 +4034,7 @@ auto(true);
         aviso = "Nenhum protocolo com nota 0 com esses filtros." +
           (geralPend ? " Sem filtros há " + geralPend + " pendente(s)." : "");
       } else {
-        aviso = "Nenhum protocolo com nota 0 na base ativa. Abra o Painel uma vez para carregar o arquivo e conferir os meses arquivados.";
+        aviso = "Nenhum protocolo com nota 0 na base ativa nem no arquivo.";
       }
       if(temFiltro) botoes += '<button type="button" class="btn btn-neutro btn-mini" id="sugestao-limpar">Limpar filtros</button>';
 
@@ -4093,6 +4124,7 @@ auto(true);
               '<div class="campo" style="margin-bottom:0"><label for="sugestao-pessoa">Atribuído a</label>' +
                 '<select id="sugestao-pessoa">' + opcoesPessoa + '</select></div>' +
             '</div>' +
+            '<div id="sugestao-dica" class="sugestao-dica">Inclui a base ativa e os meses já arquivados.</div>' +
             '<button class="btn btn-principal" style="margin-top:14px" id="sugestao-buscar">SUGERIR UM ID</button>' +
             '<div id="sugestao-area"></div>' +
           '</div>' +
@@ -4113,11 +4145,18 @@ auto(true);
       renderDocaColeta();
       toast("Coleta minimizada — use o botão verde no canto para voltar.");
     };
-    d.querySelector("#sugestao-abrir").onclick = function(){
+    d.querySelector("#sugestao-abrir").onclick = async function(){
       var filtros = d.querySelector("#sugestao-filtros");
       var abrindo = filtros.hasAttribute("hidden");
       if(abrindo) filtros.removeAttribute("hidden"); else filtros.setAttribute("hidden", "");
       this.classList.toggle("on", abrindo);
+      if(abrindo && !state.arquivoCache){
+        var dica = d.querySelector("#sugestao-dica");
+        if(dica) dica.textContent = "Carregando o arquivo dos meses anteriores…";
+        try { await carregarArquivo(); atualizarFiltrosSugestao(); }
+        catch(e){}
+        if(dica) dica.textContent = "Inclui a base ativa e os meses já arquivados.";
+      }
     };
     d.querySelector("#sugestao-buscar").onclick = function(){ sugerirProtocolo(false); };
     d.addEventListener("cancel", function(e){ e.preventDefault(); d.querySelector("#coleta-id-minimizar").click(); });
