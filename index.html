@@ -640,6 +640,22 @@
   #popup-analise::backdrop{background:rgba(0,0,0,.55);}
   html.tema-claro #popup-analise::backdrop{background:rgba(20,22,26,0.35);}
   #popup-analise .aviso-topo h2{font-size:17px; word-break:break-word;}
+  .doca-analises{position:fixed; right:18px; bottom:18px; z-index:100; display:flex; flex-direction:column; gap:8px; max-width:220px;}
+  .doca-analises button{
+    background:var(--olive); color:#fff; border:none; border-radius:9px; padding:9px 14px;
+    font:600 12.5px var(--font-mono); cursor:pointer; box-shadow:0 8px 24px #0005; text-align:left;
+  }
+  .doca-analises button:hover{background:var(--olive-soft);}
+  #popup-analise{
+    position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:90; margin:0;
+  }
+  #popup-sugestao{
+    width:min(760px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); overflow:auto;
+    margin:auto; padding:0; border:1px solid var(--line-strong); border-radius:14px;
+    background:var(--surface); color:var(--ink); box-shadow:0 24px 80px #0008;
+  }
+  #popup-sugestao::backdrop{background:rgba(0,0,0,.55);}
+  html.tema-claro #popup-sugestao::backdrop{background:rgba(20,22,26,0.35);}
   #popup-import-analise{
     width:min(680px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); overflow:auto;
     margin:auto; padding:0; border:1px solid var(--line-strong); border-radius:14px;
@@ -1462,6 +1478,7 @@ auto(true);
     analises:[],
     analiseBusca:"",
     analiseAba:"coletados",
+    analisesMinimizadas:[],
     tema:"escuro"
   };
 
@@ -1801,7 +1818,8 @@ auto(true);
     if(refPedidos){ refPedidos.off(); refPedidos = null; } state.pedidos = [];
     if(refAvisos){ refAvisos.off(); refAvisos = null; } state.avisosLivre = {};
     pararAlarme();
-    ["popup-pedido","popup-livre","popup-resposta"].forEach(function(id){ var el = document.getElementById(id); if(el) el.remove(); });
+    ["popup-pedido","popup-livre","popup-resposta","popup-analise","doca-analises","popup-sugestao"].forEach(function(id){ var el = document.getElementById(id); if(el) el.remove(); });
+    state.analisesMinimizadas = [];
     if(refSessao){ refSessao.off(); refSessao = null; }
     if(refUso){ refUso.off(); refUso = null; }
     state.sessao = null;
@@ -3813,6 +3831,9 @@ auto(true);
       '<div class="acoes">' +
         '<button class="btn btn-neutro" style="width:auto" id="analise-copiar-codigo">COPIAR CÓDIGO</button>' +
         '<button class="btn btn-principal" style="width:auto" id="analise-abrir-import">COLAR E IMPORTAR</button>' +
+        '<button class="btn btn-neutro" style="width:auto" id="analise-sugerir">SUGESTÃO · NOTA 0' +
+          (sugestoesNotaZero().length ? ' <span class="contador-filtro">' + sugestoesNotaZero().length + '</span>' : '') +
+        '</button>' +
       '</div>' +
     '</div>' +
     '<div class="cartao">' +
@@ -3859,17 +3880,137 @@ auto(true);
         '<h2>' + esc(a.id) + ' · ' + esc(a.titulo || "Sem título") + '</h2>' +
         '<div class="acoes">' +
           '<button class="btn btn-neutro btn-mini" id="analise-copiar-texto">Copiar texto</button>' +
-          '<button class="btn btn-neutro btn-mini" id="analise-fechar">×</button>' +
+          '<button class="btn btn-neutro btn-mini" id="analise-minimizar" aria-label="Minimizar" title="Minimizar">−</button>' +
+          '<button class="btn btn-neutro btn-mini" id="analise-fechar" aria-label="Fechar" title="Fechar">×</button>' +
         '</div>' +
       '</div>' +
       '<div class="aviso-miolo">' + detalheAnalise(a) + '</div>';
     document.body.appendChild(d);
 
-    d.querySelector("#analise-fechar").onclick = function(){ d.close(); d.remove(); };
+    d.querySelector("#analise-fechar").onclick = function(){
+      state.analisesMinimizadas = state.analisesMinimizadas.filter(function(x){ return String(x) !== String(a.id); });
+      d.close(); d.remove();
+      renderDocaAnalises();
+    };
+    d.querySelector("#analise-minimizar").onclick = function(){
+      if(state.analisesMinimizadas.indexOf(String(a.id)) === -1) state.analisesMinimizadas.push(String(a.id));
+      d.close(); d.remove();
+      renderDocaAnalises();
+    };
     d.querySelector("#analise-copiar-texto").onclick = function(){
       copiar(textoDaAnalise(a), "Texto da reclamação " + a.id + " copiado.");
     };
-    d.addEventListener("cancel", function(){ d.remove(); });
+    d.addEventListener("cancel", function(e){ e.preventDefault(); d.querySelector("#analise-minimizar").click(); });
+    d.show();
+    state.analisesMinimizadas = state.analisesMinimizadas.filter(function(x){ return String(x) !== String(a.id); });
+    renderDocaAnalises();
+  }
+
+  function renderDocaAnalises(){
+    var doca = document.getElementById("doca-analises");
+    if(!state.analisesMinimizadas.length){
+      if(doca) doca.remove();
+      return;
+    }
+    if(!doca){
+      doca = document.createElement("div");
+      doca.id = "doca-analises";
+      doca.className = "doca-analises";
+      document.body.appendChild(doca);
+    }
+    doca.innerHTML = state.analisesMinimizadas.map(function(id){
+      var a = acharAnalise(id);
+      return '<button data-doca-analise="' + esc(id) + '" title="' + esc(a ? (a.titulo || "") : "") + '">' +
+        esc(id) + '</button>';
+    }).join("");
+    Array.prototype.forEach.call(doca.querySelectorAll("[data-doca-analise]"), function(b){
+      b.addEventListener("click", function(){ abrirAnalise(b.getAttribute("data-doca-analise")); });
+    });
+  }
+
+  function sugestoesNotaZero(){
+    var base = state.coleta.map(function(i){ return {item:i, mes:""}; });
+    if(state.arquivoCache) base = base.concat(state.arquivoCache);
+
+    var vistos = {}, achados = [];
+    base.forEach(function(r){
+      var i = r.item;
+      var id = String(i.id);
+      if(vistos[id]) return;
+      vistos[id] = 1;
+      if(i.nota !== 0) return;
+      if(acharAnalise(id)) return;
+      achados.push({item:i, mes:r.mes});
+    });
+
+    achados.sort(function(a, b){ return chaveData(b.item.data).localeCompare(chaveData(a.item.data)); });
+    return achados;
+  }
+
+  function abrirSugestoes(){
+    var velho = document.getElementById("popup-sugestao");
+    if(velho) velho.remove();
+
+    var lista = sugestoesNotaZero();
+    var d = document.createElement("dialog");
+    d.id = "popup-sugestao";
+    d.innerHTML = '<div class="coleta-topo">' +
+        '<h2>Protocolos nota 0 sem coleta</h2>' +
+        '<button class="btn btn-neutro btn-mini" id="sugestao-fechar" aria-label="Fechar" title="Fechar">×</button>' +
+      '</div>' +
+      '<div class="coleta-miolo">' +
+        (lista.length
+          ? '<p>São ' + lista.length + ' protocolo(s) avaliados com nota 0 que ainda não têm conteúdo coletado. ' +
+              'Copie os IDs, abra cada um no Reclame Aqui com o coletor ligado e depois importe aqui.</p>' +
+            '<div class="acoes" style="margin-bottom:16px">' +
+              '<button class="btn btn-principal" style="width:auto" id="sugestao-copiar">Copiar os ' + lista.length + ' IDs</button>' +
+              '<button class="btn btn-neutro" id="sugestao-csv">Baixar CSV</button>' +
+            '</div>' +
+            '<div class="rolagem" style="max-height:46vh"><table style="min-width:620px"><thead><tr>' +
+              '<th>DATA</th><th>ID</th><th>ASSUNTO</th><th>TRATADO POR</th><th>ONDE</th>' +
+            '</tr></thead><tbody>' +
+              lista.slice(0, 300).map(function(r){
+                var i = r.item;
+                return '<tr>' +
+                  '<td>' + esc(i.data || "—") + '</td>' +
+                  '<td class="mono">' + esc(i.id) + '</td>' +
+                  '<td>' + esc(i.assunto || "—") + '</td>' +
+                  '<td>' + esc(i.nome || "—") + '</td>' +
+                  '<td>' + (r.mes ? '<span class="selo selo-arquivo">Arquivo ' + esc(rotuloMes(r.mes)) + '</span>'
+                                  : '<span class="selo selo-ativo-base">Ativo</span>') + '</td>' +
+                '</tr>';
+              }).join("") +
+            '</tbody></table></div>' +
+            (lista.length > 300 ? '<div class="voce" style="margin-top:10px">Exibindo 300 de ' + lista.length + '.</div>' : '')
+          : '<div class="vazio">Nenhum protocolo com nota 0 pendente de coleta. ' +
+              (state.pesquisa && state.pesquisa.incluirArquivo ? '' : 'Abra o Painel uma vez para carregar o arquivo e conferir os meses arquivados.') +
+            '</div>') +
+      '</div>';
+    document.body.appendChild(d);
+
+    d.querySelector("#sugestao-fechar").onclick = function(){ d.close(); d.remove(); };
+    d.addEventListener("cancel", function(e){ e.preventDefault(); d.close(); d.remove(); });
+
+    var copiar1 = d.querySelector("#sugestao-copiar");
+    if(copiar1) copiar1.onclick = function(){
+      copiar(lista.map(function(r){ return r.item.id; }).join("\n"), lista.length + " ID(s) copiado(s).");
+    };
+    var csv = d.querySelector("#sugestao-csv");
+    if(csv) csv.onclick = function(){
+      var cab = ["DATA","ID","ASSUNTO","TRATADO POR","ONDE"];
+      var linhas = lista.map(function(r){
+        var i = r.item;
+        return [i.data, i.id, i.assunto, i.nome, r.mes ? "Arquivo " + rotuloMes(r.mes) : "Ativo"].map(valorCsv).join(";");
+      });
+      var blob = new Blob(["\uFEFF" + cab.join(";") + "\r\n" + linhas.join("\r\n")], {type:"text/csv;charset=utf-8"});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url; a.download = "nota0_sem_coleta_" + iso(new Date()) + ".csv";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+      toast(lista.length + " linha(s) baixada(s).");
+    };
+
     d.showModal();
   }
 
@@ -5663,6 +5804,7 @@ auto(true);
     liga("base-importar", "click", importarBase);
     liga("analise-copiar-codigo", "click", copiarCodigoAnalises);
     liga("analise-abrir-import", "click", abrirImportAnalises);
+    liga("analise-sugerir", "click", abrirSugestoes);
     liga("analise-baixar", "click", baixarAnalises);
     cada("[data-analise-aba]", function(b){
       b.addEventListener("click", function(){ state.analiseAba = b.getAttribute("data-analise-aba"); render(); });
