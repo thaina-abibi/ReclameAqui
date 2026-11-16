@@ -687,6 +687,7 @@
     font:600 34px var(--font-mono); color:var(--amber-deep); letter-spacing:.02em; padding:4px 0;
   }
   .sugestao-id:hover{text-decoration:underline; text-underline-offset:6px;}
+  .sugestao-selo{display:inline-block; margin:0 auto 8px; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; background:var(--amber-soft); color:var(--amber-deep); border:1px solid var(--line-strong);}
   .sugestao-rodape{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:12px;}
   .doca-analises{position:fixed; right:18px; bottom:18px; z-index:100; display:flex; flex-direction:column; gap:8px; max-width:220px;}
   .doca-analises button{
@@ -1866,7 +1867,7 @@ auto(true);
     ["popup-pedido","popup-livre","popup-resposta","popup-analise","doca-analises","popup-coleta-id","doca-coleta-id"].forEach(function(id){ var el = document.getElementById(id); if(el) el.remove(); });
     state.analisesMinimizadas = [];
     state.coletaIdMinimizada = false;
-    state.sugestao = {mes:"", pessoa:"", id:"", usados:[]};
+    state.sugestao = {mes:"", pessoa:"", id:"", usados:[], incluirColetados:false};
     if(refSessao){ refSessao.off(); refSessao = null; }
     if(refUso){ refUso.off(); refUso = null; }
     state.sessao = null;
@@ -3951,14 +3952,13 @@ auto(true);
       var i = r.item, id = String(i.id);
       if(vistos[id]) return;
       vistos[id] = 1;
-      if(i.nota !== 0) return;
-      if(acharAnalise(id)) return;
+      if(Number(i.nota) !== 0 || i.nota === "" || i.nota === null || i.nota === undefined) return;
       if(mes && chaveData(i.data).slice(0,6) !== mes) return;
       if(pessoa){
         var quem = [nomeDoResponsavel(i.responsavel), i.nome].filter(Boolean);
         if(quem.indexOf(pessoa) === -1) return;
       }
-      achados.push({item:i, mes:r.mes});
+      achados.push({item:i, mes:r.mes, revisado: !!acharAnalise(id)});
     });
 
     achados.sort(function(a, b){ return chaveData(b.item.data).localeCompare(chaveData(a.item.data)); });
@@ -3979,7 +3979,9 @@ auto(true);
     }
     if(novo && state.sugestao.id) state.sugestao.usados.push(String(state.sugestao.id));
 
-    var candidatos = candidatosNotaZero(mes, pessoa);
+    var todos = candidatosNotaZero(mes, pessoa);
+    var pendentes = todos.filter(function(c){ return !c.revisado; });
+    var candidatos = state.sugestao.incluirColetados ? todos : pendentes;
     var livres = candidatos.filter(function(c){ return state.sugestao.usados.indexOf(String(c.item.id)) === -1; });
     if(!livres.length && candidatos.length){
       state.sugestao.usados = [];
@@ -3988,8 +3990,37 @@ auto(true);
 
     if(!livres.length){
       state.sugestao.id = "";
-      area.innerHTML = '<div class="vazio" style="padding:20px 10px">Nenhum protocolo com nota 0 pendente de revisão' +
-        (mes || pessoa ? " com esses filtros." : ". Abra o Painel uma vez para carregar o arquivo e conferir os meses arquivados.") + '</div>';
+      var temFiltro = !!(mes || pessoa);
+      var comFiltro = temFiltro ? " com esses filtros" : "";
+      var geral = temFiltro ? candidatosNotaZero("", "") : todos;
+      var geralPend = geral.filter(function(c){ return !c.revisado; }).length;
+      var aviso, botoes = "";
+
+      if(todos.length){
+        aviso = "Os " + todos.length + " protocolo(s) com nota 0" + comFiltro + " já foram coletados.";
+        botoes += '<button type="button" class="btn btn-neutro btn-mini" id="sugestao-incluir">Incluir já coletados</button>';
+      } else if(temFiltro){
+        aviso = "Nenhum protocolo com nota 0 com esses filtros." +
+          (geralPend ? " Sem filtros há " + geralPend + " pendente(s)." : "");
+      } else {
+        aviso = "Nenhum protocolo com nota 0 na base ativa. Abra o Painel uma vez para carregar o arquivo e conferir os meses arquivados.";
+      }
+      if(temFiltro) botoes += '<button type="button" class="btn btn-neutro btn-mini" id="sugestao-limpar">Limpar filtros</button>';
+
+      area.innerHTML = '<div class="vazio" style="padding:18px 10px 10px">' + esc(aviso) + '</div>' +
+        (botoes ? '<div class="sugestao-rodape" style="justify-content:center;gap:8px">' + botoes + '</div>' : "");
+
+      liga("sugestao-incluir", "click", function(){
+        state.sugestao.incluirColetados = true;
+        state.sugestao.usados = [];
+        sugerirProtocolo(false);
+      });
+      liga("sugestao-limpar", "click", function(){
+        var cm = document.getElementById("sugestao-mes"), cp = document.getElementById("sugestao-pessoa");
+        if(cm) cm.value = ""; if(cp) cp.value = "";
+        state.sugestao.usados = [];
+        sugerirProtocolo(false);
+      });
       return;
     }
 
@@ -4000,15 +4031,26 @@ auto(true);
     area.innerHTML = '<div class="sugestao-cartao">' +
       '<div class="sugestao-meta">' + esc([i.data, i.assunto, nomeDoResponsavel(i.responsavel) || i.nome,
           escolhido.mes ? "Arquivo " + rotuloMes(escolhido.mes) : "Base ativa"].filter(Boolean).join(" · ")) + '</div>' +
+      (escolhido.revisado ? '<div class="sugestao-selo">já coletado antes</div>' : "") +
       '<button type="button" class="sugestao-id" id="sugestao-copiar-id" title="Clique para copiar o ID">' + esc(i.id) + '</button>' +
       '<div class="sugestao-rodape">' +
-        '<span class="voce">' + livres.length + ' de ' + candidatos.length + ' pendente(s)</span>' +
-        '<button type="button" class="btn btn-neutro btn-mini" id="sugestao-proximo" title="Sugerir outro protocolo">⇄ Outro ID</button>' +
+        '<span class="voce">' + (state.sugestao.incluirColetados
+            ? livres.length + ' de ' + candidatos.length + ' com nota 0 · já coletados incluídos'
+            : livres.length + ' de ' + pendentes.length + ' pendente(s)') + '</span>' +
+        '<span style="display:flex;gap:6px">' +
+          (state.sugestao.incluirColetados ? '<button type="button" class="btn btn-neutro btn-mini" id="sugestao-sopendentes">Só pendentes</button>' : "") +
+          '<button type="button" class="btn btn-neutro btn-mini" id="sugestao-proximo" title="Sugerir outro protocolo">⇄ Outro ID</button>' +
+        '</span>' +
       '</div>' +
     '</div>';
 
     liga("sugestao-copiar-id", "click", function(){ copiar(String(i.id), "ID " + i.id + " copiado."); });
     liga("sugestao-proximo", "click", function(){ sugerirProtocolo(true); });
+    liga("sugestao-sopendentes", "click", function(){
+      state.sugestao.incluirColetados = false;
+      state.sugestao.usados = [];
+      sugerirProtocolo(false);
+    });
   }
 
   function abrirColetaRevisoes(){
