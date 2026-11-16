@@ -4169,6 +4169,39 @@ auto(true);
     });
   }
 
+  function limparAnalise(bruto){
+    var id = digitos(String(bruto.id || ""));
+    if(!/^\d{6,15}$/.test(id)) throw new Error("ID inválido ou ausente");
+    function texto(v, limite){ return String(v == null ? "" : v).trim().slice(0, limite); }
+    var item = {
+      id: id,
+      cod: texto(bruto.cod, 60),
+      titulo: texto(bruto.titulo, 240),
+      situacao: texto(bruto.situacao, 60),
+      cidade: texto(bruto.cidade, 80),
+      data: texto(bruto.data, 10),
+      hora: texto(bruto.hora, 5),
+      nome: texto(bruto.nome, 120),
+      cpf: digitos(String(bruto.cpf || "")).slice(0,11),
+      email: texto(bruto.email, 120),
+      telefone: texto(bruto.telefone, 30),
+      telefones: texto(bruto.telefones || bruto.telefone, 120),
+      reclamacao: texto(bruto.reclamacao, 12000),
+      respostas: texto(bruto.respostas, 20000),
+      replicas: texto(bruto.replicas, 12000),
+      avaliacao: texto(bruto.avaliacao, 4000),
+      consideracaoFinal: texto(bruto.consideracaoFinal, 8000),
+      voltaria: texto(bruto.voltaria, 10).toUpperCase(),
+      anexos: texto(bruto.anexos, 400),
+      coletadoEm: new Date().toISOString(),
+      por: nomeExibido(state.currentUser),
+      fase: texto(bruto.fase, 12)
+    };
+    var n = Number(bruto.nota);
+    if(bruto.nota !== "" && bruto.nota !== null && bruto.nota !== undefined && !isNaN(n) && n >= 0 && n <= 10) item.nota = n;
+    return item;
+  }
+
   async function importarAnalises(){
     if(!ehAdministrativo()) return toast("Só o perfil administrativo pode importar revisões.");
     var campo = document.getElementById("analise-dados");
@@ -4184,16 +4217,19 @@ auto(true);
     catch(e){ feedback.textContent = "O conteúdo colado não está no formato do coletor. Use o botão “Copiar tudo para o app”."; return; }
     if(!Array.isArray(bruto)) bruto = [bruto];
 
-    var itens = [], erros = 0;
+    var itens = [], erros = 0, motivo = "";
     bruto.forEach(function(b){
       try {
         var limpo = limparAnalise(b || {});
         var atual = acharAnalise(limpo.id);
         if(atual && atual.fase) limpo.fase = atual.fase;
         itens.push(limpo);
-      } catch(e){ erros++; }
+      } catch(e){ erros++; if(!motivo) motivo = (e && e.message) ? e.message : String(e); }
     });
-    if(!itens.length){ feedback.textContent = "Nenhuma reclamação válida no conteúdo colado."; return; }
+    if(!itens.length){
+      feedback.textContent = "Nenhuma reclamação válida no conteúdo colado." + (motivo ? " Motivo: " + motivo : "");
+      return;
+    }
 
     botao.disabled = true;
     var gravados = 0;
@@ -4206,6 +4242,7 @@ auto(true);
         feedback.textContent = gravados + " de " + itens.length + " gravadas…";
       }
       campo.value = "";
+      feedback.textContent = "Pronto: " + gravados + " reclamação(ões) importada(s)" + (erros ? " — " + erros + " fora do padrão ignorado(s)" : "") + ".";
       registrar("Conteúdo de reclamações importado (" + gravados + ")", "revisoes");
       toast(gravados + " reclamação(ões) na base de revisões" + (erros ? " — " + erros + " fora do padrão ignorado(s)" : "") + ".");
       var areaSug = document.getElementById("sugestao-area");
