@@ -152,6 +152,23 @@
   .trilho-nav button:hover{background:rgba(242,240,228,0.09); color:#F2F0E4;}
   .trilho-nav button.on{background:var(--amber); color:#1a1c05; font-weight:600;}
   .trilho-nav svg{width:17px; height:17px; flex-shrink:0;}
+  .nav-grupo{
+    display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+    background:none; border:none; color:#9aa08c; padding:10px 12px; border-radius:8px;
+    font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; white-space:nowrap;
+  }
+  .nav-grupo:hover{background:rgba(242,240,228,0.09); color:#F2F0E4;}
+  .nav-grupo.tem-ativo{color:var(--amber-deep);}
+  .nav-grupo-nome{flex:1;}
+  .nav-grupo .nav-seta{width:14px; height:14px; transition:transform .16s ease;}
+  .nav-grupo.aberto .nav-seta{transform:rotate(90deg);}
+  .nav-filhos{display:flex; flex-direction:column; gap:3px; margin:2px 0 4px 18px; padding-left:8px; border-left:1px solid rgba(242,240,228,0.16);}
+  .nav-filhos[hidden]{display:none;}
+  .trilho-nav button.nav-filho{font-size:13.5px; padding:8px 12px;}
+  html.tema-claro .nav-grupo{color:#6a7180;}
+  html.tema-claro .nav-grupo:hover{background:rgba(0,0,0,0.06); color:#1b1d21;}
+  html.tema-claro .nav-grupo.tem-ativo{color:var(--amber-deep);}
+  html.tema-claro .nav-filhos{border-left-color:var(--line-strong);}
   @media (max-width:820px){
     .shell.aberto{grid-template-columns:200px minmax(0,1fr);}
     .trilho-nav{width:168px;}
@@ -640,6 +657,37 @@
   #popup-analise::backdrop{background:rgba(0,0,0,.55);}
   html.tema-claro #popup-analise::backdrop{background:rgba(20,22,26,0.35);}
   #popup-analise .aviso-topo h2{font-size:17px; word-break:break-word;}
+  .btn-coletar-id{
+    width:100%; background:var(--sage); color:#06210f; border:none; border-radius:11px;
+    font-family:var(--font-display); font-weight:700; font-size:17px; letter-spacing:.06em;
+    padding:20px 24px; cursor:pointer;
+  }
+  .btn-coletar-id:hover{background:#2ab85c;}
+  #popup-coleta-id{
+    position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:95; margin:0;
+    width:min(680px,calc(100vw - 32px)); max-height:calc(100dvh - 48px); overflow:auto;
+    padding:0; border:1px solid var(--sage); border-radius:14px;
+    background:var(--surface); color:var(--ink); box-shadow:0 24px 80px #0009;
+  }
+  .doca-coleta-id{
+    position:fixed; right:18px; bottom:18px; z-index:100; border:none; border-radius:10px;
+    background:#1f8a46; color:#eafff0; padding:12px 18px; cursor:pointer;
+    font:700 12.5px var(--font-display); letter-spacing:.06em; box-shadow:0 8px 24px #0006;
+  }
+  .doca-coleta-id:hover{background:#25a855;}
+  .sugestao-bloco{margin-top:22px; padding-top:18px; border-top:1px solid var(--line);}
+  .sugestao-bloco .btn.on{border-color:var(--amber); color:var(--amber-deep);}
+  .sugestao-cartao{
+    margin-top:16px; padding:18px; border:1px solid var(--line-strong); border-radius:12px;
+    background:var(--paper); text-align:center;
+  }
+  .sugestao-meta{font-size:12.5px; color:var(--ink-soft); margin-bottom:10px;}
+  .sugestao-id{
+    display:block; width:100%; background:none; border:none; cursor:pointer;
+    font:600 34px var(--font-mono); color:var(--amber-deep); letter-spacing:.02em; padding:4px 0;
+  }
+  .sugestao-id:hover{text-decoration:underline; text-underline-offset:6px;}
+  .sugestao-rodape{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:12px;}
   .doca-analises{position:fixed; right:18px; bottom:18px; z-index:100; display:flex; flex-direction:column; gap:8px; max-width:220px;}
   .doca-analises button{
     background:var(--olive); color:#fff; border:none; border-radius:9px; padding:9px 14px;
@@ -656,13 +704,6 @@
   }
   #popup-sugestao::backdrop{background:rgba(0,0,0,.55);}
   html.tema-claro #popup-sugestao::backdrop{background:rgba(20,22,26,0.35);}
-  #popup-import-analise{
-    width:min(680px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); overflow:auto;
-    margin:auto; padding:0; border:1px solid var(--line-strong); border-radius:14px;
-    background:var(--surface); color:var(--ink); box-shadow:0 24px 80px #0008;
-  }
-  #popup-import-analise::backdrop{background:rgba(0,0,0,.55);}
-  html.tema-claro #popup-import-analise::backdrop{background:rgba(20,22,26,0.35);}
   #analise-dados{min-height:200px;resize:vertical;font-family:var(--font-mono);font-size:12.5px;}
   #analise-feedback{margin-top:14px;font-size:13.5px;white-space:pre-wrap;}
   #base-dados{min-height:260px;resize:vertical;font-family:var(--font-mono);font-size:13.5px;}
@@ -1323,7 +1364,7 @@ function botao(rotulo,principal){
  caixa.appendChild(b);return b;
 }
 var topo=document.createElement("div");topo.style.cssText="display:flex;align-items:center;justify-content:space-between;gap:8px";
-var tit=document.createElement("strong");tit.textContent="Análises v2 • conteúdo das reclamações";tit.style.color=AZUL_CLARO;
+var tit=document.createElement("strong");tit.textContent="Revisões v2 • conteúdo das reclamações";tit.style.color=AZUL_CLARO;
 var x=document.createElement("button");x.textContent="\u00d7";x.setAttribute("aria-label","Fechar");
 x.style.cssText="background:none;border:none;color:#9fb2c9;font-size:18px;line-height:1;cursor:pointer";
 topo.appendChild(tit);topo.appendChild(x);caixa.appendChild(topo);
@@ -1358,7 +1399,7 @@ function capturarAgora(){
 bCapturar.onclick=capturarAgora;
 bCopiar.onclick=function(){
  if(!itens.length) return status("A lista está vazia.");
- copiar(JSON.stringify(itens), itens.length+" reclamação(ões) copiadas. Cole no app, aba Análises.");
+ copiar(JSON.stringify(itens), itens.length+" reclamação(ões) copiadas. Cole no app, aba Revisões.");
 };
 bLimpar.onclick=function(){ itens=[]; salvar(); status("Lista zerada."); };
 bBruto.onclick=function(){
@@ -1478,7 +1519,10 @@ auto(true);
     analises:[],
     analiseBusca:"",
     analiseAba:"coletados",
+    gruposNav:{},
     analisesMinimizadas:[],
+    coletaIdMinimizada:false,
+    sugestao:{mes:"", pessoa:"", id:"", usados:[]},
     tema:"escuro"
   };
 
@@ -1501,6 +1545,7 @@ auto(true);
   var IC_MAO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V4.6a1.6 1.6 0 0 1 3.2 0V11"/><path d="M12.2 10.6V3.4a1.6 1.6 0 0 1 3.2 0v7.2"/><path d="M15.4 11.4V6.2a1.6 1.6 0 0 1 3.2 0V15a6 6 0 0 1-6 6h-1.2a5 5 0 0 1-3.9-1.9L4 14.4a1.6 1.6 0 0 1 2.4-2.1L9 14.6V11"/></svg>';
   var IC_AVISO_LIVRE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.4 21.6 20.2H2.4z"/><text x="12" y="17.6" text-anchor="middle" font-size="9.5" font-weight="700" font-family="system-ui,sans-serif" fill="currentColor" stroke="none">?</text></svg>';
   var IC_ANALISE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h9l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M13.5 3v5.5H19"/><line x1="8" y1="13" x2="15" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>';
+  var IC_SETA_NAV = '<svg class="nav-seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>';
   var IC_SOL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><line x1="12" y1="1.8" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22.2"/><line x1="1.8" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22.2" y2="12"/><line x1="4.8" y1="4.8" x2="6.4" y2="6.4"/><line x1="17.6" y1="17.6" x2="19.2" y2="19.2"/><line x1="4.8" y1="19.2" x2="6.4" y2="17.6"/><line x1="17.6" y1="6.4" x2="19.2" y2="4.8"/></svg>';
   var IC_LUA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.2A8.6 8.6 0 0 1 9.8 3.5a8.6 8.6 0 1 0 10.7 10.7z"/></svg>';
 
@@ -1818,8 +1863,10 @@ auto(true);
     if(refPedidos){ refPedidos.off(); refPedidos = null; } state.pedidos = [];
     if(refAvisos){ refAvisos.off(); refAvisos = null; } state.avisosLivre = {};
     pararAlarme();
-    ["popup-pedido","popup-livre","popup-resposta","popup-analise","doca-analises","popup-sugestao"].forEach(function(id){ var el = document.getElementById(id); if(el) el.remove(); });
+    ["popup-pedido","popup-livre","popup-resposta","popup-analise","doca-analises","popup-coleta-id","doca-coleta-id"].forEach(function(id){ var el = document.getElementById(id); if(el) el.remove(); });
     state.analisesMinimizadas = [];
+    state.coletaIdMinimizada = false;
+    state.sugestao = {mes:"", pessoa:"", id:"", usados:[]};
     if(refSessao){ refSessao.off(); refSessao = null; }
     if(refUso){ refUso.off(); refUso = null; }
     state.sessao = null;
@@ -2130,8 +2177,24 @@ auto(true);
     '</div>';
   }
 
-  function itemNav(id, rotulo, icone, ativo){
-    return '<button data-painel="' + id + '" class="' + (ativo ? "on" : "") + '">' + icone + rotulo + '</button>';
+  function itemNav(id, rotulo, icone, ativo, filho){
+    return '<button data-painel="' + id + '" class="' + (ativo ? "on" : "") + (filho ? " nav-filho" : "") + '">' +
+      icone + rotulo + '</button>';
+  }
+
+  function grupoNav(chave, rotulo, icone, itens){
+    itens = (itens || []).filter(Boolean);
+    if(!itens.length) return "";
+    var temAtivo = itens.some(function(i){ return i.ativo; });
+    var guardado = state.gruposNav[chave];
+    var aberto = (guardado === undefined) ? temAtivo : !!guardado;
+    return '<button class="nav-grupo' + (aberto ? " aberto" : "") + (temAtivo ? " tem-ativo" : "") + '"' +
+        ' data-grupo-nav="' + chave + '" aria-expanded="' + (aberto ? "true" : "false") + '">' +
+        icone + '<span class="nav-grupo-nome">' + esc(rotulo) + '</span>' + IC_SETA_NAV +
+      '</button>' +
+      '<div class="nav-filhos"' + (aberto ? '' : ' hidden') + '>' +
+        itens.map(function(i){ return itemNav(i.id, i.rotulo, i.icone, i.ativo, true); }).join('') +
+      '</div>';
   }
 
   function ehMinhaSessao(){
@@ -2192,17 +2255,31 @@ auto(true);
     }
 
     var nav = itemNav("inicio", "Início", IC_INICIO, state.painelAba === "inicio");
-    nav += itemNav("dash", "Painel", IC_GRAFICO, state.painelAba === "dash" || state.painelAba === "pesquisa");
-    nav += itemNav("respostas", "Respostas", IC_RESPOSTAS, state.painelAba === "respostas");
+
+    nav += grupoNav("dados", "Dados", IC_GRAFICO, [
+      {id:"dash", rotulo:"Painel", icone:IC_GRAFICO, ativo:(state.painelAba === "dash" || state.painelAba === "pesquisa")},
+      admin ? {id:"arquivo", rotulo:"Arquivo", icone:IC_ARQUIVO, ativo:state.painelAba === "arquivo"} : null
+    ]);
+
+    nav += grupoNav("base", "Base", IC_REGISTRO, [
+      {id:"respostas", rotulo:"Respostas", icone:IC_RESPOSTAS, ativo:state.painelAba === "respostas"},
+      admin ? {id:"registro", rotulo:"Registro", icone:IC_REGISTRO, ativo:state.painelAba === "registro"} : null,
+      admin ? {id:"alertas", rotulo:"Alertas" + (state.alertas.length ? " (" + state.alertas.length + ")" : ""),
+               icone:IC_ALERTA, ativo:state.painelAba === "alertas"} : null
+    ]);
+
     if(admin){
-      nav += itemNav("usuarios", "Usuários", IC_PESSOAS, state.painelAba === "usuarios");
-      nav += itemNav("registro", "Registro", IC_REGISTRO, state.painelAba === "registro");
-      nav += itemNav("alertas", "Alertas" + (state.alertas.length ? " (" + state.alertas.length + ")" : ""), IC_ALERTA, state.painelAba === "alertas");
-      nav += itemNav("arquivo", "Arquivo", IC_ARQUIVO, state.painelAba === "arquivo");
-      nav += itemNav("analises", "Análises", IC_ANALISE, state.painelAba === "analises");
-      nav += itemNav("importar", "Importar", IC_IMPORTAR, state.painelAba === "importar");
-      nav += itemNav("listas", "Edições Admin", IC_LISTAS, state.painelAba === "listas");
+      nav += grupoNav("coleta", "Coleta", IC_ANALISE, [
+        {id:"analises", rotulo:"Revisões", icone:IC_ANALISE, ativo:state.painelAba === "analises"},
+        {id:"importar", rotulo:"Importar", icone:IC_IMPORTAR, ativo:state.painelAba === "importar"}
+      ]);
+
+      nav += grupoNav("administrativo", "Administrativo", IC_PESSOAS, [
+        {id:"usuarios", rotulo:"Usuários", icone:IC_PESSOAS, ativo:state.painelAba === "usuarios"},
+        {id:"listas", rotulo:"Edições", icone:IC_LISTAS, ativo:state.painelAba === "listas"}
+      ]);
     }
+
     nav += itemNav("conta", "Minha conta", IC_CONTA, state.painelAba === "conta");
 
     var cabecalho =
@@ -3713,12 +3790,13 @@ auto(true);
   var FASES = [
     {chave:"coletados", rotulo:"Coletados", cor:"aba-vermelha"},
     {chave:"nota", rotulo:"Análise de nota", cor:"aba-azul"},
-    {chave:"responder", rotulo:"Para responder", cor:"aba-amarela"}
+    {chave:"responder", rotulo:"Para responder", cor:"aba-amarela"},
+    {chave:"concluida", rotulo:"Análise concluída", cor:"aba-verde"}
   ];
 
   function faseDaAnalise(a){
     var f = String(a && a.fase || "");
-    return (f === "nota" || f === "responder") ? f : "coletados";
+    return (f === "nota" || f === "responder" || f === "concluida") ? f : "coletados";
   }
 
   function rotuloFase(chave){
@@ -3781,14 +3859,11 @@ auto(true);
 
   function blocoAnalises(){
     var lista = analisesFiltradas();
-    var grupos = {coletados:[], nota:[], responder:[]};
+    var grupos = {coletados:[], nota:[], responder:[], concluida:[]};
     lista.forEach(function(a){ grupos[faseDaAnalise(a)].push(a); });
 
     var aba = grupos[state.analiseAba] ? state.analiseAba : "coletados";
     var daAba = grupos[aba];
-    var comNota = lista.filter(function(a){ return typeof a.nota === "number"; });
-    var baixas = comNota.filter(function(a){ return a.nota <= 6; }).length;
-    var naoVoltam = lista.filter(function(a){ return String(a.voltaria || "").indexOf("N") === 0; }).length;
 
     var cartoes = daAba.slice(0, 200).map(function(a){
       var caso = casoDaBase(a.id);
@@ -3824,25 +3899,7 @@ auto(true);
     }
 
     return '<div class="cartao">' +
-      '<div class="cartao-topo">' +
-        '<h2>Coleta de conteúdo</h2>' +
-        '<span class="voce">Painel azul, título Análises v2, quatro botões</span>' +
-      '</div>' +
-      '<div class="acoes">' +
-        '<button class="btn btn-neutro" style="width:auto" id="analise-copiar-codigo">COPIAR CÓDIGO</button>' +
-        '<button class="btn btn-principal" style="width:auto" id="analise-abrir-import">COLAR E IMPORTAR</button>' +
-        '<button class="btn btn-neutro" style="width:auto" id="analise-sugerir">SUGESTÃO · NOTA 0' +
-          (sugestoesNotaZero().length ? ' <span class="contador-filtro">' + sugestoesNotaZero().length + '</span>' : '') +
-        '</button>' +
-      '</div>' +
-    '</div>' +
-    '<div class="cartao">' +
-      '<div class="painel-totais quatro">' +
-        '<div class="total-item"><span>Reclamações</span><b>' + lista.length + '</b></div>' +
-        '<div class="total-item"><span>Com avaliação</span><b>' + comNota.length + '</b></div>' +
-        '<div class="total-item"><span>Nota 0 a 6</span><b>' + baixas + '</b></div>' +
-        '<div class="total-item destaque"><span>Não voltariam</span><b>' + naoVoltam + '</b></div>' +
-      '</div>' +
+      '<button class="btn btn-coletar-id" id="analise-abrir-coleta">COLETAR DADOS DE ID</button>' +
     '</div>' +
     '<div class="cartao">' +
       '<div class="abas-linha">' +
@@ -3855,6 +3912,190 @@ auto(true);
       (cartoes || '<div class="vazio">Nenhuma reclamação em ' + esc(rotuloFase(aba)) + '.</div>') +
       (daAba.length > 200 ? '<div class="voce" style="margin-top:12px">Exibindo 200 de ' + daAba.length + '.</div>' : '') +
     '</div>';
+  }
+
+  // ===== pop-up de coleta de IDs (minimizável) =====
+
+  function mesesDaBase(){
+    var meses = {};
+    state.coleta.forEach(function(i){
+      var m = chaveData(i.data).slice(0,6);
+      if(m.length === 6) meses[m] = 1;
+    });
+    if(state.arquivoCache){
+      state.arquivoCache.forEach(function(r){
+        var m = chaveData(r.item.data).slice(0,6);
+        if(m.length === 6) meses[m] = 1;
+      });
+    }
+    return Object.keys(meses).sort().reverse();
+  }
+
+  function pessoasDaBase(){
+    var nomes = {};
+    function anotar(i){
+      if(i.responsavel) nomes[nomeDoResponsavel(i.responsavel)] = 1;
+      if(i.nome) nomes[i.nome] = 1;
+    }
+    state.coleta.forEach(anotar);
+    if(state.arquivoCache) state.arquivoCache.forEach(function(r){ anotar(r.item); });
+    return Object.keys(nomes).filter(Boolean).sort();
+  }
+
+  function candidatosNotaZero(mes, pessoa){
+    var base = state.coleta.map(function(i){ return {item:i, mes:""}; });
+    if(state.arquivoCache) base = base.concat(state.arquivoCache);
+
+    var vistos = {}, achados = [];
+    base.forEach(function(r){
+      var i = r.item, id = String(i.id);
+      if(vistos[id]) return;
+      vistos[id] = 1;
+      if(i.nota !== 0) return;
+      if(acharAnalise(id)) return;
+      if(mes && chaveData(i.data).slice(0,6) !== mes) return;
+      if(pessoa){
+        var quem = [nomeDoResponsavel(i.responsavel), i.nome].filter(Boolean);
+        if(quem.indexOf(pessoa) === -1) return;
+      }
+      achados.push({item:i, mes:r.mes});
+    });
+
+    achados.sort(function(a, b){ return chaveData(b.item.data).localeCompare(chaveData(a.item.data)); });
+    return achados;
+  }
+
+  function sugerirProtocolo(novo){
+    var area = document.getElementById("sugestao-area");
+    if(!area) return;
+
+    var mes = (document.getElementById("sugestao-mes") || {}).value || "";
+    var pessoa = (document.getElementById("sugestao-pessoa") || {}).value || "";
+
+    if(state.sugestao.mes !== mes || state.sugestao.pessoa !== pessoa){
+      state.sugestao.mes = mes;
+      state.sugestao.pessoa = pessoa;
+      state.sugestao.usados = [];
+    }
+    if(novo && state.sugestao.id) state.sugestao.usados.push(String(state.sugestao.id));
+
+    var candidatos = candidatosNotaZero(mes, pessoa);
+    var livres = candidatos.filter(function(c){ return state.sugestao.usados.indexOf(String(c.item.id)) === -1; });
+    if(!livres.length && candidatos.length){
+      state.sugestao.usados = [];
+      livres = candidatos;
+    }
+
+    if(!livres.length){
+      state.sugestao.id = "";
+      area.innerHTML = '<div class="vazio" style="padding:20px 10px">Nenhum protocolo com nota 0 pendente de revisão' +
+        (mes || pessoa ? " com esses filtros." : ". Abra o Painel uma vez para carregar o arquivo e conferir os meses arquivados.") + '</div>';
+      return;
+    }
+
+    var escolhido = livres[0];
+    var i = escolhido.item;
+    state.sugestao.id = String(i.id);
+
+    area.innerHTML = '<div class="sugestao-cartao">' +
+      '<div class="sugestao-meta">' + esc([i.data, i.assunto, nomeDoResponsavel(i.responsavel) || i.nome,
+          escolhido.mes ? "Arquivo " + rotuloMes(escolhido.mes) : "Base ativa"].filter(Boolean).join(" · ")) + '</div>' +
+      '<button type="button" class="sugestao-id" id="sugestao-copiar-id" title="Clique para copiar o ID">' + esc(i.id) + '</button>' +
+      '<div class="sugestao-rodape">' +
+        '<span class="voce">' + livres.length + ' de ' + candidatos.length + ' pendente(s)</span>' +
+        '<button type="button" class="btn btn-neutro btn-mini" id="sugestao-proximo" title="Sugerir outro protocolo">⇄ Outro ID</button>' +
+      '</div>' +
+    '</div>';
+
+    liga("sugestao-copiar-id", "click", function(){ copiar(String(i.id), "ID " + i.id + " copiado."); });
+    liga("sugestao-proximo", "click", function(){ sugerirProtocolo(true); });
+  }
+
+  function abrirColetaRevisoes(){
+    var antigo = document.getElementById("popup-coleta-id");
+    if(antigo){ antigo.remove(); }
+    state.coletaIdMinimizada = false;
+    renderDocaColeta();
+
+    var opcoesMes = '<option value="">Todos os meses</option>' + mesesDaBase().map(function(m){
+      return '<option value="' + m + '"' + (state.sugestao.mes === m ? " selected" : "") + '>' + rotuloMes(m) + '</option>';
+    }).join("");
+    var opcoesPessoa = '<option value="">Qualquer pessoa</option>' + pessoasDaBase().map(function(n){
+      return '<option value="' + esc(n) + '"' + (state.sugestao.pessoa === n ? " selected" : "") + '>' + esc(n) + '</option>';
+    }).join("");
+
+    var d = document.createElement("dialog");
+    d.id = "popup-coleta-id";
+    d.innerHTML = '<div class="coleta-topo">' +
+        '<h2>Coletar dados de ID</h2>' +
+        '<div class="acoes">' +
+          '<button class="btn btn-neutro btn-mini" id="coleta-id-minimizar" aria-label="Minimizar" title="Minimizar">−</button>' +
+          '<button class="btn btn-neutro btn-mini" id="coleta-id-fechar" aria-label="Fechar" title="Fechar">×</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="coleta-miolo">' +
+        '<p>Copie o código, execute no Reclame Aqui e abra as reclamações. Depois clique em “Copiar tudo para o app” no painel azul e cole aqui.</p>' +
+        '<button class="btn btn-neutro btn-largo" id="analise-copiar-codigo">COPIAR CÓDIGO</button>' +
+        '<div class="campo" style="margin-top:20px">' +
+          '<label for="analise-dados">Conteúdo copiado do coletor</label>' +
+          '<textarea id="analise-dados" spellcheck="false" placeholder="Cole aqui o que o coletor copiou"></textarea>' +
+        '</div>' +
+        '<button class="btn btn-principal" id="analise-importar">IMPORTAR CONTEÚDO</button>' +
+        '<div id="analise-feedback" role="status" aria-live="polite"></div>' +
+        '<div class="sugestao-bloco">' +
+          '<button class="btn btn-neutro btn-largo" id="sugestao-abrir">SUGERIR PROTOCOLO COM NOTA 0</button>' +
+          '<div id="sugestao-filtros" hidden>' +
+            '<div class="grade-2" style="margin-top:16px">' +
+              '<div class="campo" style="margin-bottom:0"><label for="sugestao-mes">Mês de referência</label>' +
+                '<select id="sugestao-mes">' + opcoesMes + '</select></div>' +
+              '<div class="campo" style="margin-bottom:0"><label for="sugestao-pessoa">Atribuído a</label>' +
+                '<select id="sugestao-pessoa">' + opcoesPessoa + '</select></div>' +
+            '</div>' +
+            '<button class="btn btn-principal" style="margin-top:14px" id="sugestao-buscar">SUGERIR UM ID</button>' +
+            '<div id="sugestao-area"></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(d);
+
+    d.querySelector("#analise-copiar-codigo").onclick = copiarCodigoAnalises;
+    d.querySelector("#analise-importar").onclick = importarAnalises;
+    d.querySelector("#coleta-id-fechar").onclick = function(){
+      state.coletaIdMinimizada = false;
+      d.close(); d.remove();
+      renderDocaColeta();
+    };
+    d.querySelector("#coleta-id-minimizar").onclick = function(){
+      state.coletaIdMinimizada = true;
+      d.close(); d.remove();
+      renderDocaColeta();
+      toast("Coleta minimizada — use o botão verde no canto para voltar.");
+    };
+    d.querySelector("#sugestao-abrir").onclick = function(){
+      var filtros = d.querySelector("#sugestao-filtros");
+      var abrindo = filtros.hasAttribute("hidden");
+      if(abrindo) filtros.removeAttribute("hidden"); else filtros.setAttribute("hidden", "");
+      this.classList.toggle("on", abrindo);
+    };
+    d.querySelector("#sugestao-buscar").onclick = function(){ sugerirProtocolo(false); };
+    d.addEventListener("cancel", function(e){ e.preventDefault(); d.querySelector("#coleta-id-minimizar").click(); });
+    d.show();
+  }
+
+  function renderDocaColeta(){
+    var doca = document.getElementById("doca-coleta-id");
+    if(!state.coletaIdMinimizada){
+      if(doca) doca.remove();
+      return;
+    }
+    if(!doca){
+      doca = document.createElement("button");
+      doca.id = "doca-coleta-id";
+      doca.className = "doca-coleta-id";
+      doca.textContent = "COLETAR DADOS DE ID";
+      document.body.appendChild(doca);
+      doca.addEventListener("click", abrirColetaRevisoes);
+    }
   }
 
   async function moverAnalise(id, fase){
@@ -3928,153 +4169,8 @@ auto(true);
     });
   }
 
-  function sugestoesNotaZero(){
-    var base = state.coleta.map(function(i){ return {item:i, mes:""}; });
-    if(state.arquivoCache) base = base.concat(state.arquivoCache);
-
-    var vistos = {}, achados = [];
-    base.forEach(function(r){
-      var i = r.item;
-      var id = String(i.id);
-      if(vistos[id]) return;
-      vistos[id] = 1;
-      if(i.nota !== 0) return;
-      if(acharAnalise(id)) return;
-      achados.push({item:i, mes:r.mes});
-    });
-
-    achados.sort(function(a, b){ return chaveData(b.item.data).localeCompare(chaveData(a.item.data)); });
-    return achados;
-  }
-
-  function abrirSugestoes(){
-    var velho = document.getElementById("popup-sugestao");
-    if(velho) velho.remove();
-
-    var lista = sugestoesNotaZero();
-    var d = document.createElement("dialog");
-    d.id = "popup-sugestao";
-    d.innerHTML = '<div class="coleta-topo">' +
-        '<h2>Protocolos nota 0 sem coleta</h2>' +
-        '<button class="btn btn-neutro btn-mini" id="sugestao-fechar" aria-label="Fechar" title="Fechar">×</button>' +
-      '</div>' +
-      '<div class="coleta-miolo">' +
-        (lista.length
-          ? '<p>São ' + lista.length + ' protocolo(s) avaliados com nota 0 que ainda não têm conteúdo coletado. ' +
-              'Copie os IDs, abra cada um no Reclame Aqui com o coletor ligado e depois importe aqui.</p>' +
-            '<div class="acoes" style="margin-bottom:16px">' +
-              '<button class="btn btn-principal" style="width:auto" id="sugestao-copiar">Copiar os ' + lista.length + ' IDs</button>' +
-              '<button class="btn btn-neutro" id="sugestao-csv">Baixar CSV</button>' +
-            '</div>' +
-            '<div class="rolagem" style="max-height:46vh"><table style="min-width:620px"><thead><tr>' +
-              '<th>DATA</th><th>ID</th><th>ASSUNTO</th><th>TRATADO POR</th><th>ONDE</th>' +
-            '</tr></thead><tbody>' +
-              lista.slice(0, 300).map(function(r){
-                var i = r.item;
-                return '<tr>' +
-                  '<td>' + esc(i.data || "—") + '</td>' +
-                  '<td class="mono">' + esc(i.id) + '</td>' +
-                  '<td>' + esc(i.assunto || "—") + '</td>' +
-                  '<td>' + esc(i.nome || "—") + '</td>' +
-                  '<td>' + (r.mes ? '<span class="selo selo-arquivo">Arquivo ' + esc(rotuloMes(r.mes)) + '</span>'
-                                  : '<span class="selo selo-ativo-base">Ativo</span>') + '</td>' +
-                '</tr>';
-              }).join("") +
-            '</tbody></table></div>' +
-            (lista.length > 300 ? '<div class="voce" style="margin-top:10px">Exibindo 300 de ' + lista.length + '.</div>' : '')
-          : '<div class="vazio">Nenhum protocolo com nota 0 pendente de coleta. ' +
-              (state.pesquisa && state.pesquisa.incluirArquivo ? '' : 'Abra o Painel uma vez para carregar o arquivo e conferir os meses arquivados.') +
-            '</div>') +
-      '</div>';
-    document.body.appendChild(d);
-
-    d.querySelector("#sugestao-fechar").onclick = function(){ d.close(); d.remove(); };
-    d.addEventListener("cancel", function(e){ e.preventDefault(); d.close(); d.remove(); });
-
-    var copiar1 = d.querySelector("#sugestao-copiar");
-    if(copiar1) copiar1.onclick = function(){
-      copiar(lista.map(function(r){ return r.item.id; }).join("\n"), lista.length + " ID(s) copiado(s).");
-    };
-    var csv = d.querySelector("#sugestao-csv");
-    if(csv) csv.onclick = function(){
-      var cab = ["DATA","ID","ASSUNTO","TRATADO POR","ONDE"];
-      var linhas = lista.map(function(r){
-        var i = r.item;
-        return [i.data, i.id, i.assunto, i.nome, r.mes ? "Arquivo " + rotuloMes(r.mes) : "Ativo"].map(valorCsv).join(";");
-      });
-      var blob = new Blob(["\uFEFF" + cab.join(";") + "\r\n" + linhas.join("\r\n")], {type:"text/csv;charset=utf-8"});
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement("a");
-      a.href = url; a.download = "nota0_sem_coleta_" + iso(new Date()) + ".csv";
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
-      toast(lista.length + " linha(s) baixada(s).");
-    };
-
-    d.showModal();
-  }
-
-  function abrirImportAnalises(){
-    var velho = document.getElementById("popup-import-analise");
-    if(velho) velho.remove();
-
-    var d = document.createElement("dialog");
-    d.id = "popup-import-analise";
-    d.innerHTML = '<div class="coleta-topo">' +
-        '<h2>Importar conteúdo coletado</h2>' +
-        '<button class="btn btn-neutro btn-mini" id="import-analise-fechar" aria-label="Fechar" title="Fechar">×</button>' +
-      '</div>' +
-      '<div class="coleta-miolo">' +
-        '<p>No Reclame Aqui, clique em “Copiar tudo para o app” no painel azul e cole o conteúdo abaixo.</p>' +
-        '<div class="campo"><label for="analise-dados">Conteúdo copiado do coletor</label>' +
-          '<textarea id="analise-dados" spellcheck="false" placeholder="Cole aqui o que o coletor copiou"></textarea></div>' +
-        '<button class="btn btn-principal" id="analise-importar">IMPORTAR CONTEÚDO</button>' +
-        '<div id="analise-feedback" role="status" aria-live="polite"></div>' +
-      '</div>';
-    document.body.appendChild(d);
-
-    d.querySelector("#import-analise-fechar").onclick = function(){ d.close(); d.remove(); };
-    d.querySelector("#analise-importar").onclick = importarAnalises;
-    d.addEventListener("cancel", function(e){ e.preventDefault(); d.close(); d.remove(); });
-    d.showModal();
-    d.querySelector("#analise-dados").focus();
-  }
-
-  function limparAnalise(bruto){
-    var id = digitos(String(bruto.id || ""));
-    if(!/^\d{6,15}$/.test(id)) throw new Error("ID inválido");
-    function texto(v, limite){ return String(v == null ? "" : v).trim().slice(0, limite); }
-    var item = {
-      id: id,
-      cod: texto(bruto.cod, 60),
-      titulo: texto(bruto.titulo, 240),
-      situacao: texto(bruto.situacao, 60),
-      cidade: texto(bruto.cidade, 80),
-      data: texto(bruto.data, 10),
-      hora: texto(bruto.hora, 5),
-      nome: texto(bruto.nome, 120),
-      cpf: digitos(String(bruto.cpf || "")).slice(0,11),
-      email: texto(bruto.email, 120),
-      telefone: texto(bruto.telefone, 30),
-      telefones: texto(bruto.telefones || bruto.telefone, 120),
-      reclamacao: texto(bruto.reclamacao, 12000),
-      respostas: texto(bruto.respostas, 20000),
-      replicas: texto(bruto.replicas, 12000),
-      avaliacao: texto(bruto.avaliacao, 4000),
-      consideracaoFinal: texto(bruto.consideracaoFinal, 8000),
-      voltaria: texto(bruto.voltaria, 10).toUpperCase(),
-      anexos: texto(bruto.anexos, 400),
-      coletadoEm: new Date().toISOString(),
-      por: nomeExibido(state.currentUser),
-      fase: texto(bruto.fase, 12)
-    };
-    var n = Number(bruto.nota);
-    if(bruto.nota !== "" && bruto.nota !== null && bruto.nota !== undefined && !isNaN(n) && n >= 0 && n <= 10) item.nota = n;
-    return item;
-  }
-
   async function importarAnalises(){
-    if(!ehAdministrativo()) return toast("Só o perfil administrativo pode importar análises.");
+    if(!ehAdministrativo()) return toast("Só o perfil administrativo pode importar revisões.");
     var campo = document.getElementById("analise-dados");
     var feedback = document.getElementById("analise-feedback");
     var botao = document.getElementById("analise-importar");
@@ -4110,10 +4206,10 @@ auto(true);
         feedback.textContent = gravados + " de " + itens.length + " gravadas…";
       }
       campo.value = "";
-      registrar("Conteúdo de reclamações importado (" + gravados + ")", "analises");
-      toast(gravados + " reclamação(ões) na base de análises" + (erros ? " — " + erros + " fora do padrão ignorado(s)" : "") + ".");
-      var popup = document.getElementById("popup-import-analise");
-      if(popup){ popup.close(); popup.remove(); }
+      registrar("Conteúdo de reclamações importado (" + gravados + ")", "revisoes");
+      toast(gravados + " reclamação(ões) na base de revisões" + (erros ? " — " + erros + " fora do padrão ignorado(s)" : "") + ".");
+      var areaSug = document.getElementById("sugestao-area");
+      if(areaSug && areaSug.innerHTML) sugerirProtocolo(false);
       render();
     } catch(err){
       feedback.textContent = gravados + " de " + itens.length + " gravadas antes do erro: " + msgBanco(err);
@@ -4139,7 +4235,7 @@ auto(true);
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
     a.href = url;
-    a.download = "analises_RA_" + iso(new Date()) + ".csv";
+    a.download = "revisoes_RA_" + iso(new Date()) + ".csv";
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -5802,9 +5898,7 @@ auto(true);
     });
     liga("btn-atualizar", "click", atualizarDados);
     liga("base-importar", "click", importarBase);
-    liga("analise-copiar-codigo", "click", copiarCodigoAnalises);
-    liga("analise-abrir-import", "click", abrirImportAnalises);
-    liga("analise-sugerir", "click", abrirSugestoes);
+    liga("analise-abrir-coleta", "click", abrirColetaRevisoes);
     liga("analise-baixar", "click", baixarAnalises);
     cada("[data-analise-aba]", function(b){
       b.addEventListener("click", function(){ state.analiseAba = b.getAttribute("data-analise-aba"); render(); });
@@ -5998,6 +6092,14 @@ auto(true);
     });
     liga("pre-salvar", "click", salvarPreSelecao);
 
+    cada("[data-grupo-nav]", function(b){
+      b.addEventListener("click", function(){
+        var chave = b.getAttribute("data-grupo-nav");
+        var aberto = b.classList.contains("aberto");
+        state.gruposNav[chave] = !aberto;
+        render();
+      });
+    });
     cada("[data-painel]", function(b){
       b.addEventListener("click", function(){
         if(state.painelAba === "listas" && b.getAttribute("data-painel") !== "listas") state.editListas = null;
