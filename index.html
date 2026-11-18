@@ -3836,8 +3836,16 @@ auto(true);
     {chave:"nota", rotulo:"Análise de nota", cor:"aba-azul"},
     {chave:"responder", rotulo:"Para responder", cor:"aba-amarela"},
     {chave:"concluida", rotulo:"Análise concluída", cor:"aba-verde"},
-    {chave:"arquivada", rotulo:"Arquivadas", cor:"aba-cinza"}
+    {chave:"arquivada", rotulo:"Arquivadas", cor:"aba-cinza", oculta:true}
   ];
+
+  function fasesVisiveis(){
+    return FASES.filter(function(f){ return !f.oculta; });
+  }
+
+  function faseVisivel(chave){
+    return fasesVisiveis().some(function(f){ return f.chave === chave; });
+  }
 
   function faseDaAnalise(a){
     var f = String(a && a.fase || "");
@@ -3928,7 +3936,7 @@ auto(true);
     var grupos = {coletados:[], nota:[], responder:[], concluida:[], arquivada:[]};
     lista.forEach(function(a){ grupos[faseDaAnalise(a)].push(a); });
 
-    var aba = grupos[state.analiseAba] ? state.analiseAba : "coletados";
+    var aba = faseVisivel(state.analiseAba) ? state.analiseAba : "coletados";
     var daAba = grupos[aba].slice().sort(function(x, y){
       return chaveData(y.data).localeCompare(chaveData(x.data));
     });
@@ -3959,7 +3967,7 @@ auto(true);
     '</div>' +
     '<div class="cartao">' +
       '<div class="abas-linha">' +
-        '<div class="abas">' + FASES.map(botaoAba).join('') + '</div>' +
+        '<div class="abas">' + fasesVisiveis().map(botaoAba).join('') + '</div>' +
         '<div class="dash-topo-acoes">' +
           '<input type="text" id="analise-busca" placeholder="Buscar no conteúdo" style="max-width:280px" value="' + esc(state.analiseBusca) + '">' +
           '<button class="btn btn-neutro btn-mini" id="analise-baixar">Baixar CSV</button>' +
@@ -4243,10 +4251,15 @@ auto(true);
       await db.ref().update(atualiza);
       var a = acharAnalise(id);
       if(a){ a.fase = valor; if(revisor !== undefined) a.revisor = revisor || ""; }
-      state.analiseAba = faseDaAnalise({fase:valor});
-      registrar("ID " + id + " movido para " + rotuloFase(faseDaAnalise({fase:valor})) +
-        (revisor ? " (revisor: " + (nomeDoRevisor({revisor:revisor}) || revisor) + ")" : ""), "revisoes");
-      toast("ID " + id + " movido para " + rotuloFase(faseDaAnalise({fase:valor})) + ".");
+      var destino = faseDaAnalise({fase:valor});
+      if(faseVisivel(destino)) state.analiseAba = destino;
+      registrar(destino === "arquivada"
+        ? "Informações do ID " + id + " arquivadas"
+        : "ID " + id + " movido para " + rotuloFase(destino) +
+          (revisor ? " (revisor: " + (nomeDoRevisor({revisor:revisor}) || revisor) + ")" : ""), "revisoes");
+      toast(destino === "arquivada"
+        ? "Informações do ID " + id + " arquivadas."
+        : "ID " + id + " movido para " + rotuloFase(destino) + ".");
       fecharRevisao();
       render();
     } catch(err){ toast(msgBanco(err)); }
@@ -4376,7 +4389,7 @@ auto(true);
     } else if(fase === "responder"){
       corpo = '<div class="rev-bloco">' +
         '<h3>Fila de resposta</h3>' +
-        '<p class="rev-dica">Quando o caso for respondido na página inicial, estas informações são arquivadas automaticamente. Você também pode arquivar agora.</p>' +
+        '<p class="rev-dica">Quando o caso for respondido na página inicial, estas informações são arquivadas automaticamente e saem da lista. Você também pode arquivar agora.</p>' +
         (caso ? '<div class="rev-linha">Na base: ' + esc(caso.assunto || "—") + ' · ' + esc(rotuloEstado(caso)) +
           (caso.descricao ? ' · ' + esc(rotuloDescricao(caso.descricao)) : '') + '</div>' : '<div class="rev-linha">Este ID não está mais na base ativa.</div>') +
         '<div class="rev-acoes">' +
